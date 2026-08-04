@@ -1,15 +1,46 @@
 import { describe, expect, it } from "vitest";
 import {
+  normalizeStoredProjectConfig,
   projectConfigInputSchema,
+  projectConfigSchema,
   RELEASE_SCOPE_JQL_MAX_LENGTH,
   validateReleaseScopeJql,
 } from "../../src/shared/validation";
 import { projectConfig } from "../fixtures/release";
 
 describe("Release-Scope-JQL-Validierung", () => {
-  it("akzeptiert den kontrollierten, projektgebundenen Test-Scope", () => {
-    const jql = "project = SCRUM AND key in (SCRUM-1, SCRUM-2, SCRUM-3)";
+  it.each([
+    "project = SCRUM",
+    'project = "SCRUM"',
+    "project = SCRUM AND key = SCRUM-1",
+    "project = SCRUM AND key in (SCRUM-1, SCRUM-2, SCRUM-3)",
+    "project = SCRUM AND key is not EMPTY",
+    "project = SCRUM AND labels not in (skip-release, archived)",
+    'project = SCRUM AND summary ~ "release ready"',
+  ])("akzeptiert die unterstützte Syntax: %s", (jql) => {
     expect(validateReleaseScopeJql(jql, "SCRUM")).toEqual({ valid: true });
+  });
+
+  it.each([
+    "project = SCRUM AND",
+    "AND project = SCRUM",
+    "project = SCRUM AND AND key = SCRUM-1",
+    "project = SCRUM AND key",
+    "project = SCRUM AND key =",
+    "project = SCRUM AND = SCRUM-1",
+    "project = SCRUM AND key in ()",
+    "project = SCRUM AND key in (SCRUM-1,)",
+    "project = SCRUM AND key in (,SCRUM-1)",
+    "project = SCRUM AND key in (SCRUM-1 SCRUM-2)",
+    "project = SCRUM AND key in (SCRUM-1",
+    "project = SCRUM)",
+    'project = "SCRUM',
+    "project = SCRUM AND key = SCRUM-1 unexpected",
+  ])("weist unvollständige oder unerwartete Syntax zurück: %s", (jql) => {
+    expect(validateReleaseScopeJql(jql, "SCRUM")).toMatchObject({
+      valid: false,
+      code: "SYNTAX_INVALID",
+    });
   });
 
   it.each([
@@ -22,12 +53,17 @@ describe("Release-Scope-JQL-Validierung", () => {
     ],
     [
       "mit fixVersion",
-      "project = SCRUM AND fixVersion is EMPTY",
+      "project = SCRUM AND fixVersion = 10000",
+      "FIX_VERSION_FORBIDDEN",
+    ],
+    [
+      "mit fixVersions",
+      "project = SCRUM AND fixVersions = 10000",
       "FIX_VERSION_FORBIDDEN",
     ],
     [
       "mit ausbrechendem OR",
-      "project = SCRUM OR project = OTHER",
+      "project = SCRUM OR key = SCRUM-1",
       "OR_FORBIDDEN",
     ],
   ])("weist %s zurück", (_case, jql, code) => {
@@ -47,11 +83,11 @@ describe("Release-Scope-JQL-Validierung", () => {
     });
   });
 
-  it("verwendet für Client und Resolver dasselbe fachliche Schema", () => {
+  it("lehnt syntaktisch ungültiges JQL im gemeinsamen Eingabeschema ab", () => {
     const invalid = {
       ...projectConfig,
       releaseScopeMode: "JQL_SCOPE" as const,
-      releaseScopeJql: "project = OTHER",
+      releaseScopeJql: "project = DEMO AND",
     };
     const parsed = projectConfigInputSchema.safeParse(invalid);
     const validation = validateReleaseScopeJql(invalid.releaseScopeJql, "DEMO");
@@ -60,6 +96,15 @@ describe("Release-Scope-JQL-Validierung", () => {
     if (!parsed.success && !validation.valid) {
       expect(parsed.error.issues[0]?.message).toBe(validation.message);
     }
+  });
+
+  it("lehnt syntaktisch ungültiges JQL vor KVS-Schreibvorgang und Normalisierung ab", () => {
+    const invalid = {
+      ...projectConfig,
+      releaseScopeJql: "project = DEMO AND",
+    };
+    expect(projectConfigSchema.safeParse(invalid).success).toBe(false);
+    expect(normalizeStoredProjectConfig(invalid)).toBeNull();
   });
 
   it("fordert im JQL_SCOPE ein JQL und verbietet es in VERSION_ONLY", () => {

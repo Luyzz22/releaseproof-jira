@@ -16,10 +16,29 @@ const label = z.string().trim().min(1).max(255);
 
 export const RELEASE_SCOPE_JQL_MAX_LENGTH = 2_000;
 
+type JqlTokenKind =
+  "WORD" | "STRING" | "OPERATOR" | "LPAREN" | "RPAREN" | "COMMA";
+
 interface JqlToken {
+  kind: JqlTokenKind;
   value: string;
-  quoted: boolean;
 }
+
+type TokenizeJqlResult =
+  { ok: true; tokens: JqlToken[] } | { ok: false; error: "UNCLOSED_STRING" };
+
+type ComparisonOperator = "=" | "!=" | "~" | "!~" | "<" | "<=" | ">" | ">=";
+
+type ParsedJqlOperator =
+  ComparisonOperator | "IN" | "NOT IN" | "IS EMPTY" | "IS NOT EMPTY";
+
+interface ParsedJqlClause {
+  field: JqlToken;
+  operator: ParsedJqlOperator;
+  values: JqlToken[];
+}
+
+type ParseJqlResult = { ok: true; clauses: ParsedJqlClause[] } | { ok: false };
 
 export type ReleaseScopeJqlValidation =
   | { valid: true }
@@ -31,11 +50,29 @@ export type ReleaseScopeJqlValidation =
         | "FIX_VERSION_FORBIDDEN"
         | "PROJECT_REQUIRED"
         | "PROJECT_MISMATCH"
-        | "OR_FORBIDDEN";
+        | "OR_FORBIDDEN"
+        | "SYNTAX_INVALID";
       message: string;
     };
 
-function tokenizeJql(value: string): JqlToken[] {
+const COMPARISON_OPERATORS: ReadonlySet<string> = new Set([
+  "=",
+  "!=",
+  "~",
+  "!~",
+  "<",
+  "<=",
+  ">",
+  ">=",
+]);
+
+const RESERVED_WORDS = new Set(["AND", "OR", "IN", "NOT", "IS", "EMPTY"]);
+
+function isComparisonOperator(value: string): value is ComparisonOperator {
+  return COMPARISON_OPERATORS.has(value);
+}
+
+function tokenizeJql(value: string): TokenizeJqlResult {
   const tokens: JqlToken[] = [];
   let index = 0;
 
@@ -47,6 +84,7 @@ function tokenizeJql(value: string): JqlToken[] {
     }
     if (current === '"') {
       let token = "";
+      let closed = false;
       index += 1;
       while (index < value.length) {
         const character = value[index]!;
@@ -57,22 +95,37 @@ function tokenizeJql(value: string): JqlToken[] {
         }
         if (character === '"') {
           index += 1;
+          closed = true;
           break;
         }
         token += character;
         index += 1;
       }
-      tokens.push({ value: token, quoted: true });
+      if (!closed) return { ok: false, error: "UNCLOSED_STRING" };
+      tokens.push({ kind: "STRING", value: token });
       continue;
     }
-    if ("(),=<>!".includes(current)) {
+    if (current === "(") {
+      tokens.push({ kind: "LPAREN", value: current });
+      index += 1;
+      continue;
+    }
+    if (current === ")") {
+      tokens.push({ kind: "RPAREN", value: current });
+      index += 1;
+      continue;
+    }
+    if (current === ",") {
+      tokens.push({ kind: "COMMA", value: current });
+      index += 1;
+      continue;
+    }
+    if ("=<>!~".includes(current)) {
       const next = value[index + 1];
-      const combined =
-        next !== undefined && "=<>".includes(next)
-          ? `${current}${next}`
-          : current;
-      tokens.push({ value: combined, quoted: false });
-      index += combined.length;
+      const pair = next === undefined ? current : `${current}${next}`;
+      const operator = ["!=", "!~", "<=", ">="].includes(pair) ? pair : current;
+      tokens.push({ kind: "OPERATOR", value: operator });
+      index += operator.length;
       continue;
     }
 
@@ -80,19 +133,148 @@ function tokenizeJql(value: string): JqlToken[] {
     while (
       index < value.length &&
       !/\s/.test(value[index]!) &&
-      !'"(),=<>!'.includes(value[index]!)
+      !'"(),=<>!~'.includes(value[index]!)
     ) {
       token += value[index]!;
       index += 1;
     }
-    if (token.length > 0) tokens.push({ value: token, quoted: false });
+    if (token.length > 0) tokens.push({ kind: "WORD", value: token });
   }
 
-  return tokens;
+  return { ok: true, tokens };
 }
 
 function normalizedFieldName(value: string): string {
   return value.toLocaleLowerCase("en-US").replace(/[\s/_-]+/g, "");
+}
+
+function isKeyword(token: JqlToken | undefined, keyword: string): boolean {
+  return (
+    token?.kind === "WORD" &&
+    token.value.toUpperCase() === keyword.toUpperCase()
+  );
+}
+
+function isFieldToken(token: JqlToken | undefined): token is JqlToken {
+  if (!token || (token.kind !== "WORD" && token.kind !== "STRING")) {
+    return false;
+  }
+  return (
+    token.value.length > 0 && !RESERVED_WORDS.has(token.value.toUpperCase())
+  );
+}
+
+function isValueToken(token: JqlToken | undefined): token is JqlToken {
+  if (!token || (token.kind !== "WORD" && token.kind !== "STRING")) {
+    return false;
+  }
+  return (
+    token.kind === "STRING" || !RESERVED_WORDS.has(token.value.toUpperCase())
+  );
+}
+
+function parseValueList(
+  tokens: readonly JqlToken[],
+  startIndex: number,
+): { values: JqlToken[]; nextIndex: number } | null {
+  if (tokens[startIndex]?.kind !== "LPAREN") return null;
+
+  const values: JqlToken[] = [];
+  let index = startIndex + 1;
+  while (index < tokens.length) {
+    const value = tokens[index];
+    if (!isValueToken(value)) return null;
+    values.push(value);
+    index += 1;
+
+    const separator = tokens[index];
+    if (separator?.kind === "RPAREN") {
+      return { values, nextIndex: index + 1 };
+    }
+    if (separator?.kind !== "COMMA") return null;
+    index += 1;
+  }
+
+  return null;
+}
+
+function parseClause(
+  tokens: readonly JqlToken[],
+  startIndex: number,
+): { clause: ParsedJqlClause; nextIndex: number } | null {
+  const field = tokens[startIndex];
+  if (!isFieldToken(field)) return null;
+
+  const operatorToken = tokens[startIndex + 1];
+  if (
+    operatorToken?.kind === "OPERATOR" &&
+    isComparisonOperator(operatorToken.value)
+  ) {
+    const value = tokens[startIndex + 2];
+    if (!isValueToken(value)) return null;
+    return {
+      clause: {
+        field,
+        operator: operatorToken.value,
+        values: [value],
+      },
+      nextIndex: startIndex + 3,
+    };
+  }
+
+  let listOperator: "IN" | "NOT IN" | null = null;
+  let listStartIndex = startIndex + 2;
+  if (isKeyword(operatorToken, "IN")) {
+    listOperator = "IN";
+  } else if (
+    isKeyword(operatorToken, "NOT") &&
+    isKeyword(tokens[startIndex + 2], "IN")
+  ) {
+    listOperator = "NOT IN";
+    listStartIndex += 1;
+  }
+  if (listOperator) {
+    const list = parseValueList(tokens, listStartIndex);
+    if (!list) return null;
+    return {
+      clause: { field, operator: listOperator, values: list.values },
+      nextIndex: list.nextIndex,
+    };
+  }
+
+  if (isKeyword(operatorToken, "IS")) {
+    const negated = isKeyword(tokens[startIndex + 2], "NOT");
+    const emptyIndex = startIndex + (negated ? 3 : 2);
+    if (!isKeyword(tokens[emptyIndex], "EMPTY")) return null;
+    return {
+      clause: {
+        field,
+        operator: negated ? "IS NOT EMPTY" : "IS EMPTY",
+        values: [],
+      },
+      nextIndex: emptyIndex + 1,
+    };
+  }
+
+  return null;
+}
+
+function parseConjunctiveJql(tokens: readonly JqlToken[]): ParseJqlResult {
+  const clauses: ParsedJqlClause[] = [];
+  let index = 0;
+
+  while (index < tokens.length) {
+    const parsed = parseClause(tokens, index);
+    if (!parsed) return { ok: false };
+    clauses.push(parsed.clause);
+    index = parsed.nextIndex;
+    if (index === tokens.length) break;
+    if (!isKeyword(tokens[index], "AND")) return { ok: false };
+    index += 1;
+    if (index === tokens.length) return { ok: false };
+  }
+
+  return clauses.length > 0 ? { ok: true, clauses } : { ok: false };
 }
 
 export function validateReleaseScopeJql(
@@ -114,7 +296,16 @@ export function validateReleaseScopeJql(
     };
   }
 
-  const tokens = tokenizeJql(value);
+  const tokenized = tokenizeJql(value);
+  if (!tokenized.ok) {
+    return {
+      valid: false,
+      code: "SYNTAX_INVALID",
+      message:
+        "Der Release-Scope enthält eine nicht geschlossene Zeichenfolge.",
+    };
+  }
+  const { tokens } = tokenized;
   if (
     tokens.some((token) => {
       const field = normalizedFieldName(token.value);
@@ -128,9 +319,7 @@ export function validateReleaseScopeJql(
     };
   }
 
-  if (
-    tokens.some((token) => !token.quoted && token.value.toUpperCase() === "OR")
-  ) {
+  if (tokens.some((token) => isKeyword(token, "OR"))) {
     return {
       valid: false,
       code: "OR_FORBIDDEN",
@@ -139,13 +328,23 @@ export function validateReleaseScopeJql(
     };
   }
 
-  const [field, operator, project] = tokens;
+  const parsed = parseConjunctiveJql(tokens);
+  if (!parsed.ok) {
+    return {
+      valid: false,
+      code: "SYNTAX_INVALID",
+      message:
+        "Der Release-Scope ist syntaktisch unvollständig oder verwendet eine nicht unterstützte JQL-Form.",
+    };
+  }
+
+  const [projectClause] = parsed.clauses;
   if (
-    !field ||
-    field.quoted ||
-    field.value.toLocaleLowerCase("en-US") !== "project" ||
-    operator?.value !== "=" ||
-    !project
+    !projectClause ||
+    projectClause.field.kind !== "WORD" ||
+    projectClause.field.value.toLocaleLowerCase("en-US") !== "project" ||
+    projectClause.operator !== "=" ||
+    projectClause.values.length !== 1
   ) {
     return {
       valid: false,
@@ -153,7 +352,7 @@ export function validateReleaseScopeJql(
       message: "Der Release-Scope muss mit „project = PROJEKTKEY“ beginnen.",
     };
   }
-  if (project.value.toUpperCase() !== expectedProjectKey) {
+  if (projectClause.values[0]!.value.toUpperCase() !== expectedProjectKey) {
     return {
       valid: false,
       code: "PROJECT_MISMATCH",
@@ -161,13 +360,9 @@ export function validateReleaseScopeJql(
     };
   }
 
-  const additionalProjectReference = tokens
-    .slice(3)
-    .some(
-      (token) =>
-        normalizedFieldName(token.value) === "project" &&
-        token.value.toLocaleLowerCase("en-US") === "project",
-    );
+  const additionalProjectReference = parsed.clauses
+    .slice(1)
+    .some((clause) => normalizedFieldName(clause.field.value) === "project");
   if (additionalProjectReference) {
     return {
       valid: false,
