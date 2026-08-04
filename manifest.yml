@@ -1,0 +1,25 @@
+modules:
+  jira:projectPage:
+    - key: releaseproof-project-page
+      resource: releaseproof-ui
+      resolver:
+        function: releaseproof-resolver
+      title: ReleaseProof
+      layout: blank
+  function:
+    - key: releaseproof-resolver
+      handler: resolvers/index.handler
+resources:
+  - key: releaseproof-ui
+    path: dist/frontend
+    tunnel:
+      port: 5173
+permissions:
+  scopes:
+    - read:jira-work
+    - storage:app
+app:
+  id: ari:cloud:ecosystem::app/f17896e0-dca4-4fe6-9414-104eb8f3e606
+  runtime:
+    name: nodejs24.x
+    architecture: arm64
