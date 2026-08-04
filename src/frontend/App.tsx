@@ -11,6 +11,11 @@ import type { SafeError } from "../shared/errors";
 import type { BootstrapData } from "../shared/resolver-contract";
 import type { ProjectConfigInput } from "../shared/validation";
 import { releaseProofApi } from "./api/client";
+import {
+  canAccessAnalysisScreen,
+  projectConfigSaveTransition,
+  type AppScreen,
+} from "./app-state";
 import { ErrorState } from "./components/error-state";
 import { InlineError } from "./components/inline-error";
 import { LoadingState } from "./components/loading-state";
@@ -39,13 +44,10 @@ const ReportView = lazy(() =>
   })),
 );
 
-type Screen =
-  "empty" | "config" | "release" | "dashboard" | "detail" | "report";
-
 export function App() {
   const [data, setData] = useState<BootstrapData | null>(null);
   const [result, setResult] = useState<ReleaseReadinessResult | null>(null);
-  const [screen, setScreen] = useState<Screen>("empty");
+  const [screen, setScreen] = useState<AppScreen>("empty");
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -80,22 +82,28 @@ export function App() {
     };
   }, [load]);
 
-  function navigate(nextScreen: Screen) {
+  function navigate(nextScreen: AppScreen) {
     setActionError(null);
     setScreen(nextScreen);
   }
 
   async function saveConfig(input: ProjectConfigInput) {
-    if (busy) return;
+    if (busy || !data) return;
     setBusy(true);
     setActionError(null);
     try {
       const response = await releaseProofApi.saveProjectConfig(input);
+      const nextViewState = projectConfigSaveTransition(
+        { result, selectedIssue, screen },
+        response,
+      );
       if (!response.ok) {
         setActionError(response.error);
-      } else if (data) {
+      } else {
+        setResult(nextViewState.result);
+        setSelectedIssue(nextViewState.selectedIssue);
         setData({ ...data, config: response.data });
-        setScreen("release");
+        setScreen(nextViewState.screen);
       }
     } finally {
       setBusy(false);
@@ -133,6 +141,13 @@ export function App() {
   const analysisActive = screen === "release";
   const dashboardActive = screen === "dashboard" || screen === "detail";
   const configurationActive = screen === "config";
+  const analysisViewState = { result, selectedIssue };
+  const dashboardAvailable = canAccessAnalysisScreen(
+    analysisViewState,
+    "dashboard",
+  );
+  const detailAvailable = canAccessAnalysisScreen(analysisViewState, "detail");
+  const reportAvailable = canAccessAnalysisScreen(analysisViewState, "report");
 
   return (
     <div className="app-frame">
@@ -163,7 +178,7 @@ export function App() {
             >
               Analyse
             </button>
-            {result ? (
+            {dashboardAvailable ? (
               <button
                 className={dashboardActive ? "active" : ""}
                 type="button"
@@ -219,7 +234,7 @@ export function App() {
               onConfigure={() => navigate("config")}
             />
           ) : null}
-          {screen === "dashboard" && result ? (
+          {screen === "dashboard" && dashboardAvailable && result ? (
             <ReleaseDashboard
               data={data}
               result={result}
@@ -231,7 +246,7 @@ export function App() {
               onNewAnalysis={() => navigate("release")}
             />
           ) : null}
-          {screen === "detail" && result && selectedIssue ? (
+          {screen === "detail" && detailAvailable && result && selectedIssue ? (
             <IssueEvidenceDetail
               result={result}
               issueKey={selectedIssue}
@@ -239,7 +254,7 @@ export function App() {
               onBack={() => navigate("dashboard")}
             />
           ) : null}
-          {screen === "report" && result ? (
+          {screen === "report" && reportAvailable && result ? (
             <ReportView result={result} onBack={() => navigate("dashboard")} />
           ) : null}
         </Suspense>
