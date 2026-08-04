@@ -2,7 +2,7 @@ import type {
   ProjectConfig,
   ReleaseReadinessResult,
 } from "../domain/models/readiness";
-import type { ApiResult } from "../shared/resolver-contract";
+import type { ApiResult, BootstrapData } from "../shared/resolver-contract";
 
 export type AppScreen =
   "empty" | "config" | "release" | "dashboard" | "detail" | "report";
@@ -28,6 +28,19 @@ export function projectConfigSaveTransition(
     result: null,
     selectedIssue: null,
     screen: "release",
+  };
+}
+
+export function projectConfigDataSaveTransition(
+  current: BootstrapData,
+  response: ApiResult<ProjectConfig>,
+): BootstrapData {
+  if (!response.ok) return current;
+
+  return {
+    ...current,
+    config: response.data,
+    configRecoveryRequired: false,
   };
 }
 

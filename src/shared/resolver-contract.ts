@@ -23,6 +23,7 @@ export interface BootstrapData {
   fields: JiraField[];
   versions: JiraVersion[];
   config: ProjectConfig | null;
+  configRecoveryRequired: boolean;
 }
 
 export type ResolverDefinitions = {

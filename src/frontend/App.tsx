@@ -13,6 +13,7 @@ import type { ProjectConfigInput } from "../shared/validation";
 import { releaseProofApi } from "./api/client";
 import {
   canAccessAnalysisScreen,
+  projectConfigDataSaveTransition,
   projectConfigSaveTransition,
   type AppScreen,
 } from "./app-state";
@@ -97,12 +98,13 @@ export function App() {
         { result, selectedIssue, screen },
         response,
       );
+      const nextData = projectConfigDataSaveTransition(data, response);
       if (!response.ok) {
         setActionError(response.error);
       } else {
         setResult(nextViewState.result);
         setSelectedIssue(nextViewState.selectedIssue);
-        setData({ ...data, config: response.data });
+        setData(nextData);
         setScreen(nextViewState.screen);
       }
     } finally {

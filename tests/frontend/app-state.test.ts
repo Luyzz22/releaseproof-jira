@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { analyzeRelease } from "../../src/domain/services/analyze-release";
 import {
   canAccessAnalysisScreen,
+  projectConfigDataSaveTransition,
   projectConfigSaveTransition,
   type AnalysisScreen,
   type AnalysisViewState,
 } from "../../src/frontend/app-state";
-import type { ApiResult } from "../../src/shared/resolver-contract";
+import type {
+  ApiResult,
+  BootstrapData,
+} from "../../src/shared/resolver-contract";
 import { config, projectConfig, release } from "../fixtures/release";
 
 const analysisScreens: AnalysisScreen[] = ["dashboard", "detail", "report"];
@@ -20,6 +24,26 @@ function analyzedViewState(): AnalysisViewState {
     ),
     selectedIssue: "DEMO-42",
     screen: "detail",
+  };
+}
+
+function recoveryBootstrapData(): BootstrapData {
+  return {
+    siteUrl: "https://demo.atlassian.net",
+    project: { id: "10000", key: "DEMO", name: "Demoagentur" },
+    statuses: [{ id: "31", name: "Fertig" }],
+    issueTypes: [{ id: "10001", name: "Story", subtask: false }],
+    fields: [
+      {
+        id: "customfield_10042",
+        name: "Akzeptanzkriterien",
+        custom: true,
+        schemaType: "string",
+      },
+    ],
+    versions: [],
+    config: null,
+    configRecoveryRequired: true,
   };
 }
 
@@ -68,5 +92,30 @@ describe("App-State nach dem Speichern der Projektkonfiguration", () => {
         canAccessAnalysisScreen(afterFailure, screen),
       ),
     ).toBe(true);
+  });
+
+  it("entfernt den Recovery-Zustand nur nach erfolgreichem Speichern", () => {
+    const current = recoveryBootstrapData();
+    const savedConfig = config();
+
+    const afterSuccess = projectConfigDataSaveTransition(current, {
+      ok: true,
+      data: savedConfig,
+    });
+    expect(afterSuccess).toMatchObject({
+      config: savedConfig,
+      configRecoveryRequired: false,
+    });
+
+    const afterFailure = projectConfigDataSaveTransition(current, {
+      ok: false,
+      error: {
+        code: "STORAGE_UNAVAILABLE",
+        message: "Die Projektkonfiguration konnte nicht gespeichert werden.",
+      },
+    });
+    expect(afterFailure).toBe(current);
+    expect(afterFailure.configRecoveryRequired).toBe(true);
+    expect(afterFailure.config).toBeNull();
   });
 });

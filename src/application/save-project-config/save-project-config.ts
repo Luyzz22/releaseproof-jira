@@ -1,4 +1,5 @@
 import type { ProjectConfig } from "../../domain/models/readiness";
+import { AppError } from "../../shared/errors";
 import type { ProjectConfigInput } from "../../shared/validation";
 import type { Clock, ProjectConfigRepository } from "../ports";
 
@@ -7,7 +8,16 @@ export async function saveProjectConfig(
   clock: Clock,
   input: ProjectConfigInput,
 ): Promise<ProjectConfig> {
-  const existing = await repository.get(input.projectId);
+  let existing: ProjectConfig | null;
+  try {
+    existing = await repository.get(input.projectId);
+  } catch (error) {
+    if (error instanceof AppError && error.code === "STORAGE_CORRUPT") {
+      existing = null;
+    } else {
+      throw error;
+    }
+  }
   const now = clock.now();
   const { releaseScopeJql, ...requiredInput } = input;
   const config: ProjectConfig = {
