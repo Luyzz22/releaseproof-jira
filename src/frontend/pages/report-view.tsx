@@ -3,6 +3,7 @@ import type { ReleaseReadinessResult } from "../../domain/models/readiness";
 import { Panel } from "../components/panel";
 import { StatusBadge } from "../components/status-badge";
 import { formatDateTime } from "../utils/format";
+import { readinessStatusLabel } from "../utils/readiness-status";
 import {
   releaseScopeExplanation,
   releaseScopeModeLabel,
@@ -111,15 +112,15 @@ export function ReportView({
             <strong>{result.totalIssues}</strong>
           </div>
           <div>
-            <span>Ready</span>
+            <span>{readinessStatusLabel("READY")}</span>
             <strong>{result.readyIssues}</strong>
           </div>
           <div>
-            <span>Unvollständig</span>
+            <span>{readinessStatusLabel("INCOMPLETE")}</span>
             <strong>{result.incompleteIssues}</strong>
           </div>
           <div>
-            <span>Blockiert</span>
+            <span>{readinessStatusLabel("BLOCKED")}</span>
             <strong>{result.blockedIssues}</strong>
           </div>
         </div>

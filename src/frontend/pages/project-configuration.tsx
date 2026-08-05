@@ -7,6 +7,7 @@ import {
   type ProjectConfigInput,
 } from "../../shared/validation";
 import { Panel } from "../components/panel";
+import { readinessStatusLabel } from "../utils/readiness-status";
 
 function toggle(values: string[], value: string): string[] {
   return values.includes(value)
@@ -251,7 +252,9 @@ export function ProjectConfiguration({
             />
             <span>
               <strong>Offene Unteraufgaben blockieren</strong>
-              <small>Ungelöste Subtasks setzen den Vorgang auf BLOCKED.</small>
+              <small>
+                {`Ungelöste Subtasks setzen den Vorgang auf „${readinessStatusLabel("BLOCKED")}“.`}
+              </small>
             </span>
           </label>
           <label className="switch-row">

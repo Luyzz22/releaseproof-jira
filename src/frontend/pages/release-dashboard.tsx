@@ -5,6 +5,7 @@ import { Metric } from "../components/metric";
 import { Panel } from "../components/panel";
 import { StatusBadge } from "../components/status-badge";
 import { formatDateTime } from "../utils/format";
+import { readinessStatusLabel } from "../utils/readiness-status";
 import {
   releaseScopeExplanation,
   releaseScopeModeLabel,
@@ -91,14 +92,18 @@ export function ReleaseDashboard({
               value={`${result.score}%`}
               tone="score"
             />
-            <Metric label="Ready" value={result.readyIssues} tone="ready" />
             <Metric
-              label="Unvollständig"
+              label={readinessStatusLabel("READY")}
+              value={result.readyIssues}
+              tone="ready"
+            />
+            <Metric
+              label={readinessStatusLabel("INCOMPLETE")}
               value={result.incompleteIssues}
               tone="incomplete"
             />
             <Metric
-              label="Blockiert"
+              label={readinessStatusLabel("BLOCKED")}
               value={result.blockedIssues}
               tone="blocked"
             />

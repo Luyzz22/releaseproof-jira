@@ -3,6 +3,7 @@ import type {
   ReleaseReadinessResult,
 } from "../../domain/models/readiness";
 import { formatDateTime } from "./format";
+import { readinessStatusLabel } from "./readiness-status";
 import {
   releaseScopeExplanation,
   releaseScopeModeLabel,
@@ -28,14 +29,14 @@ export function buildMarkdownReport(result: ReleaseReadinessResult): string {
   const lines = [
     `# ReleaseProof: ${result.release.versionName}`,
     "",
-    `- Status: ${result.status}`,
+    `- Status: ${readinessStatusLabel(result.status)}`,
     `- Readiness-Score: ${result.score}%`,
     `- Scope-Modus: ${releaseScopeModeLabel(result.release.releaseScopeMode)}`,
     `- Scope-Definition: ${JSON.stringify(releaseScopeExplanation(result.release))}`,
     `- Vorgänge: ${result.totalIssues}`,
-    `- READY: ${result.readyIssues}`,
-    `- INCOMPLETE: ${result.incompleteIssues}`,
-    `- BLOCKED: ${result.blockedIssues}`,
+    `- ${readinessStatusLabel("READY")}: ${result.readyIssues}`,
+    `- ${readinessStatusLabel("INCOMPLETE")}: ${result.incompleteIssues}`,
+    `- ${readinessStatusLabel("BLOCKED")}: ${result.blockedIssues}`,
     "",
     "## Evidence-Matrix",
     "",
@@ -44,7 +45,7 @@ export function buildMarkdownReport(result: ReleaseReadinessResult): string {
   ];
   result.results.forEach((item) =>
     lines.push(
-      `| ${item.issueKey} | ${item.status} | ${item.score}% | ${item.blockerCount} | ${item.missingEvidenceCount} |`,
+      `| ${item.issueKey} | ${readinessStatusLabel(item.status)} | ${item.score}% | ${item.blockerCount} | ${item.missingEvidenceCount} |`,
     ),
   );
 
@@ -55,7 +56,7 @@ export function buildMarkdownReport(result: ReleaseReadinessResult): string {
   } else {
     findings.forEach(({ issueKey, evidence }) =>
       lines.push(
-        `- **${issueKey} · ${evidence.status} · ${evidence.title}:** ${evidence.explanation} Behebung: ${evidence.remediation}`,
+        `- **${issueKey} · ${readinessStatusLabel(evidence.status)} · ${evidence.title}:** ${evidence.explanation} Behebung: ${evidence.remediation}`,
       ),
     );
   }
