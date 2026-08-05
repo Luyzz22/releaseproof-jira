@@ -74,6 +74,27 @@ function arrayValue(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+function requireArray(value: unknown, resource: string): unknown[] {
+  if (Array.isArray(value)) return value;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `${resource} returned an unexpected response.`,
+  );
+}
+
+function optionalPageToken(
+  value: unknown,
+  resource: string,
+): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const token = stringValue(value);
+  if (token) return token;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `${resource} returned an unexpected response.`,
+  );
+}
+
 export async function parseResponse(
   response: JiraResponse,
   notFoundCode?: "VERSION_NOT_FOUND",
@@ -263,6 +284,18 @@ function mapIssue(
   };
 }
 
+function requireMappedIssue(
+  value: unknown,
+  acceptanceCriteriaFieldId: string,
+): ReleaseIssue {
+  const issue = mapIssue(value, acceptanceCriteriaFieldId);
+  if (issue) return issue;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    "Issue search returned an unexpected issue.",
+  );
+}
+
 interface IssueSearchRequest {
   jql: string;
   fields: string[];
@@ -304,13 +337,12 @@ export async function collectIssueSearchPages(
       ...(nextPageToken ? { nextPageToken } : {}),
     });
     const pageData = requireRecord(data, "Issue search");
-    issues.push(
-      ...arrayValue(pageData.issues).flatMap((item) => {
-        const issue = mapIssue(item, input.acceptanceCriteriaFieldId);
-        return issue ? [issue] : [];
-      }),
+    const pageIssues = requireArray(pageData.issues, "Issue search").map(
+      (item) => requireMappedIssue(item, input.acceptanceCriteriaFieldId),
     );
-    nextPageToken = stringValue(pageData.nextPageToken) ?? undefined;
+    const pageToken = optionalPageToken(pageData.nextPageToken, "Issue search");
+    issues.push(...pageIssues);
+    nextPageToken = pageToken;
     if (!nextPageToken) return issues;
   }
 

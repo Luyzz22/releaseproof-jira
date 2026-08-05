@@ -66,6 +66,39 @@ function jiraIssue(id: number) {
   };
 }
 
+const malformedIssueCases: ReadonlyArray<readonly [string, unknown]> = [
+  ["Issue-Element null", null],
+  ["Vorgang ohne fields", { id: "2", key: "DEMO-2" }],
+  [
+    "Vorgang ohne id",
+    (() => {
+      const issueWithoutId: Partial<ReturnType<typeof jiraIssue>> =
+        jiraIssue(2);
+      delete issueWithoutId.id;
+      return issueWithoutId;
+    })(),
+  ],
+  [
+    "Vorgang ohne key",
+    (() => {
+      const issueWithoutKey: Partial<ReturnType<typeof jiraIssue>> =
+        jiraIssue(2);
+      delete issueWithoutKey.key;
+      return issueWithoutKey;
+    })(),
+  ],
+  [
+    "Vorgang ohne gültigen Issue-Typ",
+    {
+      ...jiraIssue(2),
+      fields: {
+        ...jiraIssue(2).fields,
+        issuetype: null,
+      },
+    },
+  ],
+];
+
 describe("Jira-Issue-Pagination", () => {
   it("führt Token-Seiten vollständig und mit unverändertem JQL zusammen", async () => {
     const requests: Array<{ jql: string; nextPageToken?: string }> = [];
@@ -109,5 +142,70 @@ describe("Jira-Issue-Pagination", () => {
         () => Promise.resolve({ issues: [], nextPageToken: "more" }),
       ),
     ).rejects.toMatchObject({ code: "RESULT_LIMIT_EXCEEDED" });
+  });
+
+  it.each([
+    ["fehlendem issues-Feld", {}],
+    ["issues als null", { issues: null }],
+    ["issues als String", { issues: "invalid" }],
+    ["nicht-arrayförmigem issues-Feld", { issues: {} }],
+    [
+      "falsch typisiertem nextPageToken",
+      { issues: [jiraIssue(1)], nextPageToken: 42 },
+    ],
+  ])("bricht bei %s vollständig ab", async (_case, pageData) => {
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve(pageData),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it.each(malformedIssueCases)(
+    "bricht bei %s vollständig ab",
+    async (_case, malformedIssue) => {
+      await expect(
+        collectIssueSearchPages(
+          {
+            jql: "project = DEMO",
+            acceptanceCriteriaFieldId: "customfield_10042",
+          },
+          () => Promise.resolve({ issues: [jiraIssue(1), malformedIssue] }),
+        ),
+      ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+    },
+  );
+
+  it("verwirft bei einem Fehler auf einer Folgeseite auch vorherige gültige Seiten", async () => {
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        (request) =>
+          Promise.resolve(
+            request.nextPageToken
+              ? { issues: [{ id: "2", key: "DEMO-2", fields: {} }] }
+              : { issues: [jiraIssue(1)], nextPageToken: "page-2" },
+          ),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("akzeptiert eine strukturell gültige leere Ergebnisseite", async () => {
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [] }),
+      ),
+    ).resolves.toEqual([]);
   });
 });
