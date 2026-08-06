@@ -1,4 +1,5 @@
 import { analyzeRelease as analyzeReleaseDomain } from "../../domain/services/analyze-release";
+import { hasSupportedAcceptanceCriteriaField } from "../../shared/acceptance-criteria-field";
 import { AppError } from "../../shared/errors";
 import { validateReleaseScopeJql } from "../../shared/validation";
 import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
@@ -20,6 +21,18 @@ export async function analyzeRelease(
     throw new AppError(
       "STORAGE_CORRUPT",
       "Project configuration does not match the Forge context.",
+    );
+  }
+  const fields = await jira.listFields(input.projectId);
+  if (
+    !hasSupportedAcceptanceCriteriaField(
+      fields,
+      config.acceptanceCriteriaFieldId,
+    )
+  ) {
+    throw new AppError(
+      "STORAGE_CORRUPT",
+      "Stored acceptance criteria field is not a supported text field.",
     );
   }
   const version = await jira.getVersion(input.versionId);

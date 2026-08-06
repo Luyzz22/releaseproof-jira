@@ -9,6 +9,10 @@ Der Release-Scope ist explizit:
 - `VERSION_ONLY` bewahrt das bisherige Verhalten und lädt nur Vorgänge der ausgewählten `fixVersion`. Die Regel `correct-fix-version` wird transparent als `NOT_APPLICABLE` ausgewiesen.
 - `JQL_SCOPE` lädt einen projektgebundenen fachlichen Scope unabhängig von `fixVersion`. Fehlende oder falsche Versionszuordnungen bleiben sichtbar und werden erst in der Domain-Regel bewertet.
 
+Akzeptanzkriterien werden ausschließlich aus `description` oder Custom Fields
+mit `schemaType: "string"` gelesen. UI, Save-Pfad und Analysepfad prüfen die
+Feldunterstützung; nicht-textuelle Werte werden nicht als Nachweis interpretiert.
+
 ## Technischer Schnitt
 
 - Jira `projectPage` mit React und Forge Custom UI.

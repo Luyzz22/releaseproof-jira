@@ -10,42 +10,39 @@ interface CollectionState {
   textLength: number;
 }
 
-function collect(
+function collectAdfNode(
   value: unknown,
   output: string[],
   state: CollectionState,
 ): void {
   state.nodes += 1;
   if (state.nodes > MAX_NODES || state.textLength >= MAX_TEXT_LENGTH) return;
+  if (!isRecord(value)) return;
 
-  if (typeof value === "string") {
+  if (value.type === "text" && typeof value.text === "string") {
     const remaining = MAX_TEXT_LENGTH - state.textLength;
-    const text = value.slice(0, remaining);
+    const text = value.text.slice(0, remaining);
     output.push(text);
     state.textLength += text.length;
     return;
   }
-  if (typeof value === "number" || typeof value === "boolean") {
-    collect(String(value), output, state);
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      collect(item, output, state);
-      if (state.nodes > MAX_NODES || state.textLength >= MAX_TEXT_LENGTH) break;
-    }
-    return;
-  }
-  if (!isRecord(value)) return;
+  if (!Array.isArray(value.content)) return;
 
-  if (typeof value.text === "string") collect(value.text, output, state);
-  else if (typeof value.value === "string") collect(value.value, output, state);
-  else if (Array.isArray(value.content)) collect(value.content, output, state);
+  for (const child of value.content) {
+    collectAdfNode(child, output, state);
+    if (state.nodes > MAX_NODES || state.textLength >= MAX_TEXT_LENGTH) break;
+  }
 }
 
 export function jiraValueToText(value: unknown): string | null {
+  if (typeof value === "string") {
+    const text = value.slice(0, MAX_TEXT_LENGTH).replace(/\s+/g, " ").trim();
+    return text.length > 0 ? text : null;
+  }
+  if (!isRecord(value) || value.type !== "doc") return null;
+
   const output: string[] = [];
-  collect(value, output, { nodes: 0, textLength: 0 });
+  collectAdfNode(value, output, { nodes: 0, textLength: 0 });
   const text = output.join(" ").replace(/\s+/g, " ").trim();
   return text.length > 0 ? text : null;
 }

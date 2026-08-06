@@ -1,13 +1,28 @@
 import type { ProjectConfig } from "../../domain/models/readiness";
+import { hasSupportedAcceptanceCriteriaField } from "../../shared/acceptance-criteria-field";
 import { AppError } from "../../shared/errors";
 import type { ProjectConfigInput } from "../../shared/validation";
-import type { Clock, ProjectConfigRepository } from "../ports";
+import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
 
 export async function saveProjectConfig(
+  jira: Pick<JiraGateway, "listFields">,
   repository: ProjectConfigRepository,
   clock: Clock,
   input: ProjectConfigInput,
 ): Promise<ProjectConfig> {
+  const fields = await jira.listFields(input.projectId);
+
+  if (
+    !hasSupportedAcceptanceCriteriaField(
+      fields,
+      input.acceptanceCriteriaFieldId,
+    )
+  ) {
+    throw new AppError(
+      "INVALID_INPUT",
+      "Acceptance criteria field is not a supported text field.",
+    );
+  }
   let existing: ProjectConfig | null;
   try {
     existing = await repository.get(input.projectId);

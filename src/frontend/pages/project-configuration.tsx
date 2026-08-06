@@ -1,5 +1,9 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { ReleaseScopeMode } from "../../domain/models/readiness";
+import {
+  hasSupportedAcceptanceCriteriaField,
+  isSupportedAcceptanceCriteriaField,
+} from "../../shared/acceptance-criteria-field";
 import type { BootstrapData } from "../../shared/resolver-contract";
 import {
   projectConfigInputSchema,
@@ -26,10 +30,17 @@ export function ProjectConfiguration({
 }) {
   const existing = data.config;
   const fieldOptions = useMemo(
-    () =>
-      data.fields.filter((field) => field.custom || field.id === "description"),
+    () => data.fields.filter(isSupportedAcceptanceCriteriaField),
     [data.fields],
   );
+  const existingAcceptanceCriteriaFieldIsSupported =
+    existing !== null &&
+    hasSupportedAcceptanceCriteriaField(
+      data.fields,
+      existing.acceptanceCriteriaFieldId,
+    );
+  const acceptanceCriteriaFieldRecoveryRequired =
+    existing !== null && !existingAcceptanceCriteriaFieldIsSupported;
   const [acceptedStatusIds, setAcceptedStatusIds] = useState<string[]>(
     existing?.acceptedStatusIds ?? [],
   );
@@ -43,7 +54,11 @@ export function ProjectConfiguration({
     existing?.releaseScopeJql ?? "",
   );
   const [acceptanceCriteriaFieldId, setAcceptanceCriteriaFieldId] = useState(
-    existing?.acceptanceCriteriaFieldId ?? fieldOptions[0]?.id ?? "",
+    existing
+      ? existingAcceptanceCriteriaFieldIsSupported
+        ? existing.acceptanceCriteriaFieldId
+        : ""
+      : (fieldOptions[0]?.id ?? ""),
   );
   const [blockerLabels, setBlockerLabels] = useState(
     existing?.blockerLabels.join(", ") ?? "release-blocker",
@@ -61,6 +76,17 @@ export function ProjectConfiguration({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (
+      !hasSupportedAcceptanceCriteriaField(
+        data.fields,
+        acceptanceCriteriaFieldId,
+      )
+    ) {
+      setValidation(
+        "Bitte wählen Sie ein unterstütztes Textfeld für Akzeptanzkriterien aus.",
+      );
+      return;
+    }
     const input = {
       projectId: data.project.id,
       projectKey: data.project.key,
@@ -234,6 +260,18 @@ export function ProjectConfiguration({
               ))}
             </select>
           </label>
+          {acceptanceCriteriaFieldRecoveryRequired ? (
+            <div className="scope-notice scope-notice--warning" role="alert">
+              <strong>
+                Das bisher konfigurierte Feld für Akzeptanzkriterien wird nicht
+                unterstützt.
+              </strong>
+              <p>
+                Bitte wählen Sie ein unterstütztes Textfeld aus und speichern
+                Sie die Projektkonfiguration erneut.
+              </p>
+            </div>
+          ) : null}
           <label className="field">
             <span>
               Blocker-Labels <small>durch Komma getrennt</small>

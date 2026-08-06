@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { analyzeRelease } from "../../src/application/analyze-release/analyze-release";
 import type {
   JiraGateway,
+  JiraField,
   JiraProject,
   JiraVersion,
   ProjectMetadata,
@@ -11,7 +12,8 @@ import { InMemoryProjectConfigRepository } from "../../src/infrastructure/storag
 import { config, issue, projectConfig } from "../fixtures/release";
 
 class FakeJiraGateway implements JiraGateway {
-  readonly calls: string[] = [];
+  readonly getVersionCalls: string[] = [];
+  readonly issueSearchCalls: string[] = [];
   readonly version: JiraVersion = {
     id: "30001",
     name: "Kundenrelease 2.4",
@@ -26,6 +28,14 @@ class FakeJiraGateway implements JiraGateway {
       issue({ key: "DEMO-99", issueType: { id: "99999", name: "Epic" } }),
     ],
     private readonly versionIssues: ReleaseIssue[] = [issue()],
+    private readonly fields: JiraField[] = [
+      {
+        id: "customfield_10042",
+        name: "Akzeptanzkriterien",
+        custom: true,
+        schemaType: "string",
+      },
+    ],
   ) {}
 
   async listProjects(): Promise<JiraProject[]> {
@@ -38,25 +48,67 @@ class FakeJiraGateway implements JiraGateway {
     return { statuses: [], issueTypes: [] };
   }
   async listFields() {
-    return [];
+    return this.fields;
   }
   async listVersions(): Promise<JiraVersion[]> {
     return [this.version];
   }
-  async getVersion(): Promise<JiraVersion> {
+  async getVersion(versionId: string): Promise<JiraVersion> {
+    this.getVersionCalls.push(versionId);
     return this.version;
   }
   async listIssuesForVersion() {
-    this.calls.push("VERSION_ONLY");
+    this.issueSearchCalls.push("VERSION_ONLY");
     return this.versionIssues;
   }
   async listIssuesForJqlScope() {
-    this.calls.push("JQL_SCOPE");
+    this.issueSearchCalls.push("JQL_SCOPE");
     return this.jqlIssues;
   }
 }
 
 const clock = { now: () => "2026-07-11T09:00:00.000Z" };
+
+const supportedCustomStringField: JiraField = {
+  id: projectConfig.acceptanceCriteriaFieldId,
+  name: "Akzeptanzkriterien",
+  custom: true,
+  schemaType: "string",
+};
+
+const storedFieldFailureCases: ReadonlyArray<
+  readonly [string, string, readonly JiraField[]]
+> = [
+  [
+    "einem Zahlenfeld",
+    "customfield_20000",
+    [
+      {
+        id: "customfield_20000",
+        name: "Technischer Zahlenwert",
+        custom: true,
+        schemaType: "number",
+      },
+    ],
+  ],
+  [
+    "einem Optionsfeld",
+    "customfield_20001",
+    [
+      {
+        id: "customfield_20001",
+        name: "Freigabeauswahl",
+        custom: true,
+        schemaType: "option",
+      },
+    ],
+  ],
+  [
+    "einer unbekannten Feld-ID",
+    "customfield_99999",
+    [supportedCustomStringField],
+  ],
+];
 
 describe("Analyze Release Use Case", () => {
   it("nutzt Jira-Fake, filtert Issue-Typen und aggregiert", async () => {
@@ -75,6 +127,38 @@ describe("Analyze Release Use Case", () => {
     expect(result.totalIssues).toBe(1);
     expect(result.release.issues[0]?.key).toBe("DEMO-42");
     expect(result.release.releaseScopeMode).toBe("JQL_SCOPE");
+  });
+
+  it.each([
+    [
+      "description mit aktuellem schemaType null",
+      "description",
+      {
+        id: "description",
+        name: "Beschreibung",
+        custom: false,
+        schemaType: null,
+      } satisfies JiraField,
+    ],
+    [
+      "ein Custom Field mit aktuellem schemaType string",
+      supportedCustomStringField.id,
+      supportedCustomStringField,
+    ],
+  ])("analysiert eine Konfiguration mit %s", async (_case, fieldId, field) => {
+    const repository = new InMemoryProjectConfigRepository();
+    await repository.save(config({ acceptanceCriteriaFieldId: fieldId }));
+    const jira = new FakeJiraGateway([issue()], [issue()], [field]);
+
+    const result = await analyzeRelease(jira, repository, clock, {
+      projectId: "10000",
+      projectKey: "DEMO",
+      versionId: "30001",
+    });
+
+    expect(result.totalIssues).toBe(1);
+    expect(jira.getVersionCalls).toEqual(["30001"]);
+    expect(jira.issueSearchCalls).toEqual(["JQL_SCOPE"]);
   });
 
   it("fordert vor der Analyse eine Konfiguration", async () => {
@@ -97,7 +181,7 @@ describe("Analyze Release Use Case", () => {
       versionId: "30001",
     });
 
-    expect(jira.calls).toEqual(["VERSION_ONLY"]);
+    expect(jira.issueSearchCalls).toEqual(["VERSION_ONLY"]);
     expect(
       result.results[0]?.evidence.find(
         (item) => item.ruleId === "correct-fix-version",
@@ -121,7 +205,7 @@ describe("Analyze Release Use Case", () => {
         versionId: "30001",
       });
 
-      expect(jira.calls).toEqual(["JQL_SCOPE"]);
+      expect(jira.issueSearchCalls).toEqual(["JQL_SCOPE"]);
       expect(result.totalIssues).toBe(1);
       expect(result.release.issues[0]?.key).toBe("DEMO-42");
       expect(
@@ -155,4 +239,24 @@ describe("Analyze Release Use Case", () => {
     );
     expect(result.score).toBe(100);
   });
+
+  it.each(storedFieldFailureCases)(
+    "bricht die Analyse bei %s vor Version und Issue-Suche ab",
+    async (_case, fieldId, fields) => {
+      const repository = new InMemoryProjectConfigRepository();
+      await repository.save(config({ acceptanceCriteriaFieldId: fieldId }));
+      const jira = new FakeJiraGateway([issue()], [issue()], [...fields]);
+
+      await expect(
+        analyzeRelease(jira, repository, clock, {
+          projectId: "10000",
+          projectKey: "DEMO",
+          versionId: "30001",
+        }),
+      ).rejects.toMatchObject({ code: "STORAGE_CORRUPT" });
+
+      expect(jira.getVersionCalls).toHaveLength(0);
+      expect(jira.issueSearchCalls).toHaveLength(0);
+    },
+  );
 });

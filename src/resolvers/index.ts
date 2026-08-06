@@ -84,7 +84,7 @@ export const handler = makeResolver<ResolverDefinitions>({
       ) {
         throw new AppError("INVALID_INPUT", "Project config context mismatch.");
       }
-      return saveProjectConfig(repository, systemClock, parsed.data);
+      return saveProjectConfig(jira, repository, systemClock, parsed.data);
     }),
   analyzeRelease: ({ payload, context }) =>
     safely(async () => {
