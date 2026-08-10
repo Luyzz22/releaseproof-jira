@@ -53,7 +53,7 @@ export function ReleaseDashboard({
           </p>
           <p className="scope-context">
             <strong>
-              Scope: {releaseScopeModeLabel(result.release.releaseScopeMode)}
+              Umfang: {releaseScopeModeLabel(result.release.releaseScopeMode)}
             </strong>
             <code>{releaseScopeExplanation(result.release)}</code>
           </p>
@@ -78,9 +78,9 @@ export function ReleaseDashboard({
             <p className="eyebrow">Leeres Release</p>
             <h2>Keine passenden Vorgänge gefunden</h2>
             <p>
-              Der konfigurierte Scope enthält keine Vorgänge der ausgewählten
-              Issue-Typen. Score und Status werden deshalb nicht als Aussage zur
-              Release-Bereitschaft interpretiert.
+              Der konfigurierte Umfang enthält keine Vorgänge der ausgewählten
+              Vorgangstypen. Bewertung und Status werden deshalb nicht als Aussage
+              zur Release-Bereitschaft interpretiert.
             </p>
           </div>
         </Panel>
@@ -159,9 +159,9 @@ export function ReleaseDashboard({
                     <th scope="col">Vorgang</th>
                     <th scope="col">Typ</th>
                     <th scope="col">Status</th>
-                    <th scope="col">Blocker</th>
+                    <th scope="col">Blockierungen</th>
                     <th scope="col">Fehlend</th>
-                    <th scope="col">Score</th>
+                    <th scope="col">Bewertung</th>
                     <th scope="col" aria-label="Aktionen" />
                   </tr>
                 </thead>
