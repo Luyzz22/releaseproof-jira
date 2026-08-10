@@ -12,6 +12,17 @@ describe("Jira ADF und unbekannte Feldwerte", () => {
     );
   });
 
+  it("behandelt formatierungs- und steuerzeichen-only Strings als leer", () => {
+    expect(jiraValueToText("\u200B\u200B")).toBeNull();
+    expect(jiraValueToText("\u0000\u200B\t")).toBeNull();
+  });
+
+  it("bewahrt Formatierungszeichen innerhalb sichtbaren Textes", () => {
+    expect(jiraValueToText("Erstes\u200BKriterium")).toBe(
+      "Erstes\u200BKriterium",
+    );
+  });
+
   it("begrenzt einen direkten String auf 50.000 Zeichen", () => {
     expect(jiraValueToText("x".repeat(60_000))).toHaveLength(50_000);
   });
@@ -29,6 +40,36 @@ describe("Jira ADF und unbekannte Feldwerte", () => {
         ],
       }),
     ).toBe("Erstes Kriterium");
+  });
+
+  it("behandelt ADF mit ausschließlich Formatierungszeichen als leer", () => {
+    expect(
+      jiraValueToText({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "\u200B" }],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("bewahrt Formatierungszeichen in ansonsten sichtbarem ADF-Text", () => {
+    expect(
+      jiraValueToText({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Erstes\u200BKriterium" }],
+          },
+        ],
+      }),
+    ).toBe("Erstes\u200BKriterium");
   });
 
   it("extrahiert Text aus verschachtelten ADF-Absätzen", () => {
