@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { BootstrapData } from "../../shared/resolver-contract";
-import type { ReleaseReadinessResult } from "../../domain/models/readiness";
+import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
 import { Metric } from "../components/metric";
 import { Panel } from "../components/panel";
 import { StatusBadge } from "../components/status-badge";
@@ -19,7 +19,7 @@ export function ReleaseDashboard({
   onNewAnalysis,
 }: {
   data: BootstrapData;
-  result: ReleaseReadinessResult;
+  result: ReleaseReadinessResultDto;
   onDetail: (issueKey: string) => void;
   onReport: () => void;
   onNewAnalysis: () => void;
@@ -176,7 +176,7 @@ export function ReleaseDashboard({
                             {source?.summary}
                           </span>
                         </th>
-                        <td>{source?.issueType.name}</td>
+                        <td>{source?.issueTypeName}</td>
                         <td>
                           <StatusBadge status={item.status} />
                         </td>

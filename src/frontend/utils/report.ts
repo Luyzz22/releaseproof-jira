@@ -1,7 +1,7 @@
 import type {
-  EvidenceItem,
-  ReleaseReadinessResult,
-} from "../../domain/models/readiness";
+  EvidenceItemDto,
+  ReleaseReadinessResultDto,
+} from "../../shared/release-readiness-dto";
 import { formatDateTime } from "./format";
 import { readinessStatusLabel } from "./readiness-status";
 import {
@@ -11,10 +11,12 @@ import {
 
 export interface OpenFinding {
   issueKey: string;
-  evidence: EvidenceItem;
+  evidence: EvidenceItemDto;
 }
 
-export function getOpenFindings(result: ReleaseReadinessResult): OpenFinding[] {
+export function getOpenFindings(
+  result: ReleaseReadinessResultDto,
+): OpenFinding[] {
   return result.results.flatMap((item) =>
     item.evidence
       .filter(
@@ -25,7 +27,7 @@ export function getOpenFindings(result: ReleaseReadinessResult): OpenFinding[] {
   );
 }
 
-export function buildMarkdownReport(result: ReleaseReadinessResult): string {
+export function buildMarkdownReport(result: ReleaseReadinessResultDto): string {
   const lines = [
     `# ReleaseProof: ${result.release.versionName}`,
     "",

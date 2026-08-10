@@ -248,8 +248,8 @@ function mapIssue(
     summary: stringValue(fields.summary) ?? "(Ohne Zusammenfassung)",
     issueType: { id: issueTypeId, name: issueTypeName },
     status: mapStatus(fields.status),
-    description: jiraValueToText(fields.description),
-    acceptanceCriteria: jiraValueToText(fields[acceptanceCriteriaFieldId]),
+    hasAcceptanceCriteria:
+      jiraValueToText(fields[acceptanceCriteriaFieldId]) !== null,
     labels: arrayValue(fields.labels).flatMap((label) =>
       typeof label === "string" ? [label] : [],
     ),
@@ -315,19 +315,20 @@ export async function collectIssueSearchPages(
   validateFieldId(input.acceptanceCriteriaFieldId);
   const issues: ReleaseIssue[] = [];
   let nextPageToken: string | undefined;
-  const fields = [
-    "summary",
-    "issuetype",
-    "status",
-    "description",
-    input.acceptanceCriteriaFieldId,
-    "labels",
-    "fixVersions",
-    "subtasks",
-    "issuelinks",
-    "resolution",
-    "updated",
-  ];
+  const fields = Array.from(
+    new Set([
+      "summary",
+      "issuetype",
+      "status",
+      input.acceptanceCriteriaFieldId,
+      "labels",
+      "fixVersions",
+      "subtasks",
+      "issuelinks",
+      "resolution",
+      "updated",
+    ]),
+  );
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
     const data = await loadPage({

@@ -20,24 +20,37 @@ function context(overrides: Parameters<typeof issue>[0] = {}) {
 }
 
 describe("acceptance-criteria-present", () => {
-  it("meldet fehlende und leere Felder als unvollständig", () => {
-    expect(
-      acceptanceCriteriaPresentRule.evaluate(
-        context({ acceptanceCriteria: null }),
-      ).status,
-    ).toBe("INCOMPLETE");
-    expect(
-      acceptanceCriteriaPresentRule.evaluate(
-        context({ acceptanceCriteria: "  " }),
-      ).status,
-    ).toBe("INCOMPLETE");
-  });
-
-  it("akzeptiert nichtleere Kriterien", () => {
-    expect(acceptanceCriteriaPresentRule.evaluate(context()).status).toBe(
+  it.each([
+    [
+      true,
       "READY",
-    );
-  });
+      "Das konfigurierte Feld enthält Akzeptanzkriterien.",
+      "Keine Maßnahme erforderlich.",
+    ],
+    [
+      false,
+      "INCOMPLETE",
+      "Im konfigurierten Feld wurden keine verwertbaren Akzeptanzkriterien gefunden.",
+      "Konkrete und prüfbare Akzeptanzkriterien im konfigurierten Jira-Feld ergänzen.",
+    ],
+  ] as const)(
+    "bewertet hasAcceptanceCriteria=%s als %s mit unveränderter Evidence",
+    (hasAcceptanceCriteria, status, explanation, remediation) => {
+      expect(
+        acceptanceCriteriaPresentRule.evaluate(
+          context({ hasAcceptanceCriteria }),
+        ),
+      ).toMatchObject({
+        ruleId: "acceptance-criteria-present",
+        category: "DOCUMENTATION",
+        status,
+        title: "Akzeptanzkriterien vorhanden",
+        explanation,
+        remediation,
+        sourceField: projectConfig.acceptanceCriteriaFieldId,
+      });
+    },
+  );
 });
 
 describe("accepted-status", () => {

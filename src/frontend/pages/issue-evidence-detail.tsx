@@ -1,4 +1,4 @@
-import type { ReleaseReadinessResult } from "../../domain/models/readiness";
+import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
 import { Panel } from "../components/panel";
 import { StatusBadge } from "../components/status-badge";
 import { formatDateTime } from "../utils/format";
@@ -14,7 +14,7 @@ export function IssueEvidenceDetail({
   siteUrl,
   onBack,
 }: {
-  result: ReleaseReadinessResult;
+  result: ReleaseReadinessResultDto;
   issueKey: string;
   siteUrl: string;
   onBack: () => void;
@@ -35,8 +35,8 @@ export function IssueEvidenceDetail({
             {issue.key}: {issue.summary}
           </h1>
           <p>
-            {issue.issueType.name} ·{" "}
-            {issue.status?.name ?? "Status nicht verfügbar"} · Aktualisiert{" "}
+            {issue.issueTypeName} ·{" "}
+            {issue.statusName ?? "Status nicht verfügbar"} · Aktualisiert{" "}
             {formatDateTime(issue.updatedAt)}
           </p>
           <p className="scope-context">

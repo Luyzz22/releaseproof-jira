@@ -5,11 +5,9 @@ import type {
   JiraStatus,
   JiraVersion,
 } from "../application/ports";
-import type {
-  ProjectConfig,
-  ReleaseReadinessResult,
-} from "../domain/models/readiness";
+import type { ProjectConfig } from "../domain/models/readiness";
 import type { SafeError } from "./errors";
+import type { ReleaseReadinessResultDto } from "./release-readiness-dto";
 import type { ProjectConfigInput } from "./validation";
 
 export type ApiResult<T> =
@@ -33,5 +31,5 @@ export type ResolverDefinitions = {
   ) => Promise<ApiResult<ProjectConfig>>;
   analyzeRelease: (input: {
     versionId: string;
-  }) => Promise<ApiResult<ReleaseReadinessResult>>;
+  }) => Promise<ApiResult<ReleaseReadinessResultDto>>;
 };

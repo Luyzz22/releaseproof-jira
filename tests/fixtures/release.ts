@@ -37,9 +37,7 @@ export const readyIssue: ReleaseIssue = {
   summary: "Export für Kundenabnahme bereitstellen",
   issueType: { id: "10001", name: "Story" },
   status: { id: "31", name: "Fertig" },
-  description: "Der Export ist implementiert und geprüft.",
-  acceptanceCriteria:
-    "Given ein freigegebenes Release, when exportiert, then entsteht Markdown.",
+  hasAcceptanceCriteria: true,
   labels: ["customer-approved"],
   fixVersions: [{ id: "30001", name: "Kundenrelease 2.4" }],
   subtasks: [],

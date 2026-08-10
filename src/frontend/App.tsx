@@ -6,8 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ReleaseReadinessResult } from "../domain/models/readiness";
 import type { SafeError } from "../shared/errors";
+import type { ReleaseReadinessResultDto } from "../shared/release-readiness-dto";
 import type { BootstrapData } from "../shared/resolver-contract";
 import type { ProjectConfigInput } from "../shared/validation";
 import { releaseProofApi } from "./api/client";
@@ -47,7 +47,7 @@ const ReportView = lazy(() =>
 
 export function App() {
   const [data, setData] = useState<BootstrapData | null>(null);
-  const [result, setResult] = useState<ReleaseReadinessResult | null>(null);
+  const [result, setResult] = useState<ReleaseReadinessResultDto | null>(null);
   const [screen, setScreen] = useState<AppScreen>("empty");
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

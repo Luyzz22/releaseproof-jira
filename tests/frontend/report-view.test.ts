@@ -1,16 +1,16 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { analyzeRelease } from "../../src/domain/services/analyze-release";
 import { ReportView } from "../../src/frontend/pages/report-view";
 import { issue, projectConfig, release } from "../fixtures/release";
+import { readinessDto } from "../fixtures/readiness-dto";
 
 describe("Report View", () => {
   it("zeigt die Status-Zusammenfassung vollständig deutsch", () => {
-    const result = analyzeRelease(
+    const result = readinessDto(
       release([
         issue(),
-        issue({ key: "DEMO-43", acceptanceCriteria: null }),
+        issue({ key: "DEMO-43", hasAcceptanceCriteria: false }),
         issue({ key: "DEMO-44", labels: ["release-blocker"] }),
       ]),
       projectConfig,

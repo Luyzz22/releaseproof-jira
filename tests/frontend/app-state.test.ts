@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { analyzeRelease } from "../../src/domain/services/analyze-release";
 import {
   canAccessAnalysisScreen,
   projectConfigDataSaveTransition,
@@ -12,16 +11,13 @@ import type {
   BootstrapData,
 } from "../../src/shared/resolver-contract";
 import { config, projectConfig, release } from "../fixtures/release";
+import { readinessDto } from "../fixtures/readiness-dto";
 
 const analysisScreens: AnalysisScreen[] = ["dashboard", "detail", "report"];
 
 function analyzedViewState(): AnalysisViewState {
   return {
-    result: analyzeRelease(
-      release(),
-      projectConfig,
-      "2026-08-04T10:00:00.000Z",
-    ),
+    result: readinessDto(release(), projectConfig, "2026-08-04T10:00:00.000Z"),
     selectedIssue: "DEMO-42",
     screen: "detail",
   };

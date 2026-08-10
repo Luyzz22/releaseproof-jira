@@ -100,6 +100,142 @@ const malformedIssueCases: ReadonlyArray<readonly [string, unknown]> = [
 ];
 
 describe("Jira-Issue-Pagination", () => {
+  it("fordert description bei einem Custom Field nicht zusätzlich an", async () => {
+    let requestedFields: string[] = [];
+
+    await collectIssueSearchPages(
+      {
+        jql: "project = DEMO",
+        acceptanceCriteriaFieldId: "customfield_10042",
+      },
+      (request) => {
+        requestedFields = request.fields;
+        return Promise.resolve({ issues: [] });
+      },
+    );
+
+    expect(requestedFields).not.toContain("description");
+    expect(
+      requestedFields.filter((field) => field === "customfield_10042"),
+    ).toHaveLength(1);
+    expect(new Set(requestedFields).size).toBe(requestedFields.length);
+    expect(requestedFields).toEqual([
+      "summary",
+      "issuetype",
+      "status",
+      "customfield_10042",
+      "labels",
+      "fixVersions",
+      "subtasks",
+      "issuelinks",
+      "resolution",
+      "updated",
+    ]);
+  });
+
+  it("fordert description als konfigurierte Quelle genau einmal an", async () => {
+    let requestedFields: string[] = [];
+
+    await collectIssueSearchPages(
+      {
+        jql: "project = DEMO",
+        acceptanceCriteriaFieldId: "description",
+      },
+      (request) => {
+        requestedFields = request.fields;
+        return Promise.resolve({ issues: [] });
+      },
+    );
+
+    expect(
+      requestedFields.filter((field) => field === "description"),
+    ).toHaveLength(1);
+    expect(new Set(requestedFields).size).toBe(requestedFields.length);
+  });
+
+  it.each([
+    ["direktem String", "Akzeptanzkriterium", true],
+    [
+      "gültigem ADF",
+      {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Akzeptanzkriterium" }],
+          },
+        ],
+      },
+      true,
+    ],
+    ["null", null, false],
+    ["leerem String", "", false],
+    ["reinem Whitespace", "   \n\t", false],
+    ["einer Zahl", 42, false],
+    ["einem Boolean", true, false],
+    ["einem Optionsobjekt", { id: "1", value: "Option A" }, false],
+  ] satisfies ReadonlyArray<readonly [string, unknown, boolean]>)(
+    "bildet bei %s ausschließlich das erwartete Presence-Signal",
+    async (_case, value, expected) => {
+      const sourceIssue = {
+        ...jiraIssue(1),
+        fields: {
+          ...jiraIssue(1).fields,
+          description: "SENSITIVE_DESCRIPTION_DO_NOT_EXPOSE",
+          customfield_10042: value,
+        },
+      };
+
+      const issues = await collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [sourceIssue] }),
+      );
+      const mappedIssue = issues[0];
+
+      expect(mappedIssue).toHaveProperty("hasAcceptanceCriteria", expected);
+      expect(mappedIssue).not.toHaveProperty("description");
+      expect(mappedIssue).not.toHaveProperty("acceptanceCriteria");
+    },
+  );
+
+  it("liefert im internen ReleaseIssue nur das Presence-Signal statt Quelltexten", async () => {
+    const sourceIssue = {
+      ...jiraIssue(1),
+      fields: {
+        ...jiraIssue(1).fields,
+        customfield_10042: "Akzeptanzkriterium",
+      },
+    };
+    const issues = await collectIssueSearchPages(
+      {
+        jql: "project = DEMO",
+        acceptanceCriteriaFieldId: "customfield_10042",
+      },
+      () => Promise.resolve({ issues: [sourceIssue] }),
+    );
+
+    expect(Object.keys(issues[0] ?? {}).sort()).toEqual(
+      [
+        "fixVersions",
+        "hasAcceptanceCriteria",
+        "id",
+        "issueType",
+        "key",
+        "labels",
+        "linkedIssues",
+        "resolution",
+        "status",
+        "subtasks",
+        "summary",
+        "updatedAt",
+      ].sort(),
+    );
+  });
+
   it("führt Token-Seiten vollständig und mit unverändertem JQL zusammen", async () => {
     const requests: Array<{ jql: string; nextPageToken?: string }> = [];
     const issues = await collectIssueSearchPages(

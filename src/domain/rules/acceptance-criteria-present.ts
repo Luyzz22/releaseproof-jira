@@ -3,7 +3,7 @@ import { evidence, type ReadinessRule } from "./types";
 export const acceptanceCriteriaPresentRule: ReadinessRule = {
   ruleId: "acceptance-criteria-present",
   evaluate(context) {
-    const present = Boolean(context.issue.acceptanceCriteria?.trim());
+    const present = context.issue.hasAcceptanceCriteria;
     return evidence(context, {
       ruleId: this.ruleId,
       category: "DOCUMENTATION",

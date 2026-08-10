@@ -16,7 +16,7 @@ describe("kombinierte Issue-Auswertung", () => {
 
   it("priorisiert Blocker und zählt fehlende Nachweise getrennt", () => {
     const candidate = release([
-      issue({ acceptanceCriteria: null, labels: ["release-blocker"] }),
+      issue({ hasAcceptanceCriteria: false, labels: ["release-blocker"] }),
     ]);
     const result = analyzeIssue(candidate.issues[0]!, candidate, projectConfig);
     expect(result.status).toBe("BLOCKED");
@@ -30,7 +30,7 @@ describe("Release-Aggregation", () => {
   it("berechnet den gerundeten Mittelwert aller Issue-Scores", () => {
     const candidate = release([
       issue(),
-      issue({ key: "DEMO-43", acceptanceCriteria: null }),
+      issue({ key: "DEMO-43", hasAcceptanceCriteria: false }),
     ]);
     const result = analyzeRelease(
       candidate,

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { analyzeRelease } from "../../src/domain/services/analyze-release";
 import { AppError, toSafeError } from "../../src/shared/errors";
 import { formatDateTime } from "../../src/frontend/utils/format";
 import { buildJiraIssueUrl } from "../../src/frontend/utils/jira-url";
@@ -8,6 +7,7 @@ import {
   getOpenFindings,
 } from "../../src/frontend/utils/report";
 import { issue, projectConfig, release } from "../fixtures/release";
+import { readinessDto } from "../fixtures/readiness-dto";
 
 function expectNoRawReadinessStatusAtStatusPositions(markdown: string): void {
   expect(markdown).not.toMatch(
@@ -42,12 +42,12 @@ describe("sichere Frontend-Grenzen", () => {
   it("erzeugt Findings und Markdown aus derselben kanonischen Ableitung", () => {
     const candidate = release([
       issue({
-        acceptanceCriteria: null,
+        hasAcceptanceCriteria: false,
         labels: ["release-blocker"],
         fixVersions: [],
       }),
     ]);
-    const result = analyzeRelease(
+    const result = readinessDto(
       candidate,
       projectConfig,
       "2026-07-11T09:00:00.000Z",
@@ -76,7 +76,7 @@ describe("sichere Frontend-Grenzen", () => {
     const candidate = {
       ...release([
         issue(),
-        issue({ key: "DEMO-43", acceptanceCriteria: null }),
+        issue({ key: "DEMO-43", hasAcceptanceCriteria: false }),
         issue({
           key: "DEMO-44",
           labels: ["release-blocker", "customer-approved"],
@@ -84,7 +84,7 @@ describe("sichere Frontend-Grenzen", () => {
       ]),
       releaseScopeJql: "project = DEMO",
     };
-    const result = analyzeRelease(
+    const result = readinessDto(
       candidate,
       projectConfig,
       "2026-08-05T09:00:00.000Z",
@@ -103,7 +103,7 @@ describe("sichere Frontend-Grenzen", () => {
     expectNoRawReadinessStatusAtStatusPositions(markdown);
 
     const emptyMarkdown = buildMarkdownReport(
-      analyzeRelease(
+      readinessDto(
         { ...release([]), releaseScopeJql: "project = DEMO" },
         projectConfig,
         "2026-08-05T09:00:00.000Z",

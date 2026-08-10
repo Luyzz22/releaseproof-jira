@@ -1,15 +1,17 @@
 import { analyzeRelease as analyzeReleaseDomain } from "../../domain/services/analyze-release";
 import { hasSupportedAcceptanceCriteriaField } from "../../shared/acceptance-criteria-field";
 import { AppError } from "../../shared/errors";
+import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
 import { validateReleaseScopeJql } from "../../shared/validation";
 import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
+import { toReleaseReadinessDto } from "./to-release-readiness-dto";
 
 export async function analyzeRelease(
   jira: JiraGateway,
   repository: ProjectConfigRepository,
   clock: Clock,
   input: { projectId: string; projectKey: string; versionId: string },
-) {
+): Promise<ReleaseReadinessResultDto> {
   const config = await repository.get(input.projectId);
   if (!config) {
     throw new AppError("CONFIG_REQUIRED", "Project configuration is required.");
@@ -64,7 +66,8 @@ export async function analyzeRelease(
     issues: issues.filter((issue) => included.has(issue.issueType.id)),
     analyzedAt,
   };
-  return analyzeReleaseDomain(release, config, analyzedAt);
+  const internalResult = analyzeReleaseDomain(release, config, analyzedAt);
+  return toReleaseReadinessDto(internalResult);
 }
 
 async function loadJqlScopeIssues(

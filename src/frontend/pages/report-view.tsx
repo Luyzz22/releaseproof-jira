@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReleaseReadinessResult } from "../../domain/models/readiness";
+import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
 import { Panel } from "../components/panel";
 import { StatusBadge } from "../components/status-badge";
 import { formatDateTime } from "../utils/format";
@@ -16,7 +16,7 @@ export function ReportView({
   result,
   onBack,
 }: {
-  result: ReleaseReadinessResult;
+  result: ReleaseReadinessResultDto;
   onBack: () => void;
 }) {
   const report = useMemo(() => buildMarkdownReport(result), [result]);

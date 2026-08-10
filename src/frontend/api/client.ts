@@ -6,7 +6,7 @@ import type {
 } from "../../shared/resolver-contract";
 import type { ProjectConfig } from "../../domain/models/readiness";
 import type { ProjectConfigInput } from "../../shared/validation";
-import type { ReleaseReadinessResult } from "../../domain/models/readiness";
+import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
 
 const invoke = makeInvoke<ResolverDefinitions>();
 
@@ -38,7 +38,7 @@ export const releaseProofApi = {
   },
   analyzeRelease(
     versionId: string,
-  ): Promise<ApiResult<ReleaseReadinessResult>> {
+  ): Promise<ApiResult<ReleaseReadinessResultDto>> {
     return transportSafe(invoke("analyzeRelease", { versionId }));
   },
 } as const;

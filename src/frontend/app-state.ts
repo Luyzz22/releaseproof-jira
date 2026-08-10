@@ -1,8 +1,6 @@
-import type {
-  ProjectConfig,
-  ReleaseReadinessResult,
-} from "../domain/models/readiness";
+import type { ProjectConfig } from "../domain/models/readiness";
 import type { ApiResult, BootstrapData } from "../shared/resolver-contract";
+import type { ReleaseReadinessResultDto } from "../shared/release-readiness-dto";
 
 export type AppScreen =
   "empty" | "config" | "release" | "dashboard" | "detail" | "report";
@@ -13,7 +11,7 @@ export type AnalysisScreen = Extract<
 >;
 
 export interface AnalysisViewState {
-  result: ReleaseReadinessResult | null;
+  result: ReleaseReadinessResultDto | null;
   selectedIssue: string | null;
   screen: AppScreen;
 }

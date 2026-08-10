@@ -68,6 +68,53 @@ class FakeJiraGateway implements JiraGateway {
 }
 
 const clock = { now: () => "2026-07-11T09:00:00.000Z" };
+const sensitiveDescription = "SENSITIVE_DESCRIPTION_DO_NOT_EXPOSE";
+const sensitiveAcceptanceCriteria =
+  "SENSITIVE_ACCEPTANCE_CRITERIA_DO_NOT_EXPOSE";
+
+async function analyzeSensitiveIssue() {
+  const repository = new InMemoryProjectConfigRepository();
+  await repository.save(projectConfig);
+  const sensitiveIssue = {
+    ...issue({
+      labels: ["internal-label"],
+      fixVersions: [{ id: "30001", name: "Kundenrelease 2.4" }],
+      subtasks: [
+        {
+          id: "21001",
+          key: "DEMO-43",
+          status: { id: "31", name: "Fertig" },
+          resolution: { id: "1", name: "Erledigt" },
+        },
+      ],
+      linkedIssues: [
+        {
+          id: "22001",
+          key: "DEMO-7",
+          relationship: "is blocked by",
+          direction: "inward",
+          isBlocking: true,
+          status: { id: "31", name: "Fertig" },
+          resolution: { id: "1", name: "Erledigt" },
+        },
+      ],
+      resolution: { id: "1", name: "Erledigt" },
+    }),
+    description: sensitiveDescription,
+    acceptanceCriteria: sensitiveAcceptanceCriteria,
+  };
+
+  return analyzeRelease(
+    new FakeJiraGateway([sensitiveIssue], [sensitiveIssue]),
+    repository,
+    clock,
+    {
+      projectId: "10000",
+      projectKey: "DEMO",
+      versionId: "30001",
+    },
+  );
+}
 
 const supportedCustomStringField: JiraField = {
   id: projectConfig.acceptanceCriteriaFieldId,
@@ -111,6 +158,38 @@ const storedFieldFailureCases: ReadonlyArray<
 ];
 
 describe("Analyze Release Use Case", () => {
+  it("überträgt keinen vollständigen description-Quelltext im öffentlichen Analysewert", async () => {
+    const result = await analyzeSensitiveIssue();
+
+    expect(JSON.stringify(result)).not.toContain(sensitiveDescription);
+  });
+
+  it("überträgt keinen vollständigen acceptanceCriteria-Quelltext im öffentlichen Analysewert", async () => {
+    const result = await analyzeSensitiveIssue();
+
+    expect(JSON.stringify(result)).not.toContain(sensitiveAcceptanceCriteria);
+  });
+
+  it("überträgt keine internen Jira-Issue-Daten im öffentlichen Analysewert", async () => {
+    const result = await analyzeSensitiveIssue();
+
+    expect(Object.keys(result.release).sort()).toEqual(
+      [
+        "issues",
+        "projectKey",
+        "releaseScopeJql",
+        "releaseScopeMode",
+        "versionName",
+      ].sort(),
+    );
+    expect(Object.keys(result.release.issues[0] ?? {}).sort()).toEqual(
+      ["issueTypeName", "key", "statusName", "summary", "updatedAt"].sort(),
+    );
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.results[0]?.evidence).toHaveLength(7);
+    expect(JSON.stringify(result)).not.toContain("internal-label");
+  });
+
   it("nutzt Jira-Fake, filtert Issue-Typen und aggregiert", async () => {
     const repository = new InMemoryProjectConfigRepository();
     await repository.save(projectConfig);

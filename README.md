@@ -119,6 +119,10 @@ Endpunkte und Begründungen stehen in [docs/permissions.md](docs/permissions.md)
 ## Datenschutz und Sicherheit
 
 - Jira-Inhalte werden nur für die aktuelle Resolver-Invocation geladen.
+- Jira-Beschreibungen werden nur angefordert, wenn `description` als Akzeptanzkriterienfeld konfiguriert ist.
+- Akzeptanzkriterientext wird serverseitig unmittelbar auf ein Presence-Signal reduziert.
+- Resolver und Custom UI erhalten ausschließlich ein explizit typisiertes, minimiertes Analyseergebnis-DTO.
+- Vollständige Jira-Quelltexte werden weder zusätzlich persistiert noch geloggt.
 - Vollständige Issues und Berichte werden nicht in Forge KVS gespeichert.
 - Es gibt keine externen Datenübertragungen und keine Telemetrie.
 - Resolver-Payloads werden mit Zod validiert.

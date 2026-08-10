@@ -65,8 +65,7 @@ export interface ReleaseIssue {
   summary: string;
   issueType: IssueTypeRef;
   status: StatusRef | null;
-  description: string | null;
-  acceptanceCriteria: string | null;
+  hasAcceptanceCriteria: boolean;
   labels: string[];
   fixVersions: VersionRef[];
   subtasks: SubtaskRef[];
