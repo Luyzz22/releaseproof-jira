@@ -54,7 +54,7 @@ export function ReportView({
       <header className="page-heading no-print">
         <div>
           <button className="back-button" type="button" onClick={onBack}>
-            ← Zurück zum Dashboard
+            ← Zurück zur Übersicht
           </button>
           <p className="eyebrow">Übergabebericht</p>
           <h1>{result.release.versionName}</h1>
@@ -98,7 +98,7 @@ export function ReportView({
             </p>
             <p className="scope-context">
               <strong>
-                Scope: {releaseScopeModeLabel(result.release.releaseScopeMode)}
+                Umfang: {releaseScopeModeLabel(result.release.releaseScopeMode)}
               </strong>
               <code>{releaseScopeExplanation(result.release)}</code>
             </p>
@@ -137,8 +137,8 @@ export function ReportView({
               <tr>
                 <th scope="col">Vorgang</th>
                 <th scope="col">Status</th>
-                <th scope="col">Score</th>
-                <th scope="col">Blocker</th>
+                <th scope="col">Bewertung</th>
+                <th scope="col">Blockierungen</th>
                 <th scope="col">Fehlend</th>
               </tr>
             </thead>
@@ -159,7 +159,7 @@ export function ReportView({
             </tbody>
           </table>
         </div>
-        <h2>Blocker und fehlende Nachweise</h2>
+        <h2>Blockierungen und fehlende Nachweise</h2>
         <div className="report-findings">
           {findings.length === 0 ? (
             <p>Keine offenen Nachweise gefunden.</p>
