@@ -66,6 +66,42 @@ function jiraIssue(id: number) {
   };
 }
 
+function blockingIssueLink() {
+  return {
+    type: {
+      name: "Blocks",
+      inward: "is blocked by",
+      outward: "blocks",
+    },
+    inwardIssue: {
+      id: "20001",
+      key: "DEMO-99",
+      fields: {
+        status: { id: "11", name: "Offen" },
+        resolution: null,
+      },
+    },
+  };
+}
+
+function nonBlockingIssueLink() {
+  return {
+    type: {
+      name: "Relates",
+      inward: "relates to",
+      outward: "relates to",
+    },
+    outwardIssue: {
+      id: "20002",
+      key: "DEMO-100",
+      fields: {
+        status: { id: "31", name: "Fertig" },
+        resolution: { id: "1", name: "Erledigt" },
+      },
+    },
+  };
+}
+
 const malformedIssueCases: ReadonlyArray<readonly [string, unknown]> = [
   ["Issue-Element null", null],
   ["Vorgang ohne fields", { id: "2", key: "DEMO-2" }],
@@ -234,6 +270,139 @@ describe("Jira-Issue-Pagination", () => {
         "updatedAt",
       ].sort(),
     );
+  });
+
+  it.each([
+    ["fehlendem issuelinks-Feld", undefined],
+    ["issuelinks als null", null],
+    ["issuelinks als String", "invalid"],
+    ["nicht-arrayförmigem issuelinks-Feld", {}],
+  ])("bricht bei %s fail-closed ab", async (_case, issueLinks) => {
+    const fields: Record<string, unknown> = { ...jiraIssue(1).fields };
+    if (issueLinks === undefined) {
+      delete fields.issuelinks;
+    } else {
+      fields.issuelinks = issueLinks;
+    }
+
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () =>
+          Promise.resolve({
+            issues: [{ ...jiraIssue(1), fields }],
+          }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it.each([
+    ["null-Link", null],
+    ["Link ohne type", { inwardIssue: blockingIssueLink().inwardIssue }],
+    ["Link ohne Zielvorgang", { type: blockingIssueLink().type }],
+    [
+      "Link mit Zielvorgang ohne id",
+      {
+        type: blockingIssueLink().type,
+        inwardIssue: {
+          key: "DEMO-99",
+          fields: blockingIssueLink().inwardIssue.fields,
+        },
+      },
+    ],
+    [
+      "Link mit Zielvorgang ohne key",
+      {
+        type: blockingIssueLink().type,
+        inwardIssue: {
+          id: "20001",
+          fields: blockingIssueLink().inwardIssue.fields,
+        },
+      },
+    ],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "bricht bei malformed %s vollständig ab",
+    async (_case, malformedLink) => {
+      const sourceIssue = {
+        ...jiraIssue(1),
+        fields: {
+          ...jiraIssue(1).fields,
+          issuelinks: [malformedLink],
+        },
+      };
+
+      await expect(
+        collectIssueSearchPages(
+          {
+            jql: "project = DEMO",
+            acceptanceCriteriaFieldId: "customfield_10042",
+          },
+          () => Promise.resolve({ issues: [sourceIssue] }),
+        ),
+      ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+    },
+  );
+
+  it("verwirft bei gemischten gültigen und malformed Links das gesamte Ergebnis", async () => {
+    const sourceIssue = {
+      ...jiraIssue(1),
+      fields: {
+        ...jiraIssue(1).fields,
+        issuelinks: [blockingIssueLink(), null],
+      },
+    };
+
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [sourceIssue] }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("behält gültige Blocking- und Non-Blocking-Link-Semantik unverändert", async () => {
+    const sourceIssue = {
+      ...jiraIssue(1),
+      fields: {
+        ...jiraIssue(1).fields,
+        issuelinks: [blockingIssueLink(), nonBlockingIssueLink()],
+      },
+    };
+
+    const issues = await collectIssueSearchPages(
+      {
+        jql: "project = DEMO",
+        acceptanceCriteriaFieldId: "customfield_10042",
+      },
+      () => Promise.resolve({ issues: [sourceIssue] }),
+    );
+
+    expect(issues[0]?.linkedIssues).toEqual([
+      {
+        id: "20001",
+        key: "DEMO-99",
+        relationship: "is blocked by",
+        direction: "inward",
+        isBlocking: true,
+        status: { id: "11", name: "Offen" },
+        resolution: null,
+      },
+      {
+        id: "20002",
+        key: "DEMO-100",
+        relationship: "relates to",
+        direction: "outward",
+        isBlocking: false,
+        status: { id: "31", name: "Fertig" },
+        resolution: { id: "1", name: "Erledigt" },
+      },
+    ]);
   });
 
   it("führt Token-Seiten vollständig und mit unverändertem JQL zusammen", async () => {
