@@ -82,6 +82,17 @@ function requireArray(value: unknown, resource: string): unknown[] {
   );
 }
 
+function requireStringArray(value: unknown, resource: string): string[] {
+  return requireArray(value, resource).map((item) => {
+    const text = stringValue(item);
+    if (text) return text;
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      `${resource} returned an unexpected response.`,
+    );
+  });
+}
+
 function optionalPageToken(
   value: unknown,
   resource: string,
@@ -175,6 +186,19 @@ function mapResolution(value: unknown): { id: string; name: string } | null {
   return id && name ? { id, name } : null;
 }
 
+function requireNullableResolution(
+  value: unknown,
+  resource: string,
+): { id: string; name: string } | null {
+  if (value === undefined || value === null) return null;
+  const resolution = mapResolution(value);
+  if (resolution) return resolution;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `${resource} returned an unexpected response.`,
+  );
+}
+
 function normalized(value: string): string {
   return value
     .toLocaleLowerCase("de-DE")
@@ -205,13 +229,12 @@ function mapLinkedIssue(value: unknown): LinkedIssueRef | null {
   if (!isRecord(value) || !isRecord(value.type)) return null;
   const inward = isRecord(value.inwardIssue) ? value.inwardIssue : null;
   const outward = isRecord(value.outwardIssue) ? value.outwardIssue : null;
+  if ((inward ? 1 : 0) + (outward ? 1 : 0) !== 1) return null;
   const target = inward ?? outward;
   if (!target) return null;
   const direction = inward ? "inward" : "outward";
-  const relationship =
-    stringValue(value.type[direction]) ??
-    stringValue(value.type.name) ??
-    "verknüpft mit";
+  const relationship = stringValue(value.type[direction]);
+  if (!relationship) return null;
   const typeName = stringValue(value.type.name) ?? relationship;
   const fields = isRecord(target.fields) ? target.fields : {};
   const id = stringValue(target.id);
@@ -238,6 +261,31 @@ function requireMappedLinkedIssue(value: unknown): LinkedIssueRef {
   );
 }
 
+function requireMappedSubtask(
+  value: unknown,
+): ReleaseIssue["subtasks"][number] {
+  const subtask = requireRecord(value, "Issue search subtask");
+  const fields = requireRecord(subtask.fields, "Issue search subtask");
+  const id = stringValue(subtask.id);
+  const key = stringValue(subtask.key);
+  const status = mapStatus(fields.status);
+  if (!id || !key || !status) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Issue search subtask returned an unexpected response.",
+    );
+  }
+  return {
+    id,
+    key,
+    status,
+    resolution: requireNullableResolution(
+      fields.resolution,
+      "Issue search subtask resolution",
+    ),
+  };
+}
+
 function mapIssue(
   value: unknown,
   acceptanceCriteriaFieldId: string,
@@ -259,31 +307,16 @@ function mapIssue(
     status: mapStatus(fields.status),
     hasAcceptanceCriteria:
       jiraValueToText(fields[acceptanceCriteriaFieldId]) !== null,
-    labels: arrayValue(fields.labels).flatMap((label) =>
-      typeof label === "string" ? [label] : [],
-    ),
+    labels: requireStringArray(fields.labels, "Issue search labels"),
     fixVersions: arrayValue(fields.fixVersions).flatMap((version) => {
       if (!isRecord(version)) return [];
       const versionId = stringValue(version.id);
       const name = stringValue(version.name);
       return versionId && name ? [{ id: versionId, name }] : [];
     }),
-    subtasks: arrayValue(fields.subtasks).flatMap((subtask) => {
-      if (!isRecord(subtask)) return [];
-      const subtaskFields = isRecord(subtask.fields) ? subtask.fields : {};
-      const subtaskId = stringValue(subtask.id);
-      const subtaskKey = stringValue(subtask.key);
-      return subtaskId && subtaskKey
-        ? [
-            {
-              id: subtaskId,
-              key: subtaskKey,
-              status: mapStatus(subtaskFields.status),
-              resolution: mapResolution(subtaskFields.resolution),
-            },
-          ]
-        : [];
-    }),
+    subtasks: requireArray(fields.subtasks, "Issue search subtasks").map(
+      requireMappedSubtask,
+    ),
     linkedIssues: requireArray(fields.issuelinks, "Issue search").map(
       requireMappedLinkedIssue,
     ),
