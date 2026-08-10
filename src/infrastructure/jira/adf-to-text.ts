@@ -4,6 +4,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const MAX_NODES = 10_000;
 const MAX_TEXT_LENGTH = 50_000;
+const FORMAT_OR_CONTROL = /[\p{Cc}\p{Cf}]/gu;
 
 interface CollectionState {
   nodes: number;
@@ -34,15 +35,22 @@ function collectAdfNode(
   }
 }
 
+export function hasVisibleText(value: string): boolean {
+  return value.replace(FORMAT_OR_CONTROL, "").trim().length > 0;
+}
+
+function normalizeExtractedText(value: string): string | null {
+  const text = value.replace(/\s+/gu, " ").trim();
+  return hasVisibleText(text) ? text : null;
+}
+
 export function jiraValueToText(value: unknown): string | null {
   if (typeof value === "string") {
-    const text = value.slice(0, MAX_TEXT_LENGTH).replace(/\s+/g, " ").trim();
-    return text.length > 0 ? text : null;
+    return normalizeExtractedText(value.slice(0, MAX_TEXT_LENGTH));
   }
   if (!isRecord(value) || value.type !== "doc") return null;
 
   const output: string[] = [];
   collectAdfNode(value, output, { nodes: 0, textLength: 0 });
-  const text = output.join(" ").replace(/\s+/g, " ").trim();
-  return text.length > 0 ? text : null;
+  return normalizeExtractedText(output.join(" "));
 }
