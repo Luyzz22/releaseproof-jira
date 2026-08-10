@@ -46,7 +46,7 @@ export function ReleaseDashboard({
           <p className="eyebrow">
             {data.project.key} · {result.release.versionName}
           </p>
-          <h1>Release Readiness</h1>
+          <h1>Release-Bereitschaft</h1>
           <p>
             Analysiert am {formatDateTime(result.generatedAt)} ·{" "}
             {result.totalIssues} Vorgänge
@@ -79,8 +79,8 @@ export function ReleaseDashboard({
             <h2>Keine passenden Vorgänge gefunden</h2>
             <p>
               Der konfigurierte Scope enthält keine Vorgänge der ausgewählten
-              Issue-Typen. Score und Status werden deshalb nicht als
-              Readiness-Aussage interpretiert.
+              Issue-Typen. Score und Status werden deshalb nicht als Aussage zur
+              Release-Bereitschaft interpretiert.
             </p>
           </div>
         </Panel>
@@ -88,7 +88,7 @@ export function ReleaseDashboard({
         <>
           <div className="metric-grid">
             <Metric
-              label="Readiness-Score"
+              label="Bereitschaftswert"
               value={`${result.score}%`}
               tone="score"
             />
@@ -145,14 +145,14 @@ export function ReleaseDashboard({
           <Panel className="table-panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Evidence-Matrix</p>
+                <p className="eyebrow">Nachweismatrix</p>
                 <h2>Vorgänge im Release</h2>
               </div>
             </div>
             <div className="table-wrap">
               <table>
                 <caption className="visually-hidden">
-                  Evidence-Matrix aller analysierten Vorgänge
+                  Nachweismatrix aller analysierten Vorgänge
                 </caption>
                 <thead>
                   <tr>
