@@ -1,7 +1,10 @@
 import type { ProjectConfig } from "../../domain/models/readiness";
 import { hasSupportedAcceptanceCriteriaField } from "../../shared/acceptance-criteria-field";
 import { AppError } from "../../shared/errors";
-import type { ProjectConfigInput } from "../../shared/validation";
+import {
+  hasOnlyKnownReleaseScopeJqlFields,
+  type ProjectConfigInput,
+} from "../../shared/validation";
 import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
 
 export async function saveProjectConfig(
@@ -23,6 +26,17 @@ export async function saveProjectConfig(
       "Acceptance criteria field is not a supported text field.",
     );
   }
+  if (
+    input.releaseScopeMode === "JQL_SCOPE" &&
+    (input.releaseScopeJql === undefined ||
+      !hasOnlyKnownReleaseScopeJqlFields(input.releaseScopeJql, fields))
+  ) {
+    throw new AppError(
+      "INVALID_INPUT",
+      "Release scope references an unknown Jira field.",
+    );
+  }
+
   let existing: ProjectConfig | null;
   try {
     existing = await repository.get(input.projectId);

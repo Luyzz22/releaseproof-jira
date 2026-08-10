@@ -2,7 +2,10 @@ import { analyzeRelease as analyzeReleaseDomain } from "../../domain/services/an
 import { hasSupportedAcceptanceCriteriaField } from "../../shared/acceptance-criteria-field";
 import { AppError } from "../../shared/errors";
 import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
-import { validateReleaseScopeJql } from "../../shared/validation";
+import {
+  hasOnlyKnownReleaseScopeJqlFields,
+  validateReleaseScopeJql,
+} from "../../shared/validation";
 import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
 import { toReleaseReadinessDto } from "./to-release-readiness-dto";
 
@@ -37,6 +40,17 @@ export async function analyzeRelease(
       "Stored acceptance criteria field is not a supported text field.",
     );
   }
+  if (
+    config.releaseScopeMode === "JQL_SCOPE" &&
+    (config.releaseScopeJql === undefined ||
+      !hasOnlyKnownReleaseScopeJqlFields(config.releaseScopeJql, fields))
+  ) {
+    throw new AppError(
+      "STORAGE_CORRUPT",
+      "Stored JQL scope references an unknown Jira field.",
+    );
+  }
+
   const version = await jira.getVersion(input.versionId);
   if (version.projectId !== input.projectId) {
     throw new AppError(

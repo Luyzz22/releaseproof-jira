@@ -59,6 +59,13 @@ const supportedCustomStringField: JiraField = {
   schemaType: "string",
 };
 
+const statusJqlField: JiraField = {
+  id: "status",
+  name: "Status",
+  custom: false,
+  schemaType: "status",
+};
+
 const rejectedFieldCases: ReadonlyArray<
   readonly [string, string, readonly JiraField[]]
 > = [
@@ -235,6 +242,55 @@ describe("In-Memory ProjectConfig Repository", () => {
     expect(saved).toMatchObject({ createdAt: now, updatedAt: now });
     expect(repository.saved).toEqual([saved]);
   });
+
+  it("lehnt ein unbekanntes JQL-Feld vor jedem KVS-Zugriff ab", async () => {
+    const existing = structuredClone(projectConfig);
+    const repository = new ControlledProjectConfigRepository(existing);
+    const jira = jiraFields();
+
+    await expect(
+      saveProjectConfig(
+        jira,
+        repository,
+        { now: () => "2026-08-10T13:00:00.000Z" },
+        {
+          ...projectConfig,
+          releaseScopeJql: "project = DEMO AND definitelyNotAField = foo",
+        },
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+
+    expect(jira.calls).toEqual([projectConfig.projectId]);
+    expect(repository.reads).toHaveLength(0);
+    expect(repository.saved).toHaveLength(0);
+    expect(repository.snapshot()).toEqual(existing);
+  });
+
+  it.each([
+    ["Systemfeld key", "project = DEMO AND key = DEMO-42"],
+    ["Jira-Feld-ID", "project = DEMO AND status = Fertig"],
+    ["Jira-Feldname", 'project = DEMO AND "Status" = Fertig'],
+    [
+      "Custom-Field-ID",
+      `project = DEMO AND ${projectConfig.acceptanceCriteriaFieldId} = vorhanden`,
+    ],
+  ])(
+    "akzeptiert ein bekanntes JQL-Feld über %s",
+    async (_case, releaseScopeJql) => {
+      const repository = new ControlledProjectConfigRepository(null);
+      const jira = jiraFields([supportedCustomStringField, statusJqlField]);
+
+      const saved = await saveProjectConfig(
+        jira,
+        repository,
+        { now: () => "2026-08-10T13:00:00.000Z" },
+        { ...projectConfig, releaseScopeJql },
+      );
+
+      expect(saved.releaseScopeJql).toBe(releaseScopeJql);
+      expect(repository.saved).toEqual([saved]);
+    },
+  );
 
   it.each([
     [

@@ -338,4 +338,29 @@ describe("Analyze Release Use Case", () => {
       expect(jira.issueSearchCalls).toHaveLength(0);
     },
   );
+
+  it("bricht bei unbekanntem gespeichertem JQL-Feld vor Version und Issue-Suche ab", async () => {
+    const repository = new InMemoryProjectConfigRepository();
+    await repository.save(
+      config({
+        releaseScopeJql: "project = DEMO AND definitelyNotAField = foo",
+      }),
+    );
+    const jira = new FakeJiraGateway(
+      [issue()],
+      [issue()],
+      [supportedCustomStringField],
+    );
+
+    await expect(
+      analyzeRelease(jira, repository, clock, {
+        projectId: "10000",
+        projectKey: "DEMO",
+        versionId: "30001",
+      }),
+    ).rejects.toMatchObject({ code: "STORAGE_CORRUPT" });
+
+    expect(jira.getVersionCalls).toHaveLength(0);
+    expect(jira.issueSearchCalls).toHaveLength(0);
+  });
 });

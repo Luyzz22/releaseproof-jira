@@ -63,7 +63,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function stringValue(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
 function booleanValue(value: unknown): boolean {
@@ -247,7 +247,10 @@ function mapLinkedIssue(value: unknown): LinkedIssueRef | null {
         direction,
         isBlocking: blockingRelationship(direction, relationship, typeName),
         status: mapStatus(fields.status),
-        resolution: mapResolution(fields.resolution),
+        resolution: requireNullableResolution(
+          fields.resolution,
+          "Issue search linked issue resolution",
+        ),
       }
     : null;
 }

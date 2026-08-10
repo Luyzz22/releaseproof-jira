@@ -284,6 +284,36 @@ function parseConjunctiveJql(tokens: readonly JqlToken[]): ParseJqlResult {
   return clauses.length > 0 ? { ok: true, clauses } : { ok: false };
 }
 
+interface JiraFieldReference {
+  id: string;
+  name: string;
+}
+
+function normalizedJqlFieldReference(value: string): string {
+  return value.trim().toLocaleLowerCase("en-US");
+}
+
+export function hasOnlyKnownReleaseScopeJqlFields(
+  value: string,
+  fields: readonly JiraFieldReference[],
+): boolean {
+  const tokenized = tokenizeJql(value);
+  if (!tokenized.ok) return false;
+
+  const parsed = parseConjunctiveJql(tokenized.tokens);
+  if (!parsed.ok) return false;
+
+  const knownFields = new Set(["project", "key", "issuekey"]);
+  for (const field of fields) {
+    knownFields.add(normalizedJqlFieldReference(field.id));
+    knownFields.add(normalizedJqlFieldReference(field.name));
+  }
+
+  return parsed.clauses.every((clause) =>
+    knownFields.has(normalizedJqlFieldReference(clause.field.value)),
+  );
+}
+
 export function validateReleaseScopeJql(
   value: string,
   expectedProjectKey: string,

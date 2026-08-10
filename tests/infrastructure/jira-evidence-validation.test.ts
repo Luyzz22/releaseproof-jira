@@ -112,6 +112,7 @@ describe("fail-closed Jira-Evidence", () => {
     ["Zahl", 42],
     ["Objekt", { value: "release-blocker" }],
     ["leerer String", ""],
+    ["Whitespace-only String", "   "],
   ])("bricht bei ungültigem Label-Element %s ab", async (_case, label) => {
     await expect(
       mapFields({ ...baseIssue().fields, labels: ["client-approved", label] }),
@@ -178,6 +179,28 @@ describe("fail-closed Jira-Evidence", () => {
         },
       },
     ],
+    [
+      "Subtask mit Whitespace-only Resolution-ID",
+      {
+        id: "30001",
+        key: "DEMO-2",
+        fields: {
+          status: { id: "31", name: "Fertig" },
+          resolution: { id: "   ", name: "Erledigt" },
+        },
+      },
+    ],
+    [
+      "Subtask mit Whitespace-only Resolution-Name",
+      {
+        id: "30001",
+        key: "DEMO-2",
+        fields: {
+          status: { id: "31", name: "Fertig" },
+          resolution: { id: "1", name: "   " },
+        },
+      },
+    ],
   ] satisfies ReadonlyArray<readonly [string, unknown]>)(
     "bricht bei malformed %s ab",
     async (_case, subtask) => {
@@ -240,6 +263,13 @@ describe("fail-closed Jira-Evidence", () => {
         outwardIssue: outwardNonBlockingLink().outwardIssue,
       },
     ],
+    [
+      "Whitespace-only Relationship-Beschreibung",
+      {
+        type: { name: "Blocks", inward: "   ", outward: "blocks" },
+        inwardIssue: inwardBlockingLink().inwardIssue,
+      },
+    ],
   ] satisfies ReadonlyArray<readonly [string, unknown]>)(
     "bricht bei Link mit %s ab",
     async (_case, link) => {
@@ -248,6 +278,30 @@ describe("fail-closed Jira-Evidence", () => {
       ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
     },
   );
+
+  it.each([
+    ["Whitespace-only Resolution-ID", "   ", "Erledigt"],
+    ["Whitespace-only Resolution-Name", "1", "   "],
+  ])("bricht bei Link mit %s ab", async (_case, id, name) => {
+    const link = inwardBlockingLink();
+    await expect(
+      mapFields({
+        ...baseIssue().fields,
+        issuelinks: [
+          {
+            ...link,
+            inwardIssue: {
+              ...link.inwardIssue,
+              fields: {
+                ...link.inwardIssue.fields,
+                resolution: { id, name },
+              },
+            },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
 
   it("bricht bei gleichzeitigem inward- und outward-Ziel ab", async () => {
     const inward = inwardBlockingLink();
