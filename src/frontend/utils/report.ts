@@ -33,8 +33,8 @@ export function buildMarkdownReport(result: ReleaseReadinessResultDto): string {
     "",
     `- Status: ${readinessStatusLabel(result.status)}`,
     `- Bereitschaftswert: ${result.score}%`,
-    `- Scope-Modus: ${releaseScopeModeLabel(result.release.releaseScopeMode)}`,
-    `- Scope-Definition: ${JSON.stringify(releaseScopeExplanation(result.release))}`,
+    `- Umfangsmodus: ${releaseScopeModeLabel(result.release.releaseScopeMode)}`,
+    `- Umfangsdefinition: ${JSON.stringify(releaseScopeExplanation(result.release))}`,
     `- Vorgänge: ${result.totalIssues}`,
     `- ${readinessStatusLabel("READY")}: ${result.readyIssues}`,
     `- ${readinessStatusLabel("INCOMPLETE")}: ${result.incompleteIssues}`,
@@ -42,7 +42,7 @@ export function buildMarkdownReport(result: ReleaseReadinessResultDto): string {
     "",
     "## Nachweismatrix",
     "",
-    "| Vorgang | Status | Score | Blocker | Fehlende Nachweise |",
+    "| Vorgang | Status | Bewertung | Blockierungen | Fehlende Nachweise |",
     "| --- | --- | ---: | ---: | ---: |",
   ];
   result.results.forEach((item) =>
