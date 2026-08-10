@@ -119,7 +119,7 @@ export function ProjectConfiguration({
     <div className="content-grid content-grid--form">
       <div>
         <p className="eyebrow">Projektkonfiguration</p>
-        <h1>Readiness-Kriterien für {data.project.key}</h1>
+        <h1>Bereitschaftskriterien für {data.project.key}</h1>
         <p className="lead">
           Legen Sie einmal fest, welche Jira-Nachweise für eine Kundenabnahme
           erforderlich sind.
@@ -130,14 +130,14 @@ export function ProjectConfiguration({
           <div className="section-heading">
             <span className="step">01</span>
             <div>
-              <h2>Workflow und Scope</h2>
+              <h2>Arbeitsablauf und Umfang</h2>
               <p>
                 Welche Vorgänge gelten als abgeschlossen und werden ausgewertet?
               </p>
             </div>
           </div>
           <fieldset>
-            <legend>Release-Scope</legend>
+            <legend>Release-Umfang</legend>
             <div className="scope-mode-grid">
               <label className="choice choice--stack">
                 <span>
@@ -164,10 +164,10 @@ export function ProjectConfiguration({
                     checked={releaseScopeMode === "JQL_SCOPE"}
                     onChange={() => setReleaseScopeMode("JQL_SCOPE")}
                   />
-                  <strong>Expliziter JQL-Scope</strong>
+                  <strong>Expliziter JQL-Umfang</strong>
                 </span>
                 <small>
-                  Trennt fachlichen Scope und erwartete Jira-Version.
+                  Trennt fachlichen Umfang und erwartete Jira-Version.
                 </small>
               </label>
             </div>
@@ -185,7 +185,7 @@ export function ProjectConfiguration({
             </div>
           ) : (
             <label className="field">
-              <span>Projektgebundener Scope-JQL</span>
+              <span>Projektgebundene JQL-Abfrage</span>
               <textarea
                 value={releaseScopeJql}
                 onChange={(event) => setReleaseScopeJql(event.target.value)}
@@ -219,7 +219,7 @@ export function ProjectConfiguration({
             </div>
           </fieldset>
           <fieldset>
-            <legend>Relevante Issue-Typen</legend>
+            <legend>Relevante Vorgangstypen</legend>
             <div className="choice-grid">
               {data.issueTypes.map((type) => (
                 <label className="choice" key={type.id}>
@@ -240,7 +240,7 @@ export function ProjectConfiguration({
           <div className="section-heading">
             <span className="step">02</span>
             <div>
-              <h2>Nachweise und Blocker</h2>
+              <h2>Nachweise und Blockierungen</h2>
               <p>ReleaseProof liest nur die hier benötigten Felder.</p>
             </div>
           </div>
@@ -274,7 +274,7 @@ export function ProjectConfiguration({
           ) : null}
           <label className="field">
             <span>
-              Blocker-Labels <small>durch Komma getrennt</small>
+              Blockierungs-Labels <small>durch Komma getrennt</small>
             </span>
             <input
               value={blockerLabels}
@@ -291,7 +291,7 @@ export function ProjectConfiguration({
             <span>
               <strong>Offene Unteraufgaben blockieren</strong>
               <small>
-                {`Ungelöste Subtasks setzen den Vorgang auf „${readinessStatusLabel("BLOCKED")}“.`}
+                {`Ungelöste Unteraufgaben setzen den Vorgang auf „${readinessStatusLabel("BLOCKED")}“.`}
               </small>
             </span>
           </label>
