@@ -11,7 +11,7 @@ export const StatusBadge = memo(function StatusBadge({
   return (
     <span
       className={`status status--${status.toLowerCase()}`}
-      aria-label={`Readiness-Status: ${label}`}
+      aria-label={`Bereitschaftsstatus: ${label}`}
     >
       {label}
     </span>
