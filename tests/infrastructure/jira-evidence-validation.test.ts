@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { collectIssueSearchPages } from "../../src/infrastructure/jira/forge-jira-gateway";
+import {
+  collectIssueSearchPages,
+} from "../../src/infrastructure/jira/forge-jira-gateway";
 
 const input = {
   jql: "project = DEMO",
