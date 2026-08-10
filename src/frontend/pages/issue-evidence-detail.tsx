@@ -26,7 +26,7 @@ export function IssueEvidenceDetail({
   return (
     <div className="detail-stack">
       <button className="back-button" type="button" onClick={onBack}>
-        ← Zurück zum Dashboard
+        ← Zurück zur Übersicht
       </button>
       <header className="page-heading">
         <div>
@@ -41,7 +41,7 @@ export function IssueEvidenceDetail({
           </p>
           <p className="scope-context">
             <strong>
-              Scope: {releaseScopeModeLabel(result.release.releaseScopeMode)}
+              Umfang: {releaseScopeModeLabel(result.release.releaseScopeMode)}
             </strong>
             <code>{releaseScopeExplanation(result.release)}</code>
           </p>
@@ -60,7 +60,7 @@ export function IssueEvidenceDetail({
             <div className="evidence-main">
               <div className="evidence-heading">
                 <div>
-                  <p className="eyebrow">{item.ruleId}</p>
+                  <p className="eyebrow">Prüfregel</p>
                   <h2>{item.title}</h2>
                 </div>
                 <StatusBadge status={item.status} />
