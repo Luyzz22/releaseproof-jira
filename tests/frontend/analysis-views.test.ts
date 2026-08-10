@@ -24,7 +24,7 @@ function publicResult() {
 }
 
 describe("Analyseansichten mit öffentlichem DTO", () => {
-  it("rendert im Dashboard Key, Summary, Typ, Readiness-Status und Score", () => {
+  it("rendert im Dashboard Key, Summary, Typ, Status, Score und deutsche Überschriften", () => {
     const markup = renderToStaticMarkup(
       createElement(ReleaseDashboard, {
         data: bootstrapData,
@@ -41,9 +41,14 @@ describe("Analyseansichten mit öffentlichem DTO", () => {
     expect(markup).toContain("Bereit");
     expect(markup).toContain("100%");
     expect(markup).toContain("Expliziter JQL-Scope");
+    expect(markup).toContain("Release-Bereitschaft");
+    expect(markup).toContain("Bereitschaftswert");
+    expect(markup).toContain("Nachweismatrix");
+    expect(markup).not.toContain("Release Readiness");
+    expect(markup).not.toContain("Evidence-Matrix");
   });
 
-  it("rendert im Evidence Detail öffentliche Issue-Metadaten und Evidence", () => {
+  it("rendert in den Nachweisdetails öffentliche Issue-Metadaten und Nachweise", () => {
     const result = publicResult();
     const markup = renderToStaticMarkup(
       createElement(IssueEvidenceDetail, {
@@ -54,6 +59,8 @@ describe("Analyseansichten mit öffentlichem DTO", () => {
       }),
     );
 
+    expect(markup).toContain("Nachweisdetails");
+    expect(markup).not.toContain("Evidence Detail");
     expect(markup).toContain("DEMO-42: PUBLIC_SUMMARY_SENTINEL");
     expect(markup).toContain("Story");
     expect(markup).toContain("Fertig");
