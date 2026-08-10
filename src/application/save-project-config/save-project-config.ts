@@ -6,14 +6,18 @@ import {
   type ProjectConfigInput,
 } from "../../shared/validation";
 import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
+import { hasValidProjectConfigMetadataIds } from "../project-config-metadata";
 
 export async function saveProjectConfig(
-  jira: Pick<JiraGateway, "listFields">,
+  jira: Pick<JiraGateway, "listFields" | "getProjectMetadata" | "validateJql">,
   repository: ProjectConfigRepository,
   clock: Clock,
   input: ProjectConfigInput,
 ): Promise<ProjectConfig> {
-  const fields = await jira.listFields(input.projectId);
+  const [fields, metadata] = await Promise.all([
+    jira.listFields(input.projectId),
+    jira.getProjectMetadata(input.projectId),
+  ]);
 
   if (
     !hasSupportedAcceptanceCriteriaField(
@@ -26,15 +30,28 @@ export async function saveProjectConfig(
       "Acceptance criteria field is not a supported text field.",
     );
   }
-  if (
-    input.releaseScopeMode === "JQL_SCOPE" &&
-    (input.releaseScopeJql === undefined ||
-      !hasOnlyKnownReleaseScopeJqlFields(input.releaseScopeJql, fields))
-  ) {
+  if (!hasValidProjectConfigMetadataIds(metadata, input)) {
     throw new AppError(
       "INVALID_INPUT",
-      "Release scope references an unknown Jira field.",
+      "Project configuration references unknown Jira metadata.",
     );
+  }
+  if (input.releaseScopeMode === "JQL_SCOPE") {
+    if (
+      input.releaseScopeJql === undefined ||
+      !hasOnlyKnownReleaseScopeJqlFields(input.releaseScopeJql, fields)
+    ) {
+      throw new AppError(
+        "INVALID_INPUT",
+        "Release scope references an unknown Jira field.",
+      );
+    }
+    if (!(await jira.validateJql(input.releaseScopeJql))) {
+      throw new AppError(
+        "INVALID_INPUT",
+        "Release scope contains a Jira-invalid field, value, or operator.",
+      );
+    }
   }
 
   let existing: ProjectConfig | null;
