@@ -27,18 +27,38 @@ diff --git a/src/shared/validation.ts b/src/shared/validation.ts
 index f6c2af0..0000000 100644
 --- a/src/shared/validation.ts
 +++ b/src/shared/validation.ts
-@@ -286,6 +286,16 @@ function parseConjunctiveJql(tokens: readonly JqlToken[]): ParseJqlResult {
+@@ -286,6 +286,38 @@ function parseConjunctiveJql(tokens: readonly JqlToken[]): ParseJqlResult {
    return clauses.length > 0 ? { ok: true, clauses } : { ok: false };
  }
  
-+export function releaseScopeJqlFieldNames(value: string): string[] | null {
++interface JiraFieldReference {
++  id: string;
++  name: string;
++}
++
++function normalizedJqlFieldReference(value: string): string {
++  return value.trim().toLocaleLowerCase("en-US");
++}
++
++export function hasOnlyKnownReleaseScopeJqlFields(
++  value: string,
++  fields: readonly JiraFieldReference[],
++): boolean {
 +  const tokenized = tokenizeJql(value);
-+  if (!tokenized.ok) return null;
++  if (!tokenized.ok) return false;
 +
 +  const parsed = parseConjunctiveJql(tokenized.tokens);
-+  return parsed.ok
-+    ? parsed.clauses.map((clause) => clause.field.value)
-+    : null;
++  if (!parsed.ok) return false;
++
++  const knownFields = new Set(["project", "key", "issuekey"]);
++  for (const field of fields) {
++    knownFields.add(normalizedJqlFieldReference(field.id));
++    knownFields.add(normalizedJqlFieldReference(field.name));
++  }
++
++  return parsed.clauses.every((clause) =>
++    knownFields.has(normalizedJqlFieldReference(clause.field.value)),
++  );
 +}
 +
  export function validateReleaseScopeJql(
@@ -48,69 +68,70 @@ diff --git a/src/application/save-project-config/save-project-config.ts b/src/ap
 index 5948b48..0000000 100644
 --- a/src/application/save-project-config/save-project-config.ts
 +++ b/src/application/save-project-config/save-project-config.ts
-@@ -1,8 +1,31 @@
+@@ -1,7 +1,10 @@
  import type { ProjectConfig } from "../../domain/models/readiness";
  import { hasSupportedAcceptanceCriteriaField } from "../../shared/acceptance-criteria-field";
  import { AppError } from "../../shared/errors";
 -import type { ProjectConfigInput } from "../../shared/validation";
--import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
 +import {
-+  releaseScopeJqlFieldNames,
++  hasOnlyKnownReleaseScopeJqlFields,
 +  type ProjectConfigInput,
 +} from "../../shared/validation";
-+import type {
-+  Clock,
-+  JiraField,
-+  JiraGateway,
-+  ProjectConfigRepository,
-+} from "../ports";
-+
-+function normalizedJqlFieldReference(value: string): string {
-+  return value.trim().toLocaleLowerCase("en-US");
-+}
-+
-+function isKnownJqlField(
-+  fieldReference: string,
-+  fields: readonly JiraField[],
-+): boolean {
-+  const normalized = normalizedJqlFieldReference(fieldReference);
-+  if (normalized === "project" || normalized === "key" || normalized === "issuekey") {
-+    return true;
-+  }
-+  return fields.some(
-+    (field) =>
-+      normalizedJqlFieldReference(field.id) === normalized ||
-+      normalizedJqlFieldReference(field.name) === normalized,
-+  );
-+}
+ import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
  
  export async function saveProjectConfig(
-   jira: Pick<JiraGateway, "listFields">,
-@@ -22,6 +45,21 @@ export async function saveProjectConfig(
+@@ -22,6 +25,18 @@ export async function saveProjectConfig(
        "Acceptance criteria field is not a supported text field.",
      );
    }
-+
-+  if (input.releaseScopeMode === "JQL_SCOPE") {
-+    const scopeFields = input.releaseScopeJql
-+      ? releaseScopeJqlFieldNames(input.releaseScopeJql)
-+      : null;
-+    if (
-+      !scopeFields ||
-+      scopeFields.some(
-+        (fieldReference) => !isKnownJqlField(fieldReference, fields),
-+      )
-+    ) {
-+      throw new AppError(
-+        "INVALID_INPUT",
-+        "Release scope references an unknown Jira field.",
-+      );
-+    }
++  if (
++    input.releaseScopeMode === "JQL_SCOPE" &&
++    (input.releaseScopeJql === undefined ||
++      !hasOnlyKnownReleaseScopeJqlFields(input.releaseScopeJql, fields))
++  ) {
++    throw new AppError(
++      "INVALID_INPUT",
++      "Release scope references an unknown Jira field.",
++    );
 +  }
 +
    let existing: ProjectConfig | null;
    try {
      existing = await repository.get(input.projectId);
+diff --git a/src/application/analyze-release/analyze-release.ts b/src/application/analyze-release/analyze-release.ts
+index 502bc5c..0000000 100644
+--- a/src/application/analyze-release/analyze-release.ts
++++ b/src/application/analyze-release/analyze-release.ts
+@@ -2,7 +2,10 @@ import { analyzeRelease as analyzeReleaseDomain } from "../../domain/services/analyze-release";
+ import { hasSupportedAcceptanceCriteriaField } from "../../shared/acceptance-criteria-field";
+ import { AppError } from "../../shared/errors";
+ import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
+-import { validateReleaseScopeJql } from "../../shared/validation";
++import {
++  hasOnlyKnownReleaseScopeJqlFields,
++  validateReleaseScopeJql,
++} from "../../shared/validation";
+ import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
+ import { toReleaseReadinessDto } from "./to-release-readiness-dto";
+ 
+@@ -37,6 +40,17 @@ export async function analyzeRelease(
+       "Stored acceptance criteria field is not a supported text field.",
+     );
+   }
++  if (
++    config.releaseScopeMode === "JQL_SCOPE" &&
++    (config.releaseScopeJql === undefined ||
++      !hasOnlyKnownReleaseScopeJqlFields(config.releaseScopeJql, fields))
++  ) {
++    throw new AppError(
++      "STORAGE_CORRUPT",
++      "Stored JQL scope references an unknown Jira field.",
++    );
++  }
++
+   const version = await jira.getVersion(input.versionId);
+   if (version.projectId !== input.projectId) {
+     throw new AppError(
 diff --git a/tests/infrastructure/jira-evidence-validation.test.ts b/tests/infrastructure/jira-evidence-validation.test.ts
 index 8763d26..0000000 100644
 --- a/tests/infrastructure/jira-evidence-validation.test.ts
@@ -166,7 +187,7 @@ index 8763d26..0000000 100644
    ] satisfies ReadonlyArray<readonly [string, unknown]>)(
      "bricht bei Link mit %s ab",
      async (_case, link) => {
-@@ -251,6 +284,36 @@ describe("fail-closed Jira-Evidence", () => {
+@@ -251,6 +284,31 @@ describe("fail-closed Jira-Evidence", () => {
      },
    );
  
@@ -215,7 +236,7 @@ index 3ad750a..0000000 100644
  const rejectedFieldCases: ReadonlyArray<
    readonly [string, string, readonly JiraField[]]
  > = [
-@@ -227,6 +234,71 @@ describe("In-Memory ProjectConfig Repository", () => {
+@@ -227,6 +234,68 @@ describe("In-Memory ProjectConfig Repository", () => {
      expect(repository.saved).toEqual([saved]);
    });
  
@@ -231,8 +252,7 @@ index 3ad750a..0000000 100644
 +        { now: () => "2026-08-10T13:00:00.000Z" },
 +        {
 +          ...projectConfig,
-+          releaseScopeJql:
-+            "project = DEMO AND definitelyNotAField = foo",
++          releaseScopeJql: "project = DEMO AND definitelyNotAField = foo",
 +        },
 +      ),
 +    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
@@ -269,3 +289,36 @@ index 3ad750a..0000000 100644
    it.each([
      [
        "technischen Storage-Ausfall",
+diff --git a/tests/application/analyze-release.test.ts b/tests/application/analyze-release.test.ts
+index 748fc87..0000000 100644
+--- a/tests/application/analyze-release.test.ts
++++ b/tests/application/analyze-release.test.ts
+@@ -331,6 +331,30 @@ describe("Analyze Release Use Case", () => {
+       expect(jira.issueSearchCalls).toHaveLength(0);
+     },
+   );
++
++  it("bricht bei unbekanntem gespeichertem JQL-Feld vor Version und Issue-Suche ab", async () => {
++    const repository = new InMemoryProjectConfigRepository();
++    await repository.save(
++      config({
++        releaseScopeJql: "project = DEMO AND definitelyNotAField = foo",
++      }),
++    );
++    const jira = new FakeJiraGateway(
++      [issue()],
++      [issue()],
++      [supportedCustomStringField],
++    );
++
++    await expect(
++      analyzeRelease(jira, repository, clock, {
++        projectId: "10000",
++        projectKey: "DEMO",
++        versionId: "30001",
++      }),
++    ).rejects.toMatchObject({ code: "STORAGE_CORRUPT" });
++
++    expect(jira.getVersionCalls).toHaveLength(0);
++    expect(jira.issueSearchCalls).toHaveLength(0);
++  });
