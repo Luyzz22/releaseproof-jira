@@ -5,11 +5,17 @@ import {
   hasOnlyKnownReleaseScopeJqlFields,
   type ProjectConfigInput,
 } from "../../shared/validation";
-import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
+import type {
+  Clock,
+  JiraGateway,
+  JiraJqlValidator,
+  ProjectConfigRepository,
+} from "../ports";
 import { hasValidProjectConfigMetadataIds } from "../project-config-metadata";
 
 export async function saveProjectConfig(
-  jira: Pick<JiraGateway, "listFields" | "getProjectMetadata" | "validateJql">,
+  jira: Pick<JiraGateway, "listFields" | "getProjectMetadata"> &
+    JiraJqlValidator,
   repository: ProjectConfigRepository,
   clock: Clock,
   input: ProjectConfigInput,
