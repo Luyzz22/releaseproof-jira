@@ -7,6 +7,7 @@ import {
   validateReleaseScopeJql,
 } from "../../shared/validation";
 import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
+import { hasValidProjectConfigMetadataIds } from "../project-config-metadata";
 import { toReleaseReadinessDto } from "./to-release-readiness-dto";
 
 export async function analyzeRelease(
@@ -28,7 +29,10 @@ export async function analyzeRelease(
       "Project configuration does not match the Forge context.",
     );
   }
-  const fields = await jira.listFields(input.projectId);
+  const [fields, metadata] = await Promise.all([
+    jira.listFields(input.projectId),
+    jira.getProjectMetadata(input.projectId),
+  ]);
   if (
     !hasSupportedAcceptanceCriteriaField(
       fields,
@@ -40,15 +44,28 @@ export async function analyzeRelease(
       "Stored acceptance criteria field is not a supported text field.",
     );
   }
-  if (
-    config.releaseScopeMode === "JQL_SCOPE" &&
-    (config.releaseScopeJql === undefined ||
-      !hasOnlyKnownReleaseScopeJqlFields(config.releaseScopeJql, fields))
-  ) {
+  if (!hasValidProjectConfigMetadataIds(metadata, config)) {
     throw new AppError(
       "STORAGE_CORRUPT",
-      "Stored JQL scope references an unknown Jira field.",
+      "Stored configuration references unknown Jira project metadata.",
     );
+  }
+  if (config.releaseScopeMode === "JQL_SCOPE") {
+    if (
+      config.releaseScopeJql === undefined ||
+      !hasOnlyKnownReleaseScopeJqlFields(config.releaseScopeJql, fields)
+    ) {
+      throw new AppError(
+        "STORAGE_CORRUPT",
+        "Stored JQL scope references an unknown Jira field.",
+      );
+    }
+    if (!(await jira.validateJql(config.releaseScopeJql))) {
+      throw new AppError(
+        "STORAGE_CORRUPT",
+        "Stored JQL scope contains a Jira-invalid field, value, or operator.",
+      );
+    }
   }
 
   const version = await jira.getVersion(input.versionId);
