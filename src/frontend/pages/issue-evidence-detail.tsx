@@ -30,7 +30,7 @@ export function IssueEvidenceDetail({
       </button>
       <header className="page-heading">
         <div>
-          <p className="eyebrow">Evidence Detail</p>
+          <p className="eyebrow">Nachweisdetails</p>
           <h1>
             {issue.key}: {issue.summary}
           </h1>
