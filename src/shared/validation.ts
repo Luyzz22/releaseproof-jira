@@ -25,7 +25,8 @@ interface JqlToken {
 }
 
 type TokenizeJqlResult =
-  { ok: true; tokens: JqlToken[] } | { ok: false; error: "UNCLOSED_STRING" };
+  | { ok: true; tokens: JqlToken[] }
+  | { ok: false; error: "UNCLOSED_STRING" | "INVALID_BARE_TOKEN" };
 
 type ComparisonOperator = "=" | "!=" | "~" | "!~" | "<" | "<=" | ">" | ">=";
 
@@ -67,6 +68,7 @@ const COMPARISON_OPERATORS: ReadonlySet<string> = new Set([
 ]);
 
 const RESERVED_WORDS = new Set(["AND", "OR", "IN", "NOT", "IS", "EMPTY"]);
+const BARE_JQL_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 function isComparisonOperator(value: string): value is ComparisonOperator {
   return COMPARISON_OPERATORS.has(value);
@@ -138,7 +140,12 @@ function tokenizeJql(value: string): TokenizeJqlResult {
       token += value[index]!;
       index += 1;
     }
-    if (token.length > 0) tokens.push({ kind: "WORD", value: token });
+    if (token.length > 0) {
+      if (!BARE_JQL_TOKEN_PATTERN.test(token)) {
+        return { ok: false, error: "INVALID_BARE_TOKEN" };
+      }
+      tokens.push({ kind: "WORD", value: token });
+    }
   }
 
   return { ok: true, tokens };
@@ -302,7 +309,9 @@ export function validateReleaseScopeJql(
       valid: false,
       code: "SYNTAX_INVALID",
       message:
-        "Der Release-Scope enthält eine nicht geschlossene Zeichenfolge.",
+        tokenized.error === "UNCLOSED_STRING"
+          ? "Der Release-Scope enthält eine nicht geschlossene Zeichenfolge."
+          : "Der Release-Scope enthält ein nicht unterstütztes unquoted JQL-Token. Werte mit Sonderzeichen müssen in Anführungszeichen stehen.",
     };
   }
   const { tokens } = tokenized;
