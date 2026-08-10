@@ -7,13 +7,13 @@ interface ReleaseScopeDescriptor {
 }
 
 export function releaseScopeModeLabel(mode: ReleaseScopeMode): string {
-  return mode === "JQL_SCOPE" ? "Expliziter JQL-Scope" : "Nur Jira-Version";
+  return mode === "JQL_SCOPE" ? "Expliziter JQL-Umfang" : "Nur Jira-Version";
 }
 
 export function releaseScopeExplanation(
   release: ReleaseScopeDescriptor,
 ): string {
   return release.releaseScopeMode === "JQL_SCOPE"
-    ? (release.releaseScopeJql ?? "Expliziter Projekt-Scope")
+    ? (release.releaseScopeJql ?? "Expliziter Projektumfang")
     : `fixVersion der ausgewählten Version im Projekt ${release.projectKey}`;
 }
