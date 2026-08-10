@@ -5,8 +5,8 @@ import { ReportView } from "../../src/frontend/pages/report-view";
 import { issue, projectConfig, release } from "../fixtures/release";
 import { readinessDto } from "../fixtures/readiness-dto";
 
-describe("Report View", () => {
-  it("zeigt die Status-Zusammenfassung vollständig deutsch", () => {
+describe("Berichtsansicht", () => {
+  it("zeigt Status-Zusammenfassung und Überschriften vollständig deutsch", () => {
     const result = readinessDto(
       release([
         issue(),
@@ -20,9 +20,15 @@ describe("Report View", () => {
       createElement(ReportView, { result, onBack: () => undefined }),
     );
 
+    expect(markup).toContain("Bericht zur Release-Bereitschaft");
+    expect(markup).toContain("Nachweismatrix");
+    expect(markup).toContain("<span>Bereitschaft</span>");
     expect(markup).toContain("<span>Bereit</span>");
     expect(markup).toContain("<span>Unvollständig</span>");
     expect(markup).toContain("<span>Blockiert</span>");
+    expect(markup).not.toContain("Release Readiness Report");
+    expect(markup).not.toContain("Evidence-Matrix");
+    expect(markup).not.toContain("<span>Readiness</span>");
     expect(markup).not.toContain("<span>Ready</span>");
   });
 });
