@@ -57,9 +57,13 @@ describe("sichere Frontend-Grenzen", () => {
 
     expect(findings).toHaveLength(4);
     expect(markdown).toContain("- Status: Blockiert");
+    expect(markdown).toContain("- Bereitschaftswert: 45%");
     expect(markdown).toContain("- Bereit: 0");
     expect(markdown).toContain("- Unvollständig: 0");
     expect(markdown).toContain("- Blockiert: 1");
+    expect(markdown).toContain("## Nachweismatrix");
+    expect(markdown).not.toContain("Readiness-Score");
+    expect(markdown).not.toContain("Evidence-Matrix");
     expect(markdown).toContain("| DEMO-42 | Blockiert | 45% | 1 | 3 |");
     expect(markdown).toContain("· Blockiert ·");
     expect(markdown).toContain("· Unvollständig ·");
