@@ -187,7 +187,7 @@ export function App() {
                 aria-current={dashboardActive ? "page" : undefined}
                 onClick={() => navigate("dashboard")}
               >
-                Dashboard
+                Übersicht
               </button>
             ) : null}
             <button
