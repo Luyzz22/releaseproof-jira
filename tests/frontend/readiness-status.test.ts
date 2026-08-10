@@ -12,7 +12,7 @@ const statusCases: ReadonlyArray<readonly [ReadinessStatus, string, string]> = [
   ["NOT_APPLICABLE", "Nicht anwendbar", "status--not_applicable"],
 ];
 
-describe("Readiness-Status-Anzeige", () => {
+describe("Bereitschaftsstatus-Anzeige", () => {
   it.each(statusCases)("übersetzt %s zentral mit %s", (status, label) => {
     expect(readinessStatusLabel(status)).toBe(label);
   });
@@ -25,7 +25,8 @@ describe("Readiness-Status-Anzeige", () => {
       );
 
       expect(markup).toContain(`class="status ${cssClass}"`);
-      expect(markup).toContain(`aria-label="Readiness-Status: ${label}"`);
+      expect(markup).toContain(`aria-label="Bereitschaftsstatus: ${label}"`);
+      expect(markup).not.toContain("Readiness-Status");
       expect(markup).toContain(`>${label}</span>`);
     },
   );
