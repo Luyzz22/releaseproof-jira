@@ -61,14 +61,20 @@ describe("sichere Frontend-Grenzen", () => {
     expect(markdown).toContain("- Bereit: 0");
     expect(markdown).toContain("- Unvollständig: 0");
     expect(markdown).toContain("- Blockiert: 1");
+    expect(markdown).toContain("- Umfangsmodus: Expliziter JQL-Umfang");
     expect(markdown).toContain("## Nachweismatrix");
+    expect(markdown).toContain(
+      "| Vorgang | Status | Bewertung | Blockierungen | Fehlende Nachweise |",
+    );
     expect(markdown).not.toContain("Readiness-Score");
     expect(markdown).not.toContain("Evidence-Matrix");
+    expect(markdown).not.toContain("Scope-Modus");
+    expect(markdown).not.toContain("| Score |");
     expect(markdown).toContain("| DEMO-42 | Blockiert | 45% | 1 | 3 |");
     expect(markdown).toContain("· Blockiert ·");
     expect(markdown).toContain("· Unvollständig ·");
     expectNoRawReadinessStatusAtStatusPositions(markdown);
-    expect(markdown).toContain("Expliziter JQL-Scope");
+    expect(markdown).toContain("Expliziter JQL-Umfang");
     expect(markdown).toContain("Korrekte Release-Version");
     expect(markdown).toContain("keine Jira-Version");
     for (const finding of findings) {
