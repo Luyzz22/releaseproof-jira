@@ -83,7 +83,10 @@ export function ReportView({
           </span>
         </div>
       </header>
-      <Panel className="report-sheet" aria-label="Bericht zur Release-Bereitschaft">
+      <Panel
+        className="report-sheet"
+        aria-label="Bericht zur Release-Bereitschaft"
+      >
         <div className="report-title">
           <div>
             <p className="eyebrow">Bericht zur Release-Bereitschaft</p>
