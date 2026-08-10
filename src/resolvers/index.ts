@@ -2,7 +2,8 @@ import { makeResolver } from "@forge/resolver";
 import { analyzeRelease } from "../application/analyze-release/analyze-release";
 import { loadProjectData } from "../application/load-project-data/load-project-data";
 import { saveProjectConfig } from "../application/save-project-config/save-project-config";
-import { ForgeJiraGateway } from "../infrastructure/jira/forge-jira-gateway";
+import { systemClock } from "../application/ports";
+import { ForgeJiraClient } from "../infrastructure/jira/forge-jira-client";
 import { ForgeProjectConfigRepository } from "../infrastructure/storage/forge-project-config-repository";
 import { AppError, toSafeError } from "../shared/errors";
 import type {
@@ -14,7 +15,6 @@ import {
   projectContextSchema,
   versionInputSchema,
 } from "../shared/validation";
-import { systemClock } from "../application/ports";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -53,7 +53,7 @@ async function safely<T>(operation: () => Promise<T>): Promise<ApiResult<T>> {
   }
 }
 
-const jira = new ForgeJiraGateway();
+const jira = new ForgeJiraClient();
 const repository = new ForgeProjectConfigRepository();
 
 export const handler = makeResolver<ResolverDefinitions>({
