@@ -229,6 +229,15 @@ function mapLinkedIssue(value: unknown): LinkedIssueRef | null {
     : null;
 }
 
+function requireMappedLinkedIssue(value: unknown): LinkedIssueRef {
+  const link = mapLinkedIssue(value);
+  if (link) return link;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    "Issue search returned an unexpected issue link.",
+  );
+}
+
 function mapIssue(
   value: unknown,
   acceptanceCriteriaFieldId: string,
@@ -275,10 +284,9 @@ function mapIssue(
           ]
         : [];
     }),
-    linkedIssues: arrayValue(fields.issuelinks).flatMap((link) => {
-      const mapped = mapLinkedIssue(link);
-      return mapped ? [mapped] : [];
-    }),
+    linkedIssues: requireArray(fields.issuelinks, "Issue search").map(
+      requireMappedLinkedIssue,
+    ),
     resolution: mapResolution(fields.resolution),
     updatedAt: stringValue(fields.updated) ?? new Date(0).toISOString(),
   };
