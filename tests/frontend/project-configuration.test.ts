@@ -136,4 +136,21 @@ describe("Projektkonfiguration – Akzeptanzkriterien-Felder", () => {
       '<select><option value="" selected="">Feld auswählen</option>',
     );
   });
+
+  it("verwendet für die Konfiguration deutsche Benutzersprache", () => {
+    const markup = renderConfiguration(
+      [supportedDescriptionField],
+      config({ acceptanceCriteriaFieldId: "description" }),
+    );
+
+    expect(markup).toContain("Bereitschaftskriterien");
+    expect(markup).toContain("Arbeitsablauf und Umfang");
+    expect(markup).toContain("Release-Umfang");
+    expect(markup).toContain("Expliziter JQL-Umfang");
+    expect(markup).toContain("Relevante Vorgangstypen");
+    expect(markup).toContain("Ungelöste Unteraufgaben");
+    expect(markup).not.toContain("Readiness-Kriterien");
+    expect(markup).not.toContain("Workflow und Scope");
+    expect(markup).not.toContain("Subtasks");
+  });
 });
