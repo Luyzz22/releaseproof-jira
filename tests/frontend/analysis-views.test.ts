@@ -24,7 +24,7 @@ function publicResult() {
 }
 
 describe("Analyseansichten mit öffentlichem DTO", () => {
-  it("rendert im Dashboard Key, Summary, Typ, Status, Score und deutsche Überschriften", () => {
+  it("rendert im Dashboard Key, Summary, Typ, Status, Bewertung und deutsche Überschriften", () => {
     const markup = renderToStaticMarkup(
       createElement(ReleaseDashboard, {
         data: bootstrapData,
@@ -40,12 +40,16 @@ describe("Analyseansichten mit öffentlichem DTO", () => {
     expect(markup).toContain("Story");
     expect(markup).toContain("Bereit");
     expect(markup).toContain("100%");
-    expect(markup).toContain("Expliziter JQL-Scope");
+    expect(markup).toContain("Expliziter JQL-Umfang");
     expect(markup).toContain("Release-Bereitschaft");
     expect(markup).toContain("Bereitschaftswert");
     expect(markup).toContain("Nachweismatrix");
+    expect(markup).toContain("Bewertung");
+    expect(markup).toContain("Umfang:");
     expect(markup).not.toContain("Release Readiness");
     expect(markup).not.toContain("Evidence-Matrix");
+    expect(markup).not.toContain(">Score<");
+    expect(markup).not.toContain("Scope:");
   });
 
   it("rendert in den Nachweisdetails öffentliche Issue-Metadaten und Nachweise", () => {
@@ -68,9 +72,13 @@ describe("Analyseansichten mit öffentlichem DTO", () => {
       formatDateTime(result.release.issues[0]?.updatedAt ?? ""),
     );
     expect(markup).toContain("Akzeptanzkriterien vorhanden");
+    expect(markup).toContain("Prüfregel");
+    expect(markup).toContain("Zurück zur Übersicht");
+    expect(markup).not.toContain("Zurück zum Dashboard");
+    expect(markup).not.toContain("Scope:");
   });
 
-  it("stellt VERSION_ONLY weiterhin ohne JQL-Scope dar", () => {
+  it("stellt VERSION_ONLY weiterhin ohne JQL-Umfang dar", () => {
     const candidate = {
       ...release(),
       releaseScopeMode: "VERSION_ONLY" as const,
