@@ -34,7 +34,7 @@ export function ReleaseSelection({
         <p className="eyebrow">Neue Analyse</p>
         <h1>Ist das Release bereit für die Kundenabnahme?</h1>
         <p className="lead">
-          ReleaseProof prüft Dokumentation, Abschlussstatus, Subtasks,
+          ReleaseProof prüft Dokumentation, Abschlussstatus, Unteraufgaben,
           Abhängigkeiten, Labels und Freigaben – ohne Jira-Inhalte zu speichern.
         </p>
         <form onSubmit={(event) => void submit(event)} className="form-stack">
@@ -51,11 +51,11 @@ export function ReleaseSelection({
               }`}
             >
               <strong>
-                Scope: {releaseScopeModeLabel(data.config.releaseScopeMode)}
+                Umfang: {releaseScopeModeLabel(data.config.releaseScopeMode)}
               </strong>
               <p>
                 {data.config.releaseScopeMode === "VERSION_ONLY"
-                  ? "Fehlende Versionszuordnungen können mit diesem Scope nicht erkannt werden."
+                  ? "Fehlende Versionszuordnungen können mit diesem Umfang nicht erkannt werden."
                   : data.config.releaseScopeJql}
               </p>
             </div>
@@ -94,7 +94,7 @@ export function ReleaseSelection({
             type="submit"
             disabled={analyzing || data.versions.length === 0}
           >
-            {analyzing ? "Release wird analysiert …" : "Readiness analysieren"}
+            {analyzing ? "Release wird analysiert …" : "Bereitschaft analysieren"}
           </button>
         </form>
         <button type="button" className="text-button" onClick={onConfigure}>
