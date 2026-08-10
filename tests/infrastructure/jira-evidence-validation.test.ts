@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  collectIssueSearchPages,
-} from "../../src/infrastructure/jira/forge-jira-gateway";
+import { collectIssueSearchPages } from "../../src/infrastructure/jira/forge-jira-gateway";
 
 const input = {
   jql: "project = DEMO",
@@ -126,10 +124,7 @@ describe("fail-closed Jira-Evidence", () => {
       labels: ["release-blocker", "client-approved"],
     });
 
-    expect(issues[0]?.labels).toEqual([
-      "release-blocker",
-      "client-approved",
-    ]);
+    expect(issues[0]?.labels).toEqual(["release-blocker", "client-approved"]);
   });
 
   it.each([
