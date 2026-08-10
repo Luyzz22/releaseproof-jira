@@ -42,7 +42,6 @@ export interface JiraGateway {
   getProject(projectIdOrKey: string): Promise<JiraProject>;
   getProjectMetadata(projectIdOrKey: string): Promise<ProjectMetadata>;
   listFields(projectId: string): Promise<JiraField[]>;
-  validateJql(jql: string): Promise<boolean>;
   listVersions(projectIdOrKey: string): Promise<JiraVersion[]>;
   getVersion(versionId: string): Promise<JiraVersion>;
   listIssuesForVersion(input: {
@@ -55,6 +54,10 @@ export interface JiraGateway {
     releaseScopeJql: string;
     acceptanceCriteriaFieldId: string;
   }): Promise<ReleaseIssue[]>;
+}
+
+export interface JiraJqlValidator {
+  validateJql(jql: string): Promise<boolean>;
 }
 
 export interface ProjectConfigRepository {
