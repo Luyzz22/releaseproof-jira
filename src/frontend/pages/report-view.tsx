@@ -83,10 +83,10 @@ export function ReportView({
           </span>
         </div>
       </header>
-      <Panel className="report-sheet" aria-label="Release-Readiness-Bericht">
+      <Panel className="report-sheet" aria-label="Bericht zur Release-Bereitschaft">
         <div className="report-title">
           <div>
-            <p className="eyebrow">Release Readiness Report</p>
+            <p className="eyebrow">Bericht zur Release-Bereitschaft</p>
             <h2 className="report-release-name">
               {result.release.versionName}
             </h2>
@@ -103,7 +103,7 @@ export function ReportView({
           <div className="report-score">
             <StatusBadge status={result.status} />
             <strong>{result.score}%</strong>
-            <span>Readiness</span>
+            <span>Bereitschaft</span>
           </div>
         </div>
         <div className="report-summary">
@@ -124,11 +124,11 @@ export function ReportView({
             <strong>{result.blockedIssues}</strong>
           </div>
         </div>
-        <h2>Evidence-Matrix</h2>
+        <h2>Nachweismatrix</h2>
         <div className="table-wrap">
           <table>
             <caption className="visually-hidden">
-              Zusammenfassung der Readiness je Jira-Vorgang
+              Zusammenfassung der Release-Bereitschaft je Jira-Vorgang
             </caption>
             <thead>
               <tr>
