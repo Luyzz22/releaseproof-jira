@@ -6,12 +6,17 @@ import {
   hasOnlyKnownReleaseScopeJqlFields,
   validateReleaseScopeJql,
 } from "../../shared/validation";
-import type { Clock, JiraGateway, ProjectConfigRepository } from "../ports";
+import type {
+  Clock,
+  JiraGateway,
+  JiraJqlValidator,
+  ProjectConfigRepository,
+} from "../ports";
 import { hasValidProjectConfigMetadataIds } from "../project-config-metadata";
 import { toReleaseReadinessDto } from "./to-release-readiness-dto";
 
 export async function analyzeRelease(
-  jira: JiraGateway,
+  jira: JiraGateway & JiraJqlValidator,
   repository: ProjectConfigRepository,
   clock: Clock,
   input: { projectId: string; projectKey: string; versionId: string },
