@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type {
   JiraField,
   JiraGateway,
+  JiraJqlValidator,
   ProjectConfigRepository,
+  ProjectMetadata,
 } from "../../src/application/ports";
 import { saveProjectConfig } from "../../src/application/save-project-config/save-project-config";
 import type { ProjectConfig } from "../../src/domain/models/readiness";
@@ -34,14 +36,43 @@ class ControlledProjectConfigRepository implements ProjectConfigRepository {
   }
 }
 
-class ControlledJiraFieldGateway implements Pick<JiraGateway, "listFields"> {
-  readonly calls: string[] = [];
+const validMetadata: ProjectMetadata = {
+  statuses: [{ id: "31", name: "Fertig" }],
+  issueTypes: [
+    { id: "10001", name: "Story", subtask: false },
+    { id: "10002", name: "Task", subtask: false },
+    { id: "10003", name: "Unteraufgabe", subtask: true },
+  ],
+};
 
-  constructor(private readonly fields: JiraField[]) {}
+class ControlledJiraConfigGateway
+  implements
+    Pick<JiraGateway, "listFields" | "getProjectMetadata">,
+    JiraJqlValidator
+{
+  readonly calls: string[] = [];
+  readonly metadataCalls: string[] = [];
+  readonly jqlCalls: string[] = [];
+
+  constructor(
+    private readonly fields: JiraField[],
+    private readonly metadata: ProjectMetadata = validMetadata,
+    private readonly jqlValid = true,
+  ) {}
 
   listFields(projectId: string): Promise<JiraField[]> {
     this.calls.push(projectId);
     return Promise.resolve(structuredClone(this.fields));
+  }
+
+  getProjectMetadata(projectId: string): Promise<ProjectMetadata> {
+    this.metadataCalls.push(projectId);
+    return Promise.resolve(structuredClone(this.metadata));
+  }
+
+  validateJql(jql: string): Promise<boolean> {
+    this.jqlCalls.push(jql);
+    return Promise.resolve(this.jqlValid);
   }
 }
 
@@ -162,8 +193,10 @@ const rejectedFieldCases: ReadonlyArray<
 
 function jiraFields(
   fields: readonly JiraField[] = [supportedCustomStringField],
+  metadata: ProjectMetadata = validMetadata,
+  jqlValid = true,
 ) {
-  return new ControlledJiraFieldGateway([...fields]);
+  return new ControlledJiraConfigGateway([...fields], metadata, jqlValid);
 }
 
 describe("In-Memory ProjectConfig Repository", () => {
@@ -212,6 +245,7 @@ describe("In-Memory ProjectConfig Repository", () => {
     );
 
     expect(jira.calls).toEqual([projectConfig.projectId]);
+    expect(jira.metadataCalls).toEqual([projectConfig.projectId]);
     expect(repository.reads).toEqual([projectConfig.projectId]);
     expect(saved).toMatchObject({
       acceptanceCriteriaFieldId: field.id,
@@ -238,9 +272,37 @@ describe("In-Memory ProjectConfig Repository", () => {
     );
 
     expect(jira.calls).toEqual([projectConfig.projectId]);
+    expect(jira.metadataCalls).toEqual([projectConfig.projectId]);
     expect(repository.reads).toEqual([projectConfig.projectId]);
     expect(saved).toMatchObject({ createdAt: now, updatedAt: now });
     expect(repository.saved).toEqual([saved]);
+  });
+
+  it.each([
+    ["unbekannte Status-ID", { acceptedStatusIds: ["99999"] }],
+    ["unbekannte Vorgangstyp-ID", { includedIssueTypes: ["99999"] }],
+    [
+      "gemischte gültige und unbekannte Vorgangstyp-IDs",
+      { includedIssueTypes: ["10001", "99999"] },
+    ],
+    ["Unteraufgaben-Typ als Hauptvorgang", { includedIssueTypes: ["10003"] }],
+  ])("lehnt %s vor jedem KVS-Zugriff ab", async (_case, overrides) => {
+    const existing = structuredClone(projectConfig);
+    const repository = new ControlledProjectConfigRepository(existing);
+    const jira = jiraFields();
+
+    await expect(
+      saveProjectConfig(
+        jira,
+        repository,
+        { now: () => "2026-08-10T14:00:00.000Z" },
+        { ...projectConfig, ...overrides },
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+
+    expect(repository.reads).toHaveLength(0);
+    expect(repository.saved).toHaveLength(0);
+    expect(jira.jqlCalls).toHaveLength(0);
   });
 
   it("lehnt ein unbekanntes JQL-Feld vor jedem KVS-Zugriff ab", async () => {
@@ -264,6 +326,30 @@ describe("In-Memory ProjectConfig Repository", () => {
     expect(repository.reads).toHaveLength(0);
     expect(repository.saved).toHaveLength(0);
     expect(repository.snapshot()).toEqual(existing);
+    expect(jira.jqlCalls).toHaveLength(0);
+  });
+
+  it("lehnt eine von Jira als ungültig bewertete Feld-Operator-Kombination vor KVS ab", async () => {
+    const repository = new ControlledProjectConfigRepository(projectConfig);
+    const jira = jiraFields(
+      [supportedCustomStringField, statusJqlField],
+      validMetadata,
+      false,
+    );
+    const releaseScopeJql = "project = DEMO AND status ~ Fertig";
+
+    await expect(
+      saveProjectConfig(
+        jira,
+        repository,
+        { now: () => "2026-08-10T14:00:00.000Z" },
+        { ...projectConfig, releaseScopeJql },
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+
+    expect(jira.jqlCalls).toEqual([releaseScopeJql]);
+    expect(repository.reads).toHaveLength(0);
+    expect(repository.saved).toHaveLength(0);
   });
 
   it.each([
@@ -287,6 +373,7 @@ describe("In-Memory ProjectConfig Repository", () => {
         { ...projectConfig, releaseScopeJql },
       );
 
+      expect(jira.jqlCalls).toEqual([releaseScopeJql]);
       expect(saved.releaseScopeJql).toBe(releaseScopeJql);
       expect(repository.saved).toEqual([saved]);
     },
