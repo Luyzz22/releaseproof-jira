@@ -16,7 +16,10 @@ describe("Release-Scope-JQL-Validierung", () => {
     "project = SCRUM AND key in (SCRUM-1, SCRUM-2, SCRUM-3)",
     "project = SCRUM AND key is not EMPTY",
     "project = SCRUM AND labels not in (skip-release, archived)",
+    "project = SCRUM AND labels = release_2026",
+    "project = SCRUM AND customfield_10042 = value-1",
     'project = SCRUM AND summary ~ "release ready"',
+    'project = SCRUM AND summary ~ "foo;bar / release@ready"',
   ])("akzeptiert die unterstützte Syntax: %s", (jql) => {
     expect(validateReleaseScopeJql(jql, "SCRUM")).toEqual({ valid: true });
   });
@@ -41,6 +44,31 @@ describe("Release-Scope-JQL-Validierung", () => {
       valid: false,
       code: "SYNTAX_INVALID",
     });
+  });
+
+  it.each([
+    "project = SCRUM AND status = foo;bar",
+    "project = SCRUM AND status = foo:bar",
+    "project = SCRUM AND status = foo/bar",
+    "project = SCRUM AND status = foo?bar",
+    "project = SCRUM AND status = foo#bar",
+    "project = SCRUM AND status = foo.bar",
+    "project = SCRUM AND status = foo@bar",
+    "project = SCRUM AND status = foo&bar",
+  ])("weist reservierte Sonderzeichen in Bare Values zurück: %s", (jql) => {
+    expect(validateReleaseScopeJql(jql, "SCRUM")).toMatchObject({
+      valid: false,
+      code: "SYNTAX_INVALID",
+    });
+  });
+
+  it("akzeptiert Sonderzeichen weiterhin in gequoteten Values", () => {
+    expect(
+      validateReleaseScopeJql(
+        'project = SCRUM AND status = "foo;bar/baz@example.com"',
+        "SCRUM",
+      ),
+    ).toEqual({ valid: true });
   });
 
   it.each([
@@ -98,10 +126,31 @@ describe("Release-Scope-JQL-Validierung", () => {
     }
   });
 
+  it("lehnt reservierte Bare-Value-Zeichen im gemeinsamen Eingabeschema ab", () => {
+    const invalid = {
+      ...projectConfig,
+      releaseScopeMode: "JQL_SCOPE" as const,
+      releaseScopeJql: "project = DEMO AND status = foo;bar",
+    };
+    const parsed = projectConfigInputSchema.safeParse(invalid);
+    const validation = validateReleaseScopeJql(invalid.releaseScopeJql, "DEMO");
+    expect(parsed.success).toBe(false);
+    expect(validation).toMatchObject({ valid: false, code: "SYNTAX_INVALID" });
+  });
+
   it("lehnt syntaktisch ungültiges JQL vor KVS-Schreibvorgang und Normalisierung ab", () => {
     const invalid = {
       ...projectConfig,
       releaseScopeJql: "project = DEMO AND",
+    };
+    expect(projectConfigSchema.safeParse(invalid).success).toBe(false);
+    expect(normalizeStoredProjectConfig(invalid)).toBeNull();
+  });
+
+  it("lehnt unsichere Bare Values auch bei gespeicherter Konfiguration ab", () => {
+    const invalid = {
+      ...projectConfig,
+      releaseScopeJql: "project = DEMO AND status = foo;bar",
     };
     expect(projectConfigSchema.safeParse(invalid).success).toBe(false);
     expect(normalizeStoredProjectConfig(invalid)).toBeNull();
