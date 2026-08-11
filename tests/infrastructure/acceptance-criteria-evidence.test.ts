@@ -59,6 +59,74 @@ describe("Akzeptanzkriterien-Evidence", () => {
       "ADF mit nicht-arrayförmigem content",
       { type: "doc", version: 1, content: {} },
     ],
+    [
+      "Inline-Text direkt unter doc",
+      {
+        type: "doc",
+        version: 1,
+        content: [{ type: "text", text: "Kriterium" }],
+      },
+    ],
+    [
+      "Liste mit Absatz statt listItem",
+      {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "bulletList",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Kriterium" }],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    [
+      "Tabelle mit tableCell direkt unter table",
+      {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "table",
+            content: [
+              {
+                type: "tableCell",
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [{ type: "text", text: "Kriterium" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    [
+      "Textknoten mit unzulässigem attrs",
+      {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Kriterium",
+                attrs: { unexpected: true },
+              },
+            ],
+          },
+        ],
+      },
+    ],
   ] satisfies ReadonlyArray<readonly [string, unknown]>)(
     "weist description mit %s fail-closed zurück",
     async (_case, value) => {
@@ -79,6 +147,87 @@ describe("Akzeptanzkriterien-Evidence", () => {
           {
             type: "paragraph",
             content: [{ type: "text", text: "Kriterium" }],
+          },
+        ],
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it("akzeptiert gültigen hervorgehobenen ADF-Text", async () => {
+    await expect(
+      mapDescriptionAcceptanceCriteria({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Kriterium",
+                marks: [
+                  {
+                    type: "backgroundColor",
+                    attrs: { color: "#fedec8" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it("akzeptiert eine gültige ADF-Liste", async () => {
+    await expect(
+      mapDescriptionAcceptanceCriteria({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "bulletList",
+            content: [
+              {
+                type: "listItem",
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [{ type: "text", text: "Kriterium" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it("akzeptiert eine gültige ADF-Tabelle", async () => {
+    await expect(
+      mapDescriptionAcceptanceCriteria({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "table",
+            content: [
+              {
+                type: "tableRow",
+                content: [
+                  {
+                    type: "tableCell",
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [{ type: "text", text: "Kriterium" }],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
           },
         ],
       }),

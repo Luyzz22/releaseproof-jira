@@ -88,7 +88,24 @@ describe("Jira-JQL-Validierungsantwort", () => {
     ).toBe(false);
   });
 
-  it("akzeptiert dokumentierte Warnungsantworten ohne Parse-Struktur", () => {
+  it("weist Warnungsantworten ohne Parse-Struktur fail-closed zurück", () => {
+    const jql = "project = DEMO AND labels = future-label";
+    expect(() =>
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              warnings: ["The value does not currently exist."],
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
+  it("akzeptiert Warnungsantworten mit nachgewiesener Parse-Struktur", () => {
     const jql = "project = DEMO AND labels = future-label";
     expect(
       parsedJqlIsValid(
@@ -97,6 +114,7 @@ describe("Jira-JQL-Validierungsantwort", () => {
             {
               query: jql,
               warnings: ["The value does not currently exist."],
+              structure: { where: { operator: "and" } },
             },
           ],
         },

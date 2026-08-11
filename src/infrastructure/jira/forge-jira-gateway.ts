@@ -15,7 +15,7 @@ import type {
 } from "../../domain/models/readiness";
 import { AppError } from "../../shared/errors";
 import { validateReleaseScopeJql } from "../../shared/validation";
-import { jiraValueToText } from "./adf-to-text";
+import { isStructurallyValidAdfDocument, jiraValueToText } from "./adf-to-text";
 
 const PAGE_SIZE = 100;
 const MAX_PAGES = 100;
@@ -419,12 +419,7 @@ function hasAcceptanceCriteriaEvidence(
     return jiraValueToText(value) !== null;
   }
   if (value === null) return false;
-  if (
-    !isRecord(value) ||
-    value.type !== "doc" ||
-    value.version !== 1 ||
-    !Array.isArray(value.content)
-  ) {
+  if (!isStructurallyValidAdfDocument(value)) {
     throw new AppError(
       "JIRA_UNAVAILABLE",
       "Issue search description returned an unexpected response.",

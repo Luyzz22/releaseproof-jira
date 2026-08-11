@@ -76,21 +76,9 @@ export function parsedJqlIsValid(
       ? []
       : requireNonEmptyStrings(query.warnings, "JQL validation warnings");
 
-  if (warnings.length === 0) {
-    const structure = requireRecord(
-      query.structure,
-      "JQL validation structure",
-    );
-    requireRecord(structure.where, "JQL validation where structure");
-  } else if (query.structure !== undefined) {
-    const structure = requireRecord(
-      query.structure,
-      "JQL validation structure",
-    );
-    if (structure.where !== undefined) {
-      requireRecord(structure.where, "JQL validation where structure");
-    }
-  }
+  void warnings;
+  const structure = requireRecord(query.structure, "JQL validation structure");
+  requireRecord(structure.where, "JQL validation where structure");
 
   return true;
 }
