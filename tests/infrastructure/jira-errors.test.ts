@@ -133,6 +133,16 @@ const malformedIssueCases: ReadonlyArray<readonly [string, unknown]> = [
       },
     },
   ],
+  [
+    "Vorgang mit nichtnumerischer Issue-Typ-ID",
+    {
+      ...jiraIssue(2),
+      fields: {
+        ...jiraIssue(2).fields,
+        issuetype: { id: "Story", name: "Story" },
+      },
+    },
+  ],
 ];
 
 describe("Jira-Issue-Pagination", () => {
@@ -569,6 +579,18 @@ describe("Jira-Issue-Pagination", () => {
         () => Promise.resolve(pageData),
       ),
     ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("behält eine numerische Issue-Typ-ID unverändert", async () => {
+    const issues = await collectIssueSearchPages(
+      {
+        jql: "project = DEMO",
+        acceptanceCriteriaFieldId: "customfield_10042",
+      },
+      () => Promise.resolve({ issues: [jiraIssue(1)] }),
+    );
+
+    expect(issues[0]?.issueType).toEqual({ id: "10001", name: "Story" });
   });
 
   it.each(malformedIssueCases)(

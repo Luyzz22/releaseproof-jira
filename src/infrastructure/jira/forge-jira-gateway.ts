@@ -411,6 +411,28 @@ function requireMappedFixVersion(
   return { id, name };
 }
 
+function hasAcceptanceCriteriaEvidence(
+  value: unknown,
+  fieldId: string,
+): boolean {
+  if (fieldId !== "description") {
+    return jiraValueToText(value) !== null;
+  }
+  if (value === null) return false;
+  if (
+    !isRecord(value) ||
+    value.type !== "doc" ||
+    value.version !== 1 ||
+    !Array.isArray(value.content)
+  ) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Issue search description returned an unexpected response.",
+    );
+  }
+  return jiraValueToText(value) !== null;
+}
+
 function mapIssue(
   value: unknown,
   acceptanceCriteriaFieldId: string,
@@ -422,7 +444,15 @@ function mapIssue(
   const issueType = isRecord(fields.issuetype) ? fields.issuetype : {};
   const issueTypeId = stringValue(issueType.id);
   const issueTypeName = stringValue(issueType.name);
-  if (!id || !key || !issueTypeId || !issueTypeName) return null;
+  if (
+    !id ||
+    !key ||
+    !issueTypeId ||
+    !/^\d+$/.test(issueTypeId) ||
+    !issueTypeName
+  ) {
+    return null;
+  }
 
   return {
     id,
@@ -430,8 +460,10 @@ function mapIssue(
     summary: stringValue(fields.summary) ?? "(Ohne Zusammenfassung)",
     issueType: { id: issueTypeId, name: issueTypeName },
     status: mapStatus(fields.status),
-    hasAcceptanceCriteria:
-      jiraValueToText(fields[acceptanceCriteriaFieldId]) !== null,
+    hasAcceptanceCriteria: hasAcceptanceCriteriaEvidence(
+      fields[acceptanceCriteriaFieldId],
+      acceptanceCriteriaFieldId,
+    ),
     labels: requireStringArray(fields.labels, "Issue search labels"),
     fixVersions: requireArray(
       fields.fixVersions,

@@ -31,7 +31,72 @@ async function mapAcceptanceCriteria(value: unknown) {
   return issues[0]?.hasAcceptanceCriteria;
 }
 
+async function mapDescriptionAcceptanceCriteria(value: unknown) {
+  const baseIssue = issueWithAcceptanceCriteria(null);
+  const issues = await collectIssueSearchPages(
+    {
+      jql: "project = DEMO",
+      acceptanceCriteriaFieldId: "description",
+    },
+    () =>
+      Promise.resolve({
+        issues: [
+          {
+            ...baseIssue,
+            fields: { ...baseIssue.fields, description: value },
+          },
+        ],
+      }),
+  );
+  return issues[0]?.hasAcceptanceCriteria;
+}
+
 describe("Akzeptanzkriterien-Evidence", () => {
+  it.each([
+    ["direktem String", "Kriterium"],
+    ["ADF ohne version", { type: "doc", content: [] }],
+    [
+      "ADF mit nicht-arrayförmigem content",
+      { type: "doc", version: 1, content: {} },
+    ],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "weist description mit %s fail-closed zurück",
+    async (_case, value) => {
+      await expect(
+        mapDescriptionAcceptanceCriteria(value),
+      ).rejects.toMatchObject({
+        code: "JIRA_UNAVAILABLE",
+      });
+    },
+  );
+
+  it("akzeptiert sichtbaren Text in einer gültigen ADF-description", async () => {
+    await expect(
+      mapDescriptionAcceptanceCriteria({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Kriterium" }],
+          },
+        ],
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it.each([
+    ["null", null],
+    ["leerem ADF", { type: "doc", version: 1, content: [] }],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "wertet description mit %s als nicht vorhandenen Nachweis",
+    async (_case, value) => {
+      await expect(mapDescriptionAcceptanceCriteria(value)).resolves.toBe(
+        false,
+      );
+    },
+  );
+
   it.each([
     ["direkter Zero-Width-String", "\u200B"],
     [
