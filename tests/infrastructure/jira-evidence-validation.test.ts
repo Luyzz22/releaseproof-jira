@@ -191,6 +191,17 @@ describe("fail-closed Jira-Evidence", () => {
       },
     ],
     [
+      "Subtask mit nichtnumerischer Resolution-ID",
+      {
+        id: "30001",
+        key: "DEMO-2",
+        fields: {
+          status: { id: "31", name: "Fertig" },
+          resolution: { id: "keine-jira-id", name: "Erledigt" },
+        },
+      },
+    ],
+    [
       "Subtask mit Whitespace-only Resolution-Name",
       {
         id: "30001",
@@ -281,6 +292,7 @@ describe("fail-closed Jira-Evidence", () => {
 
   it.each([
     ["Whitespace-only Resolution-ID", "   ", "Erledigt"],
+    ["nichtnumerischer Resolution-ID", "keine-jira-id", "Erledigt"],
     ["Whitespace-only Resolution-Name", "1", "   "],
   ])("bricht bei Link mit %s ab", async (_case, id, name) => {
     const link = inwardBlockingLink();

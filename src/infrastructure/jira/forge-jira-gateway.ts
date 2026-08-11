@@ -290,7 +290,7 @@ function mapResolution(value: unknown): { id: string; name: string } | null {
   if (!isRecord(value)) return null;
   const id = stringValue(value.id);
   const name = stringValue(value.name);
-  return id && name ? { id, name } : null;
+  return id && /^\d+$/.test(id) && name ? { id, name } : null;
 }
 
 function requireNullableResolution(
