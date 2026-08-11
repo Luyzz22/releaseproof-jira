@@ -18,6 +18,7 @@
 - Jira REST v3 liefert `description` und mehrzeilige Custom Fields als Atlassian Document Format (ADF).
 - Die aktuelle Enhanced Search API ist `POST /rest/api/3/search/jql` und paginiert mit `nextPageToken`.
 - Projektversionen haben einen paginierten Endpunkt mit singularer Route `/project/{projectIdOrKey}/version`; `/versions` ist die nicht paginierte Alternative.
+- Projektstammdaten werden zusätzlich über `GET /rest/api/3/project/{projectIdOrKey}` geladen; der Aufruf läuft wie die übrigen Jira-Lesezugriffe mit `asUser` und dem Classic Scope `read:jira-work`.
 - Projektstatus werden nach Issue-Typ gruppiert geliefert. Diese Antwort kann Status und relevante Issue-Typen ohne zusätzlichen Admin-Scope bereitstellen.
 - Atlassian empfiehlt für alle verwendeten Read-Endpunkte den Classic Scope `read:jira-work`; zusätzlich benötigt KVS `storage:app`.
 

@@ -66,10 +66,6 @@ function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
-function booleanValue(value: unknown): boolean {
-  return value === true;
-}
-
 function arrayValue(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
@@ -132,18 +128,66 @@ export async function parseResponse(
   );
 }
 
-function pageValues(value: unknown): unknown[] {
-  return isRecord(value) ? arrayValue(value.values) : [];
+function pageValues(value: unknown, resource: string): unknown[] {
+  const page = requireRecord(value, resource);
+  return requireArray(page.values, `${resource} values`);
 }
 
-function isLastPage(value: unknown, currentCount: number): boolean {
-  if (!isRecord(value)) return true;
-  if (typeof value.isLast === "boolean") return value.isLast;
-  const total = typeof value.total === "number" ? value.total : currentCount;
-  const startAt = typeof value.startAt === "number" ? value.startAt : 0;
+function requirePageInteger(
+  value: unknown,
+  resource: string,
+  field: string,
+  positive = false,
+): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    (positive && value === 0)
+  ) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      `${resource} returned invalid ${field} pagination metadata.`,
+    );
+  }
+  return value;
+}
+
+export function isLastPage(value: unknown, resource: string): boolean {
+  const page = requireRecord(value, resource);
+
+  if (page.isLast !== undefined && typeof page.isLast !== "boolean") {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      `${resource} returned invalid isLast pagination metadata.`,
+    );
+  }
+
+  const startAt =
+    page.startAt === undefined
+      ? null
+      : requirePageInteger(page.startAt, resource, "startAt");
   const maxResults =
-    typeof value.maxResults === "number" ? value.maxResults : PAGE_SIZE;
-  return startAt + maxResults >= total;
+    page.maxResults === undefined
+      ? null
+      : requirePageInteger(page.maxResults, resource, "maxResults", true);
+  const total =
+    page.total === undefined
+      ? null
+      : requirePageInteger(page.total, resource, "total");
+
+  if (typeof page.isLast === "boolean") {
+    return page.isLast;
+  }
+
+  if (startAt !== null && maxResults !== null && total !== null) {
+    return startAt + maxResults >= total;
+  }
+
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `${resource} returned incomplete pagination metadata.`,
+  );
 }
 
 function mapProject(value: unknown): JiraProject | null {
@@ -154,6 +198,15 @@ function mapProject(value: unknown): JiraProject | null {
   return id && key && name ? { id, key, name } : null;
 }
 
+function requireMappedProject(value: unknown, resource: string): JiraProject {
+  const project = mapProject(value);
+  if (project) return project;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `${resource} returned an unexpected response.`,
+  );
+}
+
 function mapVersion(value: unknown): JiraVersion | null {
   if (!isRecord(value)) return null;
   const id = stringValue(value.id);
@@ -161,15 +214,73 @@ function mapVersion(value: unknown): JiraVersion | null {
   const projectId =
     stringValue(value.projectId) ??
     (typeof value.projectId === "number" ? String(value.projectId) : null);
-  return id && name && projectId
-    ? {
-        id,
-        name,
-        projectId,
-        released: booleanValue(value.released),
-        archived: booleanValue(value.archived),
-      }
-    : null;
+  if (
+    !id ||
+    !name ||
+    !projectId ||
+    typeof value.released !== "boolean" ||
+    typeof value.archived !== "boolean"
+  ) {
+    return null;
+  }
+  return {
+    id,
+    name,
+    projectId,
+    released: value.released,
+    archived: value.archived,
+  };
+}
+
+function requireMappedVersion(value: unknown, resource: string): JiraVersion {
+  const version = mapVersion(value);
+  if (version) return version;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `${resource} returned an unexpected response.`,
+  );
+}
+
+export function mapProjectSearchPage(value: unknown): JiraProject[] {
+  return pageValues(value, "Project search").map((item) =>
+    requireMappedProject(item, "Project search project"),
+  );
+}
+
+export function mapFieldSearchPage(value: unknown): JiraField[] {
+  return pageValues(value, "Field search").map((item) => {
+    const field = requireRecord(item, "Field search field");
+    const id = stringValue(field.id);
+    const name = stringValue(field.name);
+    if (!id || !name) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Field search field returned an unexpected response.",
+      );
+    }
+
+    const schema = requireRecord(field.schema, "Field search field schema");
+    const schemaType = stringValue(schema.type);
+    if (!schemaType) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Field search field schema returned an unexpected response.",
+      );
+    }
+
+    return {
+      id,
+      name,
+      custom: /^customfield_\d+$/.test(id),
+      schemaType,
+    };
+  });
+}
+
+export function mapVersionSearchPage(value: unknown): JiraVersion[] {
+  return pageValues(value, "Version search").map((item) =>
+    requireMappedVersion(item, "Version search version"),
+  );
 }
 
 function mapStatus(value: unknown): StatusRef | null {
@@ -442,11 +553,8 @@ export class ForgeJiraGateway implements JiraGateway {
             route`/rest/api/3/project/search?startAt=${startAt}&maxResults=${PAGE_SIZE}`,
           ),
       );
-      requireRecord(data, "Project search");
-      projects.push(
-        ...pageValues(data).flatMap((item) => mapProject(item) ?? []),
-      );
-      if (isLastPage(data, projects.length)) {
+      projects.push(...mapProjectSearchPage(data));
+      if (isLastPage(data, "Project search")) {
         complete = true;
         break;
       }
@@ -461,10 +569,7 @@ export class ForgeJiraGateway implements JiraGateway {
         .asUser()
         .requestJira(route`/rest/api/3/project/${projectIdOrKey}`),
     );
-    const project = mapProject(data);
-    if (!project)
-      throw new AppError("JIRA_UNAVAILABLE", "Unexpected project response.");
-    return project;
+    return requireMappedProject(data, "Project");
   }
 
   async getProjectMetadata(projectIdOrKey: string): Promise<ProjectMetadata> {
@@ -488,22 +593,8 @@ export class ForgeJiraGateway implements JiraGateway {
             route`/rest/api/3/field/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&projectIds=${projectId}`,
           ),
       );
-      requireRecord(data, "Field search");
-      for (const item of pageValues(data)) {
-        if (!isRecord(item)) continue;
-        const id = stringValue(item.id);
-        const name = stringValue(item.name);
-        const schema = isRecord(item.schema) ? item.schema : {};
-        if (id && name) {
-          fields.push({
-            id,
-            name,
-            custom: booleanValue(item.custom),
-            schemaType: stringValue(schema.type),
-          });
-        }
-      }
-      if (isLastPage(data, fields.length)) {
+      fields.push(...mapFieldSearchPage(data));
+      if (isLastPage(data, "Field search")) {
         complete = true;
         break;
       }
@@ -524,11 +615,8 @@ export class ForgeJiraGateway implements JiraGateway {
             route`/rest/api/3/project/${projectIdOrKey}/version?startAt=${startAt}&maxResults=${PAGE_SIZE}&orderBy=-releaseDate`,
           ),
       );
-      requireRecord(data, "Version search");
-      versions.push(
-        ...pageValues(data).flatMap((item) => mapVersion(item) ?? []),
-      );
-      if (isLastPage(data, versions.length)) {
+      versions.push(...mapVersionSearchPage(data));
+      if (isLastPage(data, "Version search")) {
         complete = true;
         break;
       }
@@ -542,10 +630,7 @@ export class ForgeJiraGateway implements JiraGateway {
       await api.asUser().requestJira(route`/rest/api/3/version/${versionId}`),
       "VERSION_NOT_FOUND",
     );
-    const version = mapVersion(data);
-    if (!version)
-      throw new AppError("VERSION_NOT_FOUND", "Unexpected version response.");
-    return version;
+    return requireMappedVersion(data, "Version");
   }
 
   async listIssuesForVersion(input: {

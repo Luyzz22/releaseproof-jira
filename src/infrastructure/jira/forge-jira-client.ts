@@ -1,6 +1,7 @@
 import api, { route } from "@forge/api";
 import type { JiraJqlValidator } from "../../application/ports";
 import { AppError } from "../../shared/errors";
+import { releaseScopeJqlSemanticallyMatches } from "../../shared/validation";
 import { ForgeJiraGateway, parseResponse } from "./forge-jira-gateway";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -26,7 +27,20 @@ function requireArray(value: unknown, resource: string): unknown[] {
   );
 }
 
-export function parsedJqlIsValid(value: unknown): boolean {
+function requireNonEmptyStrings(value: unknown, resource: string): string[] {
+  return requireArray(value, resource).map((item) => {
+    if (typeof item === "string" && item.trim().length > 0) return item;
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      `${resource} returned an unexpected response.`,
+    );
+  });
+}
+
+export function parsedJqlIsValid(
+  value: unknown,
+  requestedJql: string,
+): boolean {
   const payload = requireRecord(value, "JQL validation");
   const queries = requireArray(payload.queries, "JQL validation");
   if (queries.length !== 1) {
@@ -40,27 +54,42 @@ export function parsedJqlIsValid(value: unknown): boolean {
   const errors =
     query.errors === undefined
       ? []
-      : requireArray(query.errors, "JQL validation");
-  for (const error of errors) {
-    if (typeof error !== "string" || error.trim().length === 0) {
-      throw new AppError(
-        "JIRA_UNAVAILABLE",
-        "JQL validation returned an unexpected response.",
-      );
-    }
-  }
+      : requireNonEmptyStrings(query.errors, "JQL validation errors");
   if (errors.length > 0) return false;
 
   const parsedQuery =
     typeof query.query === "string" && query.query.trim().length > 0
       ? query.query
       : null;
-  const structure = isRecord(query.structure) ? query.structure : null;
-  if (!parsedQuery || !structure) {
+  if (
+    !parsedQuery ||
+    !releaseScopeJqlSemanticallyMatches(requestedJql, parsedQuery)
+  ) {
     throw new AppError(
       "JIRA_UNAVAILABLE",
       "JQL validation returned an unexpected response.",
     );
+  }
+
+  const warnings =
+    query.warnings === undefined
+      ? []
+      : requireNonEmptyStrings(query.warnings, "JQL validation warnings");
+
+  if (warnings.length === 0) {
+    const structure = requireRecord(
+      query.structure,
+      "JQL validation structure",
+    );
+    requireRecord(structure.where, "JQL validation where structure");
+  } else if (query.structure !== undefined) {
+    const structure = requireRecord(
+      query.structure,
+      "JQL validation structure",
+    );
+    if (structure.where !== undefined) {
+      requireRecord(structure.where, "JQL validation where structure");
+    }
   }
 
   return true;
@@ -84,6 +113,6 @@ export class ForgeJiraClient
           body: JSON.stringify({ queries: [jql] }),
         }),
     );
-    return parsedJqlIsValid(data);
+    return parsedJqlIsValid(data, jql);
   }
 }

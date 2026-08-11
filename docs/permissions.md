@@ -7,7 +7,8 @@ Read-only Classic Scope, von Atlassian für die verwendeten Jira-REST-v3-Operati
 | Zweck                                    | Endpunkt                                            |
 | ---------------------------------------- | --------------------------------------------------- |
 | Sichtbare Projekte laden                 | `GET /rest/api/3/project/search`                    |
-| Projekt und Issue-Typen/Status laden     | `GET /rest/api/3/project/{projectIdOrKey}/statuses` |
+| Projektstammdaten laden                  | `GET /rest/api/3/project/{projectIdOrKey}`          |
+| Issue-Typen und Status laden             | `GET /rest/api/3/project/{projectIdOrKey}/statuses` |
 | Verfügbare Felder laden                  | `GET /rest/api/3/field/search`                      |
 | Projektversionen laden                   | `GET /rest/api/3/project/{projectIdOrKey}/version`  |
 | Version validieren                       | `GET /rest/api/3/version/{id}`                      |

@@ -314,6 +314,35 @@ export function hasOnlyKnownReleaseScopeJqlFields(
   );
 }
 
+function normalizedReleaseScopeJqlSemantics(value: string): string | null {
+  const tokenized = tokenizeJql(value);
+  if (!tokenized.ok) return null;
+
+  const parsed = parseConjunctiveJql(tokenized.tokens);
+  if (!parsed.ok) return null;
+
+  return JSON.stringify(
+    parsed.clauses.map((clause) => ({
+      field: normalizedJqlFieldReference(clause.field.value),
+      operator: clause.operator,
+      values: clause.values.map((valueToken) => valueToken.value),
+    })),
+  );
+}
+
+export function releaseScopeJqlSemanticallyMatches(
+  expected: string,
+  actual: string,
+): boolean {
+  const expectedSemantics = normalizedReleaseScopeJqlSemantics(expected);
+  const actualSemantics = normalizedReleaseScopeJqlSemantics(actual);
+  return (
+    expectedSemantics !== null &&
+    actualSemantics !== null &&
+    expectedSemantics === actualSemantics
+  );
+}
+
 export function validateReleaseScopeJql(
   value: string,
   expectedProjectKey: string,
