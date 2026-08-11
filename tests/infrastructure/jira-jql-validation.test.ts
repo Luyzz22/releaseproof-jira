@@ -5,7 +5,9 @@ describe("Jira-JQL-Validierungsantwort", () => {
   it("akzeptiert eine von Jira erfolgreich validierte Abfrage", () => {
     expect(
       parsedJqlIsValid({
-        queries: [{ query: "project = DEMO AND status = Fertig", structure: {} }],
+        queries: [
+          { query: "project = DEMO AND status = Fertig", structure: {} },
+        ],
       }),
     ).toBe(true);
   });
@@ -16,7 +18,9 @@ describe("Jira-JQL-Validierungsantwort", () => {
         queries: [
           {
             query: "project = DEMO AND status ~ Fertig",
-            errors: ["The operator '~' is not supported by the 'status' field."],
+            errors: [
+              "The operator '~' is not supported by the 'status' field.",
+            ],
           },
         ],
       }),

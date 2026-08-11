@@ -26,8 +26,8 @@ describe("Berichtsansicht", () => {
     expect(markup).toContain("<span>Bereit</span>");
     expect(markup).toContain("<span>Unvollständig</span>");
     expect(markup).toContain("<span>Blockiert</span>");
-    expect(markup).toContain("<th scope=\"col\">Bewertung</th>");
-    expect(markup).toContain("<th scope=\"col\">Blockierungen</th>");
+    expect(markup).toContain('<th scope="col">Bewertung</th>');
+    expect(markup).toContain('<th scope="col">Blockierungen</th>');
     expect(markup).toContain("Zurück zur Übersicht");
     expect(markup).toContain("Umfang:");
     expect(markup).not.toContain("Release Readiness Report");

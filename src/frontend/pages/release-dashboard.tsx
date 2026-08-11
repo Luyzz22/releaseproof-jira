@@ -79,8 +79,8 @@ export function ReleaseDashboard({
             <h2>Keine passenden Vorgänge gefunden</h2>
             <p>
               Der konfigurierte Umfang enthält keine Vorgänge der ausgewählten
-              Vorgangstypen. Bewertung und Status werden deshalb nicht als Aussage
-              zur Release-Bereitschaft interpretiert.
+              Vorgangstypen. Bewertung und Status werden deshalb nicht als
+              Aussage zur Release-Bereitschaft interpretiert.
             </p>
           </div>
         </Panel>

@@ -58,17 +58,16 @@ export class ForgeJiraClient
   async validateJql(jql: string): Promise<boolean> {
     const validation = "strict";
     const data = await parseResponse(
-      await api.asUser().requestJira(
-        route`/rest/api/3/jql/parse?validation=${validation}`,
-        {
+      await api
+        .asUser()
+        .requestJira(route`/rest/api/3/jql/parse?validation=${validation}`, {
           method: "POST",
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ queries: [jql] }),
-        },
-      ),
+        }),
     );
     return parsedJqlIsValid(data);
   }

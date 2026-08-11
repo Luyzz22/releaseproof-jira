@@ -94,7 +94,9 @@ export function ReleaseSelection({
             type="submit"
             disabled={analyzing || data.versions.length === 0}
           >
-            {analyzing ? "Release wird analysiert …" : "Bereitschaft analysieren"}
+            {analyzing
+              ? "Release wird analysiert …"
+              : "Bereitschaft analysieren"}
           </button>
         </form>
         <button type="button" className="text-button" onClick={onConfigure}>
