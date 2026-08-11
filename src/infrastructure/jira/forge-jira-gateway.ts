@@ -66,10 +66,6 @@ function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
-function arrayValue(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
-
 function requireArray(value: unknown, resource: string): unknown[] {
   if (Array.isArray(value)) return value;
   throw new AppError(
@@ -400,6 +396,21 @@ function requireMappedSubtask(
   };
 }
 
+function requireMappedFixVersion(
+  value: unknown,
+): ReleaseIssue["fixVersions"][number] {
+  const version = requireRecord(value, "Issue search fixVersion");
+  const id = stringValue(version.id);
+  const name = stringValue(version.name);
+  if (!id || !name) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Issue search fixVersion returned an unexpected response.",
+    );
+  }
+  return { id, name };
+}
+
 function mapIssue(
   value: unknown,
   acceptanceCriteriaFieldId: string,
@@ -422,12 +433,10 @@ function mapIssue(
     hasAcceptanceCriteria:
       jiraValueToText(fields[acceptanceCriteriaFieldId]) !== null,
     labels: requireStringArray(fields.labels, "Issue search labels"),
-    fixVersions: arrayValue(fields.fixVersions).flatMap((version) => {
-      if (!isRecord(version)) return [];
-      const versionId = stringValue(version.id);
-      const name = stringValue(version.name);
-      return versionId && name ? [{ id: versionId, name }] : [];
-    }),
+    fixVersions: requireArray(
+      fields.fixVersions,
+      "Issue search fixVersions",
+    ).map(requireMappedFixVersion),
     subtasks: requireArray(fields.subtasks, "Issue search subtasks").map(
       requireMappedSubtask,
     ),

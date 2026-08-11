@@ -19,6 +19,14 @@ function toggle(values: string[], value: string): string[] {
     : [...values, value];
 }
 
+export function filterAvailableMetadataIds(
+  selectedIds: readonly string[],
+  availableItems: ReadonlyArray<{ id: string }>,
+): string[] {
+  const availableIds = new Set(availableItems.map((item) => item.id));
+  return selectedIds.filter((id) => availableIds.has(id));
+}
+
 export function ProjectConfiguration({
   data,
   saving,
@@ -42,10 +50,15 @@ export function ProjectConfiguration({
   const acceptanceCriteriaFieldRecoveryRequired =
     existing !== null && !existingAcceptanceCriteriaFieldIsSupported;
   const [acceptedStatusIds, setAcceptedStatusIds] = useState<string[]>(
-    existing?.acceptedStatusIds ?? [],
+    filterAvailableMetadataIds(
+      existing?.acceptedStatusIds ?? [],
+      data.statuses,
+    ),
   );
   const [includedIssueTypes, setIncludedIssueTypes] = useState<string[]>(
-    existing?.includedIssueTypes ?? data.issueTypes.map((type) => type.id),
+    existing
+      ? filterAvailableMetadataIds(existing.includedIssueTypes, data.issueTypes)
+      : data.issueTypes.map((type) => type.id),
   );
   const [releaseScopeMode, setReleaseScopeMode] = useState<ReleaseScopeMode>(
     existing?.releaseScopeMode ?? "VERSION_ONLY",

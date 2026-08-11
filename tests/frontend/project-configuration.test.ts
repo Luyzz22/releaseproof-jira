@@ -3,7 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { JiraField } from "../../src/application/ports";
 import type { ProjectConfig } from "../../src/domain/models/readiness";
-import { ProjectConfiguration } from "../../src/frontend/pages/project-configuration";
+import {
+  filterAvailableMetadataIds,
+  ProjectConfiguration,
+} from "../../src/frontend/pages/project-configuration";
 import type { BootstrapData } from "../../src/shared/resolver-contract";
 import { config } from "../fixtures/release";
 
@@ -92,6 +95,23 @@ function renderConfiguration(
     }),
   );
 }
+
+describe("Projektkonfiguration – Metadaten-Recovery", () => {
+  it("entfernt gelöschte Status-IDs und behält verfügbare Status bei", () => {
+    expect(
+      filterAvailableMetadataIds(["31", "999"], [{ id: "31" }, { id: "41" }]),
+    ).toEqual(["31"]);
+  });
+
+  it("entfernt gelöschte Vorgangstyp-IDs und behält verfügbare Typen bei", () => {
+    expect(
+      filterAvailableMetadataIds(
+        ["10001", "19999", "10003"],
+        [{ id: "10001" }, { id: "10003" }],
+      ),
+    ).toEqual(["10001", "10003"]);
+  });
+});
 
 describe("Projektkonfiguration – Akzeptanzkriterien-Felder", () => {
   it.each([

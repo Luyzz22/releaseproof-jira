@@ -273,6 +273,107 @@ describe("Jira-Issue-Pagination", () => {
   });
 
   it.each([
+    ["fehlendem fixVersions-Feld", undefined],
+    ["fixVersions als null", null],
+    ["fixVersions als String", "invalid"],
+    ["nicht-arrayförmigem fixVersions-Feld", {}],
+  ])("bricht bei %s fail-closed ab", async (_case, fixVersions) => {
+    const fields: Record<string, unknown> = { ...jiraIssue(1).fields };
+    if (fixVersions === undefined) {
+      delete fields.fixVersions;
+    } else {
+      fields.fixVersions = fixVersions;
+    }
+
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () =>
+          Promise.resolve({
+            issues: [{ ...jiraIssue(1), fields }],
+          }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it.each([
+    ["null-Version", null],
+    ["Version ohne id", { name: "1.0.0" }],
+    ["Version ohne name", { id: "30001" }],
+    ["Version mit leerer id", { id: " ", name: "1.0.0" }],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "bricht bei malformed %s vollständig ab",
+    async (_case, malformedVersion) => {
+      const sourceIssue = {
+        ...jiraIssue(1),
+        fields: {
+          ...jiraIssue(1).fields,
+          fixVersions: [malformedVersion],
+        },
+      };
+
+      await expect(
+        collectIssueSearchPages(
+          {
+            jql: "project = DEMO",
+            acceptanceCriteriaFieldId: "customfield_10042",
+          },
+          () => Promise.resolve({ issues: [sourceIssue] }),
+        ),
+      ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+    },
+  );
+
+  it("verwirft bei gemischten gültigen und malformed fixVersions das gesamte Ergebnis", async () => {
+    const sourceIssue = {
+      ...jiraIssue(1),
+      fields: {
+        ...jiraIssue(1).fields,
+        fixVersions: [{ id: "30001", name: "1.0.0" }, { id: "30002" }],
+      },
+    };
+
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [sourceIssue] }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("behält vollständige fixVersions-Evidence unverändert", async () => {
+    const sourceIssue = {
+      ...jiraIssue(1),
+      fields: {
+        ...jiraIssue(1).fields,
+        fixVersions: [
+          { id: "30001", name: "1.0.0" },
+          { id: "30002", name: "2.0.0" },
+        ],
+      },
+    };
+
+    const issues = await collectIssueSearchPages(
+      {
+        jql: "project = DEMO",
+        acceptanceCriteriaFieldId: "customfield_10042",
+      },
+      () => Promise.resolve({ issues: [sourceIssue] }),
+    );
+
+    expect(issues[0]?.fixVersions).toEqual([
+      { id: "30001", name: "1.0.0" },
+      { id: "30002", name: "2.0.0" },
+    ]);
+  });
+
+  it.each([
     ["fehlendem issuelinks-Feld", undefined],
     ["issuelinks als null", null],
     ["issuelinks als String", "invalid"],
