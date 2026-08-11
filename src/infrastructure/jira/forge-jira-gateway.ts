@@ -394,6 +394,41 @@ export async function collectIssueSearchPages(
   throwPaginationLimit("Issue pagination");
 }
 
+export function mapProjectMetadata(value: unknown): ProjectMetadata {
+  const items = requireArray(value, "Project metadata");
+  const statusMap = new Map<string, JiraStatus>();
+  const issueTypes: JiraIssueType[] = items.map((item) => {
+    const issueType = requireRecord(item, "Project metadata issue type");
+    const id = stringValue(issueType.id);
+    const name = stringValue(issueType.name);
+    if (!id || !name || typeof issueType.subtask !== "boolean") {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Project metadata issue type returned an unexpected response.",
+      );
+    }
+
+    const statuses = requireArray(
+      issueType.statuses,
+      "Project metadata issue type statuses",
+    );
+    for (const statusValue of statuses) {
+      const status = mapStatus(statusValue);
+      if (!status) {
+        throw new AppError(
+          "JIRA_UNAVAILABLE",
+          "Project metadata status returned an unexpected response.",
+        );
+      }
+      statusMap.set(status.id, status);
+    }
+
+    return { id, name, subtask: issueType.subtask };
+  });
+
+  return { statuses: [...statusMap.values()], issueTypes };
+}
+
 export class ForgeJiraGateway implements JiraGateway {
   async listProjects(): Promise<JiraProject[]> {
     const projects: JiraProject[] = [];
@@ -438,26 +473,7 @@ export class ForgeJiraGateway implements JiraGateway {
         .asUser()
         .requestJira(route`/rest/api/3/project/${projectIdOrKey}/statuses`),
     );
-    if (!Array.isArray(data)) {
-      throw new AppError(
-        "JIRA_UNAVAILABLE",
-        "Project metadata returned an unexpected response.",
-      );
-    }
-    const statusMap = new Map<string, JiraStatus>();
-    const issueTypes: JiraIssueType[] = [];
-    for (const item of arrayValue(data)) {
-      if (!isRecord(item)) continue;
-      const id = stringValue(item.id);
-      const name = stringValue(item.name);
-      if (id && name)
-        issueTypes.push({ id, name, subtask: booleanValue(item.subtask) });
-      for (const statusValue of arrayValue(item.statuses)) {
-        const status = mapStatus(statusValue);
-        if (status) statusMap.set(status.id, status);
-      }
-    }
-    return { statuses: [...statusMap.values()], issueTypes };
+    return mapProjectMetadata(data);
   }
 
   async listFields(projectId: string): Promise<JiraField[]> {

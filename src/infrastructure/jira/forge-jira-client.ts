@@ -37,9 +37,10 @@ export function parsedJqlIsValid(value: unknown): boolean {
   }
 
   const query = requireRecord(queries[0], "JQL validation");
-  if (query.errors === undefined) return true;
-
-  const errors = requireArray(query.errors, "JQL validation");
+  const errors =
+    query.errors === undefined
+      ? []
+      : requireArray(query.errors, "JQL validation");
   for (const error of errors) {
     if (typeof error !== "string" || error.trim().length === 0) {
       throw new AppError(
@@ -48,7 +49,21 @@ export function parsedJqlIsValid(value: unknown): boolean {
       );
     }
   }
-  return errors.length === 0;
+  if (errors.length > 0) return false;
+
+  const parsedQuery =
+    typeof query.query === "string" && query.query.trim().length > 0
+      ? query.query
+      : null;
+  const structure = isRecord(query.structure) ? query.structure : null;
+  if (!parsedQuery || !structure) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "JQL validation returned an unexpected response.",
+    );
+  }
+
+  return true;
 }
 
 export class ForgeJiraClient

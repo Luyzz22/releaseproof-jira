@@ -46,6 +46,7 @@ describe("Jira-JQL-Validierungsantwort", () => {
         queries: [
           {
             query: "project = DEMO AND labels = future-label",
+            structure: {},
             warnings: ["The value does not currently exist."],
           },
         ],
@@ -59,6 +60,11 @@ describe("Jira-JQL-Validierungsantwort", () => {
     ["keine Query", { queries: [] }],
     ["mehrere Queries", { queries: [{}, {}] }],
     ["malformed Query", { queries: [null] }],
+    ["Query ohne Erfolgsfelder", { queries: [{}] }],
+    ["nur Warnungen ohne Erfolgsfelder", { queries: [{ warnings: [] }] }],
+    ["Query-Text ohne Struktur", { queries: [{ query: "project = DEMO" }] }],
+    ["Struktur ohne Query-Text", { queries: [{ structure: {} }] }],
+    ["leerer Query-Text", { queries: [{ query: "   ", structure: {} }] }],
     ["errors als null", { queries: [{ errors: null }] }],
     ["malformed error", { queries: [{ errors: [null] }] }],
   ] satisfies ReadonlyArray<readonly [string, unknown]>)(

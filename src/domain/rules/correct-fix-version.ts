@@ -10,9 +10,9 @@ export const correctFixVersionRule: ReadinessRule = {
         status: "NOT_APPLICABLE",
         title: "Korrekte Release-Version",
         explanation:
-          "Die Versionszuordnung wurde bereits durch den Modus VERSION_ONLY vorgefiltert und kann deshalb nicht unabhängig geprüft werden.",
+          "Die Versionszuordnung wurde bereits durch den Modus „Nur Jira-Version“ vorgefiltert und kann deshalb nicht unabhängig geprüft werden.",
         remediation:
-          "JQL_SCOPE aktivieren, wenn fehlende oder falsche Versionszuordnungen sichtbar werden sollen.",
+          "Den Modus „Expliziter JQL-Umfang“ aktivieren, wenn fehlende oder falsche Versionszuordnungen sichtbar werden sollen.",
         sourceField: "releaseScopeMode",
       });
     }

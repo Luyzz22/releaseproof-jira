@@ -31,6 +31,18 @@ const recoveryData = {
 } satisfies BootstrapData & { configRecoveryRequired: boolean };
 
 describe("Recovery Empty State", () => {
+  it("verwendet im Erstzustand ausschließlich deutsche Bereitschaftsterminologie", () => {
+    const markup = renderToStaticMarkup(
+      createElement(EmptyState, {
+        data: { ...recoveryData, configRecoveryRequired: false },
+        onConfigure: () => undefined,
+      }),
+    );
+
+    expect(markup).toContain("Bereitschaftskonfiguration");
+    expect(markup).not.toContain("Readiness-Konfiguration");
+  });
+
   it("erklärt die beschädigte Konfiguration und bietet die Neukonfiguration an", () => {
     const markup = renderToStaticMarkup(
       createElement(EmptyState, {

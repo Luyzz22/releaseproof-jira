@@ -12,10 +12,11 @@ Read-only Classic Scope, von Atlassian für die verwendeten Jira-REST-v3-Operati
 | Projektversionen laden                   | `GET /rest/api/3/project/{projectIdOrKey}/version`  |
 | Version validieren                       | `GET /rest/api/3/version/{id}`                      |
 | Scope-Issues und benötigte Details laden | `POST /rest/api/3/search/jql`                       |
+| Projektgebundene JQL strikt validieren   | `POST /rest/api/3/jql/parse`                        |
 
 Die Requests laufen mit `api.asUser()`. Zusätzlich muss der Nutzer im jeweiligen Jira-Projekt `Browse Projects` besitzen; Issue-Security bleibt wirksam.
 
-Der Endpunkt ist für beide Scope-Modi identisch. `VERSION_ONLY` verwendet serverseitig erzeugtes JQL; `JQL_SCOPE` verwendet den unveränderten, projektgebunden validierten Ausdruck. Es entstehen keine Jira-Schreiboperationen und keine zusätzlichen Scopes.
+Der Suchendpunkt ist für beide Scope-Modi identisch. `VERSION_ONLY` verwendet serverseitig erzeugtes JQL; `JQL_SCOPE` verwendet den unveränderten, projektgebunden validierten Ausdruck. Zusätzlich prüft `POST /rest/api/3/jql/parse` explizite JQL vor Persistenz und erneut vor Analyse mit `validation=strict`. Der Parser-Aufruf validiert ausschließlich die Abfrage; er verändert keine Jira-Daten. Es entstehen keine Jira-Schreiboperationen, keine externen Remotes und keine zusätzlichen Scopes.
 
 ## `storage:app`
 
@@ -39,3 +40,4 @@ Es werden keine vollständigen Issues, Analysen, Reports oder personenbezogenen 
 - [Jira project versions](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-project-versions/)
 - [Jira issue fields](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-fields/)
 - [Jira issue search](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/)
+- [Jira JQL APIs](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-jql/)

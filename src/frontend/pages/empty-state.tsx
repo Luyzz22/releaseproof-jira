@@ -39,9 +39,9 @@ export function EmptyState({
             ) : (
               <>
                 Für <strong>{data.project.name}</strong> ist noch keine
-                Readiness-Konfiguration hinterlegt. Definieren Sie die Kriterien
-                einmal projektbezogen; Jira-Inhalte werden nicht dauerhaft
-                gespeichert.
+                Bereitschaftskonfiguration hinterlegt. Definieren Sie die
+                Kriterien einmal projektbezogen; Jira-Inhalte werden nicht
+                dauerhaft gespeichert.
               </>
             )}
           </p>

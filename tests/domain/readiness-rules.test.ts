@@ -149,6 +149,10 @@ describe("correct-fix-version", () => {
     });
     expect(result.status).toBe("NOT_APPLICABLE");
     expect(result.explanation).toContain("vorgefiltert");
+    expect(result.explanation).toContain("Nur Jira-Version");
+    expect(result.explanation).not.toContain("VERSION_ONLY");
+    expect(result.remediation).toContain("Expliziter JQL-Umfang");
+    expect(result.remediation).not.toContain("JQL_SCOPE");
   });
 
   it("akzeptiert im JQL_SCOPE exakt die analysierte Versions-ID", () => {

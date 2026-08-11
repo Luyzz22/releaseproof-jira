@@ -9,6 +9,31 @@ import {
 import { projectConfig } from "../fixtures/release";
 
 describe("Release-Scope-JQL-Validierung", () => {
+  it("liefert deutsche benutzerseitige Fehlermeldungen ohne technische Moduswerte", () => {
+    const unsafe = validateReleaseScopeJql(
+      "project = SCRUM AND status = foo;bar",
+      "SCRUM",
+    );
+    expect(unsafe.valid).toBe(false);
+    if (!unsafe.valid) {
+      expect(unsafe.message).toContain("ungequoteten");
+      expect(unsafe.message).not.toContain("unquoted");
+      expect(unsafe.message).not.toContain("Release-Scope");
+    }
+
+    const invalidMode = projectConfigInputSchema.safeParse({
+      ...projectConfig,
+      releaseScopeMode: "VERSION_ONLY",
+      releaseScopeJql: "project = SCRUM",
+    });
+    expect(invalidMode.success).toBe(false);
+    if (!invalidMode.success) {
+      const message = invalidMode.error.issues[0]?.message ?? "";
+      expect(message).toContain("Expliziter JQL-Umfang");
+      expect(message).not.toContain("JQL_SCOPE");
+      expect(message).not.toContain("Release-Scope");
+    }
+  });
   it.each([
     "project = SCRUM",
     'project = "SCRUM"',

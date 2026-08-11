@@ -131,7 +131,7 @@ describe("sichere Frontend-Grenzen", () => {
     ).toEqual({
       code: "RESULT_LIMIT_EXCEEDED",
       message:
-        "Die Datenmenge ist für eine synchrone Analyse zu groß. Bitte verkleinern Sie den Release-Scope.",
+        "Die Datenmenge ist für eine synchrone Analyse zu groß. Bitte verkleinern Sie den Release-Umfang.",
     });
   });
 });

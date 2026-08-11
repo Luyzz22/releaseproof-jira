@@ -322,14 +322,14 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "EMPTY",
-      message: "Der explizite Release-Scope darf nicht leer sein.",
+      message: "Der explizite Release-Umfang darf nicht leer sein.",
     };
   }
   if (value.length > RELEASE_SCOPE_JQL_MAX_LENGTH) {
     return {
       valid: false,
       code: "TOO_LONG",
-      message: `Der Release-Scope darf höchstens ${RELEASE_SCOPE_JQL_MAX_LENGTH} Zeichen enthalten.`,
+      message: `Der Release-Umfang darf höchstens ${RELEASE_SCOPE_JQL_MAX_LENGTH} Zeichen enthalten.`,
     };
   }
 
@@ -340,8 +340,8 @@ export function validateReleaseScopeJql(
       code: "SYNTAX_INVALID",
       message:
         tokenized.error === "UNCLOSED_STRING"
-          ? "Der Release-Scope enthält eine nicht geschlossene Zeichenfolge."
-          : "Der Release-Scope enthält ein nicht unterstütztes unquoted JQL-Token. Werte mit Sonderzeichen müssen in Anführungszeichen stehen.",
+          ? "Der Release-Umfang enthält eine nicht geschlossene Zeichenfolge."
+          : "Der Release-Umfang enthält einen nicht unterstützten ungequoteten JQL-Wert. Werte mit Sonderzeichen müssen in Anführungszeichen stehen.",
     };
   }
   const { tokens } = tokenized;
@@ -354,7 +354,7 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "FIX_VERSION_FORBIDDEN",
-      message: "Der Release-Scope darf keine fixVersion-Bedingung enthalten.",
+      message: "Der Release-Umfang darf keine fixVersion-Bedingung enthalten.",
     };
   }
 
@@ -363,7 +363,7 @@ export function validateReleaseScopeJql(
       valid: false,
       code: "OR_FORBIDDEN",
       message:
-        "OR ist im Release-Scope nicht zulässig, weil die Projektbegrenzung für jeden Treffer gelten muss.",
+        "OR ist im Release-Umfang nicht zulässig, weil die Projektbegrenzung für jeden Treffer gelten muss.",
     };
   }
 
@@ -373,7 +373,7 @@ export function validateReleaseScopeJql(
       valid: false,
       code: "SYNTAX_INVALID",
       message:
-        "Der Release-Scope ist syntaktisch unvollständig oder verwendet eine nicht unterstützte JQL-Form.",
+        "Der Release-Umfang ist syntaktisch unvollständig oder verwendet eine nicht unterstützte JQL-Form.",
     };
   }
 
@@ -388,14 +388,14 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "PROJECT_REQUIRED",
-      message: "Der Release-Scope muss mit „project = PROJEKTKEY“ beginnen.",
+      message: "Der Release-Umfang muss mit „project = PROJEKTKEY“ beginnen.",
     };
   }
   if (projectClause.values[0]!.value.toUpperCase() !== expectedProjectKey) {
     return {
       valid: false,
       code: "PROJECT_MISMATCH",
-      message: `Der Release-Scope muss auf das aktuelle Projekt ${expectedProjectKey} begrenzt sein.`,
+      message: `Der Release-Umfang muss auf das aktuelle Projekt ${expectedProjectKey} begrenzt sein.`,
     };
   }
 
@@ -407,7 +407,7 @@ export function validateReleaseScopeJql(
       valid: false,
       code: "PROJECT_REQUIRED",
       message:
-        "Der Release-Scope darf die Projektbegrenzung nicht erneut verändern.",
+        "Der Release-Umfang darf die Projektbegrenzung nicht erneut verändern.",
     };
   }
 
@@ -465,7 +465,8 @@ function configValidationIssues(
     if (value.releaseScopeJql !== undefined) {
       issues.push({
         path: ["releaseScopeJql"],
-        message: "Ein Release-Scope-JQL ist nur im Modus JQL_SCOPE zulässig.",
+        message:
+          "Eine JQL für den Release-Umfang ist nur im Modus „Expliziter JQL-Umfang“ zulässig.",
       });
     }
     return issues;
@@ -474,7 +475,7 @@ function configValidationIssues(
   if (value.releaseScopeJql === undefined) {
     issues.push({
       path: ["releaseScopeJql"],
-      message: "Bitte geben Sie einen expliziten Release-Scope an.",
+      message: "Bitte geben Sie einen expliziten Release-Umfang an.",
     });
     return issues;
   }

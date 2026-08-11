@@ -76,3 +76,11 @@
 - KVS-Schema-Version 2 führt die Scope-Felder ein. Alte Datensätze werden nur beim Lesen normalisiert; es gibt keine destruktive oder automatische Schreibmigration.
 - Dashboard, Evidence Detail, Markdown- und Druckbericht leiten Scope-Text aus derselben kanonischen Ergebnisstruktur ab.
 - Der abschließende Lauf von `npm audit --omit=dev` meldet fünf High-Einträge: `brace-expansion` und `fast-uri` über `@forge/manifest` sowie zwei Advisory-IDs für `linkify-it` über `@forge/bridge`. Weil SCRUM-7 bis SCRUM-10 keine Dependency-Migration autorisieren und der vollständige Force-Fix die Forge Bridge herabstuft, bleibt die Lockdatei unverändert und das Thema wird als separater Dependency-Review ausgewiesen.
+
+## 2026-08-10 — Strikte Jira-JQL-Validierung
+
+- Explizite projektgebundene JQL wird zusätzlich zur kontrollierten lokalen Grammatik über `POST /rest/api/3/jql/parse?validation=strict` im aktuellen Benutzerkontext geprüft.
+- Der Parser-Aufruf dient ausschließlich der Validierung vor Persistenz und erneut vor Analyse; er führt keine Jira-Schreiboperation aus und benötigt keinen zusätzlichen Scope über `read:jira-work` hinaus.
+- Die Parser-Antwort wird fail-closed ausgewertet: Genau ein Query-Ergebnis ist erforderlich; Fehler machen die JQL ungültig, und ein fehlerfreies Ergebnis wird nur mit nicht leerem Query-Text und vorhandener Parse-Struktur als Erfolg akzeptiert.
+- Unvollständige oder unerwartete 200-Antworten werden als Jira-Verfügbarkeitsfehler behandelt, statt eine nicht nachweislich validierte JQL zu persistieren.
+- Es wurden keine externen Remotes, zusätzlichen Egress-Ziele oder neuen Berechtigungen eingeführt.

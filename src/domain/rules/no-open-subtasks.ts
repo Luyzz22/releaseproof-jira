@@ -33,7 +33,7 @@ export const noOpenSubtasksRule: ReadinessRule = {
           : "Es wurden keine offenen Unteraufgaben gefunden.",
       remediation:
         open.length > 0
-          ? "Offene Unteraufgaben abschließen oder begründet aus dem Release-Scope entfernen."
+          ? "Offene Unteraufgaben abschließen oder begründet aus dem Release-Umfang entfernen."
           : "Keine Maßnahme erforderlich.",
       sourceField: "subtasks",
     });

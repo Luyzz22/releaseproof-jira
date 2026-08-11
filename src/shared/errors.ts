@@ -44,7 +44,7 @@ const PUBLIC_MESSAGES: Record<AppErrorCode, string> = {
   RATE_LIMITED:
     "Jira begrenzt die Anfragen vorübergehend. Bitte versuchen Sie es später erneut.",
   RESULT_LIMIT_EXCEEDED:
-    "Die Datenmenge ist für eine synchrone Analyse zu groß. Bitte verkleinern Sie den Release-Scope.",
+    "Die Datenmenge ist für eine synchrone Analyse zu groß. Bitte verkleinern Sie den Release-Umfang.",
   JIRA_UNAVAILABLE: "Jira konnte vorübergehend nicht erreicht werden.",
   STORAGE_UNAVAILABLE:
     "Die Projektkonfiguration konnte vorübergehend nicht gespeichert oder geladen werden.",
