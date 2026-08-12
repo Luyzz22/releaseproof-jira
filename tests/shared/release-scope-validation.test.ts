@@ -97,6 +97,14 @@ describe("Release-Scope-JQL-Validierung", () => {
   });
 
   it.each([
+    'project = SCRUM AND labels = "fixVersion"',
+    "project = SCRUM AND labels = fixVersion",
+    'project = SCRUM AND summary ~ "fixVersions"',
+  ])("erlaubt fixVersion ausschließlich als Klauselwert: %s", (jql) => {
+    expect(validateReleaseScopeJql(jql, "SCRUM")).toEqual({ valid: true });
+  });
+
+  it.each([
     ["leer", "", "EMPTY"],
     ["ohne Projekt", "key = SCRUM-1", "PROJECT_REQUIRED"],
     [

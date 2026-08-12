@@ -126,7 +126,7 @@ describe("paginierte Jira-Metadatengrenze", () => {
     expect(
       isLastPage(
         {
-          values: [],
+          values: Array.from({ length: 50 }, () => null),
           isLast: true,
           startAt: 100,
           maxResults: 50,
@@ -139,7 +139,7 @@ describe("paginierte Jira-Metadatengrenze", () => {
     expect(
       isLastPage(
         {
-          values: [],
+          values: Array.from({ length: 100 }, () => null),
           isLast: false,
           startAt: 0,
           maxResults: 100,
@@ -164,7 +164,7 @@ describe("paginierte Jira-Metadatengrenze", () => {
     [
       "isLast=false trotz numerisch letzter Seite",
       {
-        values: [],
+        values: Array.from({ length: 50 }, () => null),
         isLast: false,
         startAt: 100,
         maxResults: 50,
@@ -179,6 +179,36 @@ describe("paginierte Jira-Metadatengrenze", () => {
       );
     },
   );
+
+  it("weist eine terminal deklarierte, aber unvollständig gelieferte Seite zurück", () => {
+    expect(() =>
+      isLastPage(
+        {
+          values: Array.from({ length: 50 }, () => null),
+          isLast: true,
+          startAt: 0,
+          maxResults: 100,
+          total: 100,
+        },
+        "Project search",
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
+  it("akzeptiert eine tatsächlich vollständige partielle letzte Seite", () => {
+    expect(
+      isLastPage(
+        {
+          values: Array.from({ length: 50 }, () => null),
+          isLast: true,
+          startAt: 100,
+          maxResults: 100,
+          total: 150,
+        },
+        "Project search",
+      ),
+    ).toBe(true);
+  });
 
   it.each([
     ["nicht-booleschem isLast", { values: [], isLast: "true" }],

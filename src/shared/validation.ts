@@ -385,18 +385,6 @@ export function validateReleaseScopeJql(
     };
   }
   const { tokens } = tokenized;
-  if (
-    tokens.some((token) => {
-      const field = normalizedFieldName(token.value);
-      return field === "fixversion" || field === "fixversions";
-    })
-  ) {
-    return {
-      valid: false,
-      code: "FIX_VERSION_FORBIDDEN",
-      message: "Der Release-Umfang darf keine fixVersion-Bedingung enthalten.",
-    };
-  }
 
   if (tokens.some((token) => isKeyword(token, "OR"))) {
     return {
@@ -414,6 +402,19 @@ export function validateReleaseScopeJql(
       code: "SYNTAX_INVALID",
       message:
         "Der Release-Umfang ist syntaktisch unvollständig oder verwendet eine nicht unterstützte JQL-Form.",
+    };
+  }
+
+  if (
+    parsed.clauses.some((clause) => {
+      const field = normalizedFieldName(clause.field.value);
+      return field === "fixversion" || field === "fixversions";
+    })
+  ) {
+    return {
+      valid: false,
+      code: "FIX_VERSION_FORBIDDEN",
+      message: "Der Release-Umfang darf keine fixVersion-Bedingung enthalten.",
     };
   }
 

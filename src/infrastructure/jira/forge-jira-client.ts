@@ -83,14 +83,12 @@ function jiraFieldIdentity(value: unknown): JiraFieldIdentity | null {
     : null;
   if (name === null && encodedName === null) return null;
 
-  if (
-    name !== null &&
-    encodedName !== null &&
-    isCustomFieldReference(name) &&
-    isCustomFieldReference(encodedName) &&
-    name !== encodedName
-  ) {
-    return null;
+  if (name !== null && encodedName !== null) {
+    if (isCustomFieldReference(encodedName)) {
+      if (isCustomFieldReference(name) && name !== encodedName) return null;
+    } else if (name !== encodedName) {
+      return null;
+    }
   }
 
   return { name, encodedName };

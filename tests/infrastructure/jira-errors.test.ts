@@ -152,6 +152,7 @@ describe("Jira-Issue-Pagination", () => {
     await collectIssueSearchPages(
       {
         jql: "project = DEMO",
+        projectKey: "DEMO",
         acceptanceCriteriaFieldId: "customfield_10042",
       },
       (request) => {
@@ -185,6 +186,7 @@ describe("Jira-Issue-Pagination", () => {
     await collectIssueSearchPages(
       {
         jql: "project = DEMO",
+        projectKey: "DEMO",
         acceptanceCriteriaFieldId: "description",
       },
       (request) => {
@@ -233,6 +235,7 @@ describe("Jira-Issue-Pagination", () => {
       const issues = await collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () => Promise.resolve({ issues: [sourceIssue] }),
@@ -265,6 +268,7 @@ describe("Jira-Issue-Pagination", () => {
         collectIssueSearchPages(
           {
             jql: "project = DEMO",
+            projectKey: "DEMO",
             acceptanceCriteriaFieldId: "customfield_10042",
           },
           () => Promise.resolve({ issues: [sourceIssue] }),
@@ -284,6 +288,7 @@ describe("Jira-Issue-Pagination", () => {
     const issues = await collectIssueSearchPages(
       {
         jql: "project = DEMO",
+        projectKey: "DEMO",
         acceptanceCriteriaFieldId: "customfield_10042",
       },
       () => Promise.resolve({ issues: [sourceIssue] }),
@@ -324,6 +329,7 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () =>
@@ -355,6 +361,7 @@ describe("Jira-Issue-Pagination", () => {
         collectIssueSearchPages(
           {
             jql: "project = DEMO",
+            projectKey: "DEMO",
             acceptanceCriteriaFieldId: "customfield_10042",
           },
           () => Promise.resolve({ issues: [sourceIssue] }),
@@ -376,6 +383,7 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () => Promise.resolve({ issues: [sourceIssue] }),
@@ -399,6 +407,7 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () => Promise.resolve({ issues: [sourceIssue] }),
@@ -421,6 +430,7 @@ describe("Jira-Issue-Pagination", () => {
     const issues = await collectIssueSearchPages(
       {
         jql: "project = DEMO",
+        projectKey: "DEMO",
         acceptanceCriteriaFieldId: "customfield_10042",
       },
       () => Promise.resolve({ issues: [sourceIssue] }),
@@ -449,6 +459,7 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () =>
@@ -498,6 +509,7 @@ describe("Jira-Issue-Pagination", () => {
         collectIssueSearchPages(
           {
             jql: "project = DEMO",
+            projectKey: "DEMO",
             acceptanceCriteriaFieldId: "customfield_10042",
           },
           () => Promise.resolve({ issues: [sourceIssue] }),
@@ -519,6 +531,7 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () => Promise.resolve({ issues: [sourceIssue] }),
@@ -538,6 +551,7 @@ describe("Jira-Issue-Pagination", () => {
     const issues = await collectIssueSearchPages(
       {
         jql: "project = DEMO",
+        projectKey: "DEMO",
         acceptanceCriteriaFieldId: "customfield_10042",
       },
       () => Promise.resolve({ issues: [sourceIssue] }),
@@ -570,6 +584,7 @@ describe("Jira-Issue-Pagination", () => {
     const issues = await collectIssueSearchPages(
       {
         jql: "project = DEMO AND key in (DEMO-1, DEMO-2)",
+        projectKey: "DEMO",
         acceptanceCriteriaFieldId: "customfield_10042",
       },
       (request) => {
@@ -602,6 +617,7 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO AND key is not EMPTY",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () => Promise.resolve({ issues: [], nextPageToken: "more" }),
@@ -623,6 +639,7 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () => Promise.resolve(pageData),
@@ -634,6 +651,7 @@ describe("Jira-Issue-Pagination", () => {
     const issues = await collectIssueSearchPages(
       {
         jql: "project = DEMO",
+        projectKey: "DEMO",
         acceptanceCriteriaFieldId: "customfield_10042",
       },
       () => Promise.resolve({ issues: [jiraIssue(1)] }),
@@ -649,6 +667,7 @@ describe("Jira-Issue-Pagination", () => {
         collectIssueSearchPages(
           {
             jql: "project = DEMO",
+            projectKey: "DEMO",
             acceptanceCriteriaFieldId: "customfield_10042",
           },
           () => Promise.resolve({ issues: [jiraIssue(1), malformedIssue] }),
@@ -662,6 +681,7 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         (request) =>
@@ -679,10 +699,105 @@ describe("Jira-Issue-Pagination", () => {
       collectIssueSearchPages(
         {
           jql: "project = DEMO",
+          projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
         () => Promise.resolve({ issues: [] }),
       ),
     ).resolves.toEqual([]);
+  });
+
+  it("bindet jeden Suchtreffer an den erwarteten Projektschlüssel", async () => {
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          projectKey: "DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () =>
+          Promise.resolve({ issues: [{ ...jiraIssue(1), key: "OTHER-1" }] }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("verwirft eine gemischte Seite vollständig bei projektfremdem Treffer", async () => {
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          projectKey: "DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () =>
+          Promise.resolve({
+            issues: [jiraIssue(1), { ...jiraIssue(2), key: "OTHER-2" }],
+          }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("weist eine nichtnumerische Hauptstatus-ID fail-closed zurück", async () => {
+    const source = jiraIssue(1);
+    source.fields.status = { id: "done", name: "Fertig" };
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          projectKey: "DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [source] }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("weist nichtnumerische Status-IDs in Subtasks und Links fail-closed zurück", async () => {
+    const subtaskIssue = {
+      ...jiraIssue(1),
+      fields: {
+        ...jiraIssue(1).fields,
+        subtasks: [
+          {
+            id: "2",
+            key: "DEMO-2",
+            fields: {
+              status: { id: "done", name: "Fertig" },
+              resolution: null,
+            },
+          },
+        ],
+      },
+    };
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          projectKey: "DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [subtaskIssue] }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+
+    const link = blockingIssueLink();
+    link.inwardIssue.fields.status = { id: "done", name: "Offen" };
+    const linkedIssue = {
+      ...jiraIssue(1),
+      fields: {
+        ...jiraIssue(1).fields,
+        issuelinks: [link],
+      },
+    };
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          projectKey: "DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [linkedIssue] }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
   });
 });

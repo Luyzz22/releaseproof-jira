@@ -1,4 +1,5 @@
 import { Validator } from "jsonschema";
+import { AppError } from "../../shared/errors";
 import adfSchema from "./adf-schema.json";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -57,6 +58,7 @@ export function isStructurallyValidAdfDocument(value: unknown): boolean {
 interface CollectionState {
   nodes: number;
   textLength: number;
+  textLimitExceeded: boolean;
 }
 
 function collectAdfNode(
@@ -66,7 +68,7 @@ function collectAdfNode(
 ): void {
   state.nodes += 1;
 
-  if (state.nodes > MAX_NODES || state.textLength >= MAX_TEXT_LENGTH) {
+  if (state.nodes > MAX_NODES || state.textLimitExceeded) {
     return;
   }
 
@@ -74,10 +76,13 @@ function collectAdfNode(
 
   if (value.type === "text" && typeof value.text === "string") {
     const remaining = MAX_TEXT_LENGTH - state.textLength;
-    const text = value.text.slice(0, remaining);
+    if (value.text.length > remaining) {
+      state.textLimitExceeded = true;
+      return;
+    }
 
-    output.push(text);
-    state.textLength += text.length;
+    output.push(value.text);
+    state.textLength += value.text.length;
     return;
   }
 
@@ -86,7 +91,7 @@ function collectAdfNode(
   for (const child of value.content) {
     collectAdfNode(child, output, state);
 
-    if (state.nodes > MAX_NODES || state.textLength >= MAX_TEXT_LENGTH) {
+    if (state.nodes > MAX_NODES || state.textLimitExceeded) {
       break;
     }
   }
@@ -103,13 +108,31 @@ function normalizeExtractedText(value: string): string | null {
 
 export function jiraValueToText(value: unknown): string | null {
   if (typeof value === "string") {
-    return normalizeExtractedText(value.slice(0, MAX_TEXT_LENGTH));
+    if (value.length > MAX_TEXT_LENGTH) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Jira text evidence exceeded the configured processing limit.",
+      );
+    }
+    return normalizeExtractedText(value);
   }
 
   if (!isRecord(value) || value.type !== "doc") return null;
 
   const output: string[] = [];
-  collectAdfNode(value, output, { nodes: 0, textLength: 0 });
+  const state: CollectionState = {
+    nodes: 0,
+    textLength: 0,
+    textLimitExceeded: false,
+  };
+  collectAdfNode(value, output, state);
+
+  if (state.textLimitExceeded) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Jira text evidence exceeded the configured processing limit.",
+    );
+  }
 
   return normalizeExtractedText(output.join(" "));
 }

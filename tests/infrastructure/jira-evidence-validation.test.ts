@@ -3,6 +3,7 @@ import { collectIssueSearchPages } from "../../src/infrastructure/jira/forge-jir
 
 const input = {
   jql: "project = DEMO",
+  projectKey: "DEMO",
   acceptanceCriteriaFieldId: "customfield_10042",
 };
 

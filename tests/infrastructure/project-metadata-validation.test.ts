@@ -64,6 +64,17 @@ describe("Jira-Projektmetadaten", () => {
       ],
     ],
     [
+      "Status mit nichtnumerischer ID",
+      [
+        {
+          id: "10001",
+          name: "Story",
+          subtask: false,
+          statuses: [{ id: "done", name: "Fertig" }],
+        },
+      ],
+    ],
+    [
       "gemischte gültige und ungültige Vorgangstypen",
       [validIssueType, { id: "10002", name: "Unteraufgabe", statuses: [] }],
     ],

@@ -151,6 +151,7 @@ function requirePageInteger(
 
 export function isLastPage(value: unknown, resource: string): boolean {
   const page = requireRecord(value, resource);
+  const values = requireArray(page.values, `${resource} values`);
 
   if (page.isLast !== undefined && typeof page.isLast !== "boolean") {
     throw new AppError(
@@ -174,9 +175,21 @@ export function isLastPage(value: unknown, resource: string): boolean {
 
   const hasCompleteNumericPagination =
     startAt !== null && maxResults !== null && total !== null;
-  const numericIsLast = hasCompleteNumericPagination
-    ? startAt + maxResults >= total
-    : null;
+  let numericIsLast: boolean | null = null;
+
+  if (hasCompleteNumericPagination) {
+    if (
+      values.length > maxResults ||
+      startAt + values.length > total ||
+      (startAt + values.length < total && values.length < maxResults)
+    ) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        `${resource} returned contradictory pagination metadata.`,
+      );
+    }
+    numericIsLast = startAt + values.length >= total;
+  }
 
   if (typeof page.isLast === "boolean") {
     if (numericIsLast !== null && page.isLast !== numericIsLast) {
@@ -311,7 +324,16 @@ function mapStatus(value: unknown): StatusRef | null {
   if (!isRecord(value)) return null;
   const id = stringValue(value.id);
   const name = stringValue(value.name);
-  return id && name ? { id, name } : null;
+  return id && /^\d+$/.test(id) && name ? { id, name } : null;
+}
+
+function requireMappedStatus(value: unknown, resource: string): StatusRef {
+  const status = mapStatus(value);
+  if (status) return status;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `${resource} returned an unexpected response.`,
+  );
 }
 
 function mapResolution(value: unknown): { id: string; name: string } | null {
@@ -381,7 +403,10 @@ function mapLinkedIssue(value: unknown): LinkedIssueRef | null {
         relationship,
         direction,
         isBlocking: blockingRelationship(direction, relationship, typeName),
-        status: mapStatus(fields.status),
+        status: requireMappedStatus(
+          fields.status,
+          "Issue search linked issue status",
+        ),
         resolution: requireNullableResolution(
           fields.resolution,
           "Issue search linked issue resolution",
@@ -475,9 +500,15 @@ function hasAcceptanceCriteriaEvidence(
   );
 }
 
+function issueKeyBelongsToProject(key: string, projectKey: string): boolean {
+  const prefix = `${projectKey}-`;
+  return key.startsWith(prefix) && /^\d+$/.test(key.slice(prefix.length));
+}
+
 function mapIssue(
   value: unknown,
   acceptanceCriteriaFieldId: string,
+  expectedProjectKey: string,
 ): ReleaseIssue | null {
   if (!isRecord(value) || !isRecord(value.fields)) return null;
   const fields = value.fields;
@@ -486,12 +517,15 @@ function mapIssue(
   const issueType = isRecord(fields.issuetype) ? fields.issuetype : {};
   const issueTypeId = stringValue(issueType.id);
   const issueTypeName = stringValue(issueType.name);
+  const status = mapStatus(fields.status);
   if (
     !id ||
     !key ||
+    !issueKeyBelongsToProject(key, expectedProjectKey) ||
     !issueTypeId ||
     !/^\d+$/.test(issueTypeId) ||
-    !issueTypeName
+    !issueTypeName ||
+    !status
   ) {
     return null;
   }
@@ -501,7 +535,7 @@ function mapIssue(
     key,
     summary: stringValue(fields.summary) ?? "(Ohne Zusammenfassung)",
     issueType: { id: issueTypeId, name: issueTypeName },
-    status: mapStatus(fields.status),
+    status,
     hasAcceptanceCriteria: hasAcceptanceCriteriaEvidence(
       fields[acceptanceCriteriaFieldId],
       acceptanceCriteriaFieldId,
@@ -525,8 +559,9 @@ function mapIssue(
 function requireMappedIssue(
   value: unknown,
   acceptanceCriteriaFieldId: string,
+  expectedProjectKey: string,
 ): ReleaseIssue {
-  const issue = mapIssue(value, acceptanceCriteriaFieldId);
+  const issue = mapIssue(value, acceptanceCriteriaFieldId, expectedProjectKey);
   if (issue) return issue;
   throw new AppError(
     "JIRA_UNAVAILABLE",
@@ -546,6 +581,7 @@ type IssueSearchPageLoader = (request: IssueSearchRequest) => Promise<unknown>;
 export async function collectIssueSearchPages(
   input: {
     jql: string;
+    projectKey: string;
     acceptanceCriteriaFieldId: string;
   },
   loadPage: IssueSearchPageLoader,
@@ -577,7 +613,12 @@ export async function collectIssueSearchPages(
     });
     const pageData = requireRecord(data, "Issue search");
     const pageIssues = requireArray(pageData.issues, "Issue search").map(
-      (item) => requireMappedIssue(item, input.acceptanceCriteriaFieldId),
+      (item) =>
+        requireMappedIssue(
+          item,
+          input.acceptanceCriteriaFieldId,
+          input.projectKey,
+        ),
     );
     const pageToken = optionalPageToken(pageData.nextPageToken, "Issue search");
     issues.push(...pageIssues);
@@ -724,6 +765,7 @@ export class ForgeJiraGateway implements JiraGateway {
     return this.listIssuesByJql(
       buildVersionJql(input.projectKey, input.versionId),
       input.acceptanceCriteriaFieldId,
+      input.projectKey,
     );
   }
 
@@ -742,15 +784,17 @@ export class ForgeJiraGateway implements JiraGateway {
     return this.listIssuesByJql(
       input.releaseScopeJql,
       input.acceptanceCriteriaFieldId,
+      input.projectKey,
     );
   }
 
   private async listIssuesByJql(
     jql: string,
     acceptanceCriteriaFieldId: string,
+    projectKey: string,
   ): Promise<ReleaseIssue[]> {
     return collectIssueSearchPages(
-      { jql, acceptanceCriteriaFieldId },
+      { jql, projectKey, acceptanceCriteriaFieldId },
       async (request) => {
         const response = await api
           .asUser()

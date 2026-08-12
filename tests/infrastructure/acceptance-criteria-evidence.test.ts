@@ -24,6 +24,7 @@ async function mapAcceptanceCriteria(value: unknown) {
   const issues = await collectIssueSearchPages(
     {
       jql: "project = DEMO",
+      projectKey: "DEMO",
       acceptanceCriteriaFieldId: "customfield_10042",
     },
     () => Promise.resolve({ issues: [issueWithAcceptanceCriteria(value)] }),
@@ -36,6 +37,7 @@ async function mapDescriptionAcceptanceCriteria(value: unknown) {
   const issues = await collectIssueSearchPages(
     {
       jql: "project = DEMO",
+      projectKey: "DEMO",
       acceptanceCriteriaFieldId: "description",
     },
     () =>
@@ -312,5 +314,32 @@ describe("Akzeptanzkriterien-Evidence", () => {
     ],
   ])("behält %s als vorhandenen Nachweis", async (_case, value) => {
     await expect(mapAcceptanceCriteria(value)).resolves.toBe(true);
+  });
+
+  it("bricht bei direkter Acceptance-Criteria-Evidence über 50.000 Zeichen fail-closed ab", async () => {
+    await expect(
+      mapAcceptanceCriteria("x".repeat(50_001)),
+    ).rejects.toMatchObject({
+      code: "JIRA_UNAVAILABLE",
+    });
+  });
+
+  it("bricht bei ADF-Acceptance-Criteria-Evidence über 50.000 Zeichen fail-closed ab", async () => {
+    await expect(
+      mapAcceptanceCriteria({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "x".repeat(50_001) }],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("akzeptiert sichtbare Acceptance-Criteria-Evidence exakt am Textlimit", async () => {
+    await expect(mapAcceptanceCriteria("x".repeat(50_000))).resolves.toBe(true);
   });
 });

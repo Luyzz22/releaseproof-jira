@@ -74,8 +74,10 @@ describe("Jira ADF und unbekannte Feldwerte", () => {
     );
   });
 
-  it("begrenzt einen direkten String auf 50.000 Zeichen", () => {
-    expect(jiraValueToText("x".repeat(60_000))).toHaveLength(50_000);
+  it("weist einen direkten String über 50.000 Zeichen fail-closed zurück", () => {
+    expect(() => jiraValueToText("x".repeat(50_001))).toThrowError(
+      expect.objectContaining({ code: "JIRA_UNAVAILABLE" }),
+    );
   });
 
   it("extrahiert Text aus einem gültigen ADF-Dokument", () => {
@@ -142,17 +144,19 @@ describe("Jira ADF und unbekannte Feldwerte", () => {
     ).toBe("Erstes Kriterium Zweites Kriterium");
   });
 
-  it("begrenzt ADF-Text auf 50.000 Zeichen", () => {
-    const text = jiraValueToText({
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: [{ type: "text", text: "x".repeat(60_000) }],
-        },
-      ],
-    });
-    expect(text).toHaveLength(50_000);
+  it("weist ADF-Text über 50.000 Zeichen fail-closed zurück", () => {
+    expect(() =>
+      jiraValueToText({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "x".repeat(50_001) }],
+          },
+        ],
+      }),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
   });
 
   it.each([

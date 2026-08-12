@@ -654,4 +654,81 @@ describe("Jira-JQL-Validierungsantwort", () => {
       );
     },
   );
+
+  it("weist widersprüchliche Systemfeld-Identität fail-closed zurück", () => {
+    const jql = "project = DEMO";
+    expect(() =>
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  field: { name: "project", encodedName: "status" },
+                  operand: { value: "DEMO" },
+                  operator: "=",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
+  it("akzeptiert konsistente Systemfeld-Identität und kontrollierte Aliase", () => {
+    const projectJql = "project = DEMO";
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: projectJql,
+              structure: {
+                where: {
+                  field: { name: "project", encodedName: "project" },
+                  operand: { value: "DEMO" },
+                  operator: "=",
+                },
+              },
+            },
+          ],
+        },
+        projectJql,
+      ),
+    ).toBe(true);
+
+    const keyJql = "project = DEMO AND key = DEMO-1";
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: keyJql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project", encodedName: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: { name: "issuekey", encodedName: "key" },
+                      operand: { value: "DEMO-1" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        keyJql,
+      ),
+    ).toBe(true);
+  });
 });
