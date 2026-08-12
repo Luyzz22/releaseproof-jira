@@ -11,25 +11,26 @@ const FORMAT_OR_CONTROL = /[\p{Cc}\p{Cf}]/gu;
 
 const adfValidator = new Validator();
 
-function hasSafeAdfNodeCount(value: unknown): boolean {
+function hasSafeAdfStructureSize(value: unknown): boolean {
   const stack: unknown[] = [value];
   let scheduledEntries = 1;
 
   while (stack.length > 0) {
     const current = stack.pop();
 
+    if (Array.isArray(current)) {
+      if (scheduledEntries + current.length > MAX_NODES) return false;
+      scheduledEntries += current.length;
+      for (const item of current) stack.push(item);
+      continue;
+    }
+
     if (!isRecord(current)) continue;
-    if (current.content === undefined) continue;
-    if (!Array.isArray(current.content)) return false;
 
-    if (scheduledEntries + current.content.length > MAX_NODES) {
-      return false;
-    }
-    scheduledEntries += current.content.length;
-
-    for (const child of current.content) {
-      stack.push(child);
-    }
+    const values = Object.values(current);
+    if (scheduledEntries + values.length > MAX_NODES) return false;
+    scheduledEntries += values.length;
+    for (const item of values) stack.push(item);
   }
 
   return true;
@@ -41,7 +42,7 @@ export function isStructurallyValidAdfDocument(value: unknown): boolean {
     value.type !== "doc" ||
     value.version !== 1 ||
     !Array.isArray(value.content) ||
-    !hasSafeAdfNodeCount(value)
+    !hasSafeAdfStructureSize(value)
   ) {
     return false;
   }

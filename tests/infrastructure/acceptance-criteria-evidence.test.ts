@@ -68,6 +68,21 @@ describe("Akzeptanzkriterien-Evidence", () => {
   });
 
   it.each([
+    ["undefined", undefined],
+    ["einem Array", ["Kriterium"]],
+    ["einer Zahl", 42],
+    ["einem Boolean", true],
+    ["einem Nicht-ADF-Objekt", { value: "Kriterium" }],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "weist Custom-Textfeld mit %s fail-closed zurück",
+    async (_case, value) => {
+      await expect(mapAcceptanceCriteria(value)).rejects.toMatchObject({
+        code: "JIRA_UNAVAILABLE",
+      });
+    },
+  );
+
+  it.each([
     ["direktem String", "Kriterium"],
     ["ADF ohne version", { type: "doc", content: [] }],
     [

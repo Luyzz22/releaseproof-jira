@@ -212,8 +212,10 @@ function mapVersion(value: unknown): JiraVersion | null {
     (typeof value.projectId === "number" ? String(value.projectId) : null);
   if (
     !id ||
+    !/^\d+$/.test(id) ||
     !name ||
     !projectId ||
+    !/^\d+$/.test(projectId) ||
     typeof value.released !== "boolean" ||
     typeof value.archived !== "boolean"
   ) {
@@ -235,6 +237,20 @@ function requireMappedVersion(value: unknown, resource: string): JiraVersion {
     "JIRA_UNAVAILABLE",
     `${resource} returned an unexpected response.`,
   );
+}
+
+export function mapVersionDetail(
+  value: unknown,
+  requestedVersionId: string,
+): JiraVersion {
+  const version = requireMappedVersion(value, "Version");
+  if (version.id !== requestedVersionId) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Version returned an unexpected response.",
+    );
+  }
+  return version;
 }
 
 export function mapProjectSearchPage(value: unknown): JiraProject[] {
@@ -417,6 +433,16 @@ function hasAcceptanceCriteriaEvidence(
 ): boolean {
   if (value === null) return false;
 
+  if (typeof value === "string") {
+    if (fieldId === "description") {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Issue search description returned an unexpected response.",
+      );
+    }
+    return jiraValueToText(value) !== null;
+  }
+
   if (isRecord(value) && value.type === "doc") {
     if (!isStructurallyValidAdfDocument(value)) {
       throw new AppError(
@@ -429,14 +455,12 @@ function hasAcceptanceCriteriaEvidence(
     return jiraValueToText(value) !== null;
   }
 
-  if (fieldId === "description") {
-    throw new AppError(
-      "JIRA_UNAVAILABLE",
-      "Issue search description returned an unexpected response.",
-    );
-  }
-
-  return jiraValueToText(value) !== null;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    fieldId === "description"
+      ? "Issue search description returned an unexpected response."
+      : "Issue search acceptance criteria returned an unexpected response.",
+  );
 }
 
 function mapIssue(
@@ -677,7 +701,7 @@ export class ForgeJiraGateway implements JiraGateway {
       await api.asUser().requestJira(route`/rest/api/3/version/${versionId}`),
       "VERSION_NOT_FOUND",
     );
-    return requireMappedVersion(data, "Version");
+    return mapVersionDetail(data, versionId);
   }
 
   async listIssuesForVersion(input: {

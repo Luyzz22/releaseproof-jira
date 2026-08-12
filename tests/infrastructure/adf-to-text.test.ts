@@ -23,6 +23,36 @@ describe("Jira ADF und unbekannte Feldwerte", () => {
     }
   });
 
+  it("stoppt übergroße marks-Arrays vor der Schema-Validierung", () => {
+    const validateSpy = vi.spyOn(Validator.prototype, "validate");
+
+    try {
+      expect(
+        isStructurallyValidAdfDocument({
+          type: "doc",
+          version: 1,
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "Kriterium",
+                  marks: Array.from({ length: 10_000 }, () => ({
+                    type: "strong",
+                  })),
+                },
+              ],
+            },
+          ],
+        }),
+      ).toBe(false);
+      expect(validateSpy).not.toHaveBeenCalled();
+    } finally {
+      validateSpy.mockRestore();
+    }
+  });
+
   it("übernimmt einen direkten String", () => {
     expect(jiraValueToText("Erstes Kriterium")).toBe("Erstes Kriterium");
   });

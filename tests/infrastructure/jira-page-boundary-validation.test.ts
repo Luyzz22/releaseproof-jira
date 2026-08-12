@@ -3,6 +3,7 @@ import {
   isLastPage,
   mapFieldSearchPage,
   mapProjectSearchPage,
+  mapVersionDetail,
   mapVersionSearchPage,
 } from "../../src/infrastructure/jira/forge-jira-gateway";
 
@@ -140,6 +141,8 @@ describe("paginierte Jira-Metadatengrenze", () => {
   );
 
   it.each([
+    ["nichtnumerischer ID", { ...version, id: "broken" }],
+    ["nichtnumerischer projectId", { ...version, projectId: "broken" }],
     ["fehlendem released", { ...version, released: undefined }],
     ["falsch typisiertem released", { ...version, released: "false" }],
     ["fehlendem archived", { ...version, archived: undefined }],
@@ -152,6 +155,16 @@ describe("paginierte Jira-Metadatengrenze", () => {
       ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
     },
   );
+
+  it("bindet eine Version-Detailantwort an die angefragte ID", () => {
+    expect(mapVersionDetail(version, "30001")).toEqual({
+      ...version,
+      projectId: "10000",
+    });
+    expect(() =>
+      mapVersionDetail({ ...version, id: "30002" }, "30001"),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
 
   it("verwirft bei gemischten gültigen und malformed Versionen die gesamte Seite", () => {
     expect(() =>

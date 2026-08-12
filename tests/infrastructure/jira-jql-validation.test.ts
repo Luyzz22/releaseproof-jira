@@ -2,8 +2,83 @@ import { describe, expect, it } from "vitest";
 import { parsedJqlIsValid } from "../../src/infrastructure/jira/forge-jira-client";
 
 const expectedJql = "project = DEMO AND status = Fertig";
+const validStructure = {
+  where: {
+    clauses: [
+      {
+        field: { name: "project" },
+        operand: { value: "DEMO" },
+        operator: "=",
+      },
+      {
+        field: { name: "status" },
+        operand: { value: "Fertig" },
+        operator: "=",
+      },
+    ],
+    operator: "and",
+  },
+};
 
 describe("Jira-JQL-Validierungsantwort", () => {
+  it("akzeptiert eine gültige einzelne Terminal-Clause", () => {
+    const jql = "project = DEMO";
+
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  field: { name: "project" },
+                  operand: { value: "DEMO" },
+                  operator: "=",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toBe(true);
+  });
+
+  it("akzeptiert den von Jira unterstützten !~-Operator", () => {
+    const jql = "project = DEMO AND summary !~ test";
+
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: { name: "summary" },
+                      operand: { value: "test" },
+                      operator: "!~",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toBe(true);
+  });
+
   it("akzeptiert eine von Jira erfolgreich validierte Abfrage", () => {
     expect(
       parsedJqlIsValid(
@@ -11,7 +86,7 @@ describe("Jira-JQL-Validierungsantwort", () => {
           queries: [
             {
               query: expectedJql,
-              structure: { where: { operator: "and" } },
+              structure: validStructure,
             },
           ],
         },
@@ -27,7 +102,7 @@ describe("Jira-JQL-Validierungsantwort", () => {
           queries: [
             {
               query: 'PROJECT = "DEMO" AND STATUS = "Fertig"',
-              structure: { where: { operator: "and" } },
+              structure: validStructure,
             },
           ],
         },
@@ -43,7 +118,7 @@ describe("Jira-JQL-Validierungsantwort", () => {
           queries: [
             {
               query: "project = OTHER AND status = Fertig",
-              structure: { where: { operator: "and" } },
+              structure: validStructure,
             },
           ],
         },
@@ -114,7 +189,7 @@ describe("Jira-JQL-Validierungsantwort", () => {
             {
               query: jql,
               warnings: ["The value does not currently exist."],
-              structure: { where: { operator: "and" } },
+              structure: validStructure,
             },
           ],
         },
@@ -124,6 +199,34 @@ describe("Jira-JQL-Validierungsantwort", () => {
   });
 
   it.each([
+    [
+      "leerem where-Parsebaum",
+      { queries: [{ query: "project = DEMO", structure: { where: {} } }] },
+    ],
+    [
+      "leerer Compound-Clause",
+      {
+        queries: [
+          {
+            query: "project = DEMO",
+            structure: { where: { clauses: [], operator: "and" } },
+          },
+        ],
+      },
+    ],
+    [
+      "Terminal-Clause ohne Operand",
+      {
+        queries: [
+          {
+            query: "project = DEMO",
+            structure: {
+              where: { field: { name: "project" }, operator: "=" },
+            },
+          },
+        ],
+      },
+    ],
     ["fehlende queries", {}],
     ["queries als Objekt", { queries: {} }],
     ["keine Query", { queries: [] }],

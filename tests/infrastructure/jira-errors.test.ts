@@ -218,9 +218,6 @@ describe("Jira-Issue-Pagination", () => {
     ["null", null, false],
     ["leerem String", "", false],
     ["reinem Whitespace", "   \n\t", false],
-    ["einer Zahl", 42, false],
-    ["einem Boolean", true, false],
-    ["einem Optionsobjekt", { id: "1", value: "Option A" }, false],
   ] satisfies ReadonlyArray<readonly [string, unknown, boolean]>)(
     "bildet bei %s ausschließlich das erwartete Presence-Signal",
     async (_case, value, expected) => {
@@ -245,6 +242,34 @@ describe("Jira-Issue-Pagination", () => {
       expect(mappedIssue).toHaveProperty("hasAcceptanceCriteria", expected);
       expect(mappedIssue).not.toHaveProperty("description");
       expect(mappedIssue).not.toHaveProperty("acceptanceCriteria");
+    },
+  );
+
+  it.each([
+    ["einer Zahl", 42],
+    ["einem Boolean", true],
+    ["einem Optionsobjekt", { id: "1", value: "Option A" }],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "weist Acceptance-Criteria-Evidence mit %s fail-closed zurück",
+    async (_case, value) => {
+      const sourceIssue = {
+        ...jiraIssue(1),
+        fields: {
+          ...jiraIssue(1).fields,
+          description: "SENSITIVE_DESCRIPTION_DO_NOT_EXPOSE",
+          customfield_10042: value,
+        },
+      };
+
+      await expect(
+        collectIssueSearchPages(
+          {
+            jql: "project = DEMO",
+            acceptanceCriteriaFieldId: "customfield_10042",
+          },
+          () => Promise.resolve({ issues: [sourceIssue] }),
+        ),
+      ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
     },
   );
 
