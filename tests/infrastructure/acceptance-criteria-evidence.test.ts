@@ -52,6 +52,21 @@ async function mapDescriptionAcceptanceCriteria(value: unknown) {
 }
 
 describe("Akzeptanzkriterien-Evidence", () => {
+  it("weist malformed ADF aus einem Custom-Textfeld fail-closed zurück", async () => {
+    await expect(
+      mapAcceptanceCriteria({
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "unsupportedBlock",
+            content: [{ type: "text", text: "Kriterium" }],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
   it.each([
     ["direktem String", "Kriterium"],
     ["ADF ohne version", { type: "doc", content: [] }],

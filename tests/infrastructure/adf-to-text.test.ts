@@ -1,7 +1,28 @@
-import { describe, expect, it } from "vitest";
-import { jiraValueToText } from "../../src/infrastructure/jira/adf-to-text";
+import { Validator } from "jsonschema";
+import { describe, expect, it, vi } from "vitest";
+import {
+  isStructurallyValidAdfDocument,
+  jiraValueToText,
+} from "../../src/infrastructure/jira/adf-to-text";
 
 describe("Jira ADF und unbekannte Feldwerte", () => {
+  it("stoppt mehr als 10.000 content-Einträge vor der Schema-Validierung", () => {
+    const validateSpy = vi.spyOn(Validator.prototype, "validate");
+
+    try {
+      expect(
+        isStructurallyValidAdfDocument({
+          type: "doc",
+          version: 1,
+          content: Array.from({ length: 10_000 }, () => null),
+        }),
+      ).toBe(false);
+      expect(validateSpy).not.toHaveBeenCalled();
+    } finally {
+      validateSpy.mockRestore();
+    }
+  });
+
   it("übernimmt einen direkten String", () => {
     expect(jiraValueToText("Erstes Kriterium")).toBe("Erstes Kriterium");
   });

@@ -415,16 +415,27 @@ function hasAcceptanceCriteriaEvidence(
   value: unknown,
   fieldId: string,
 ): boolean {
-  if (fieldId !== "description") {
+  if (value === null) return false;
+
+  if (isRecord(value) && value.type === "doc") {
+    if (!isStructurallyValidAdfDocument(value)) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        fieldId === "description"
+          ? "Issue search description returned an unexpected response."
+          : "Issue search acceptance criteria returned an unexpected response.",
+      );
+    }
     return jiraValueToText(value) !== null;
   }
-  if (value === null) return false;
-  if (!isStructurallyValidAdfDocument(value)) {
+
+  if (fieldId === "description") {
     throw new AppError(
       "JIRA_UNAVAILABLE",
       "Issue search description returned an unexpected response.",
     );
   }
+
   return jiraValueToText(value) !== null;
 }
 

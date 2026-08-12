@@ -13,18 +13,19 @@ const adfValidator = new Validator();
 
 function hasSafeAdfNodeCount(value: unknown): boolean {
   const stack: unknown[] = [value];
-  let nodes = 0;
+  let scheduledEntries = 1;
 
   while (stack.length > 0) {
     const current = stack.pop();
 
     if (!isRecord(current)) continue;
-
-    nodes += 1;
-    if (nodes > MAX_NODES) return false;
-
     if (current.content === undefined) continue;
     if (!Array.isArray(current.content)) return false;
+
+    if (scheduledEntries + current.content.length > MAX_NODES) {
+      return false;
+    }
+    scheduledEntries += current.content.length;
 
     for (const child of current.content) {
       stack.push(child);
