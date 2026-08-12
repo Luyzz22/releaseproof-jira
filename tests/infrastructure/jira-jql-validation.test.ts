@@ -478,6 +478,114 @@ describe("Jira-JQL-Validierungsantwort", () => {
     ).toBe(true);
   });
 
+  it("weist widersprüchliche Custom-Field-Identität fail-closed zurück", () => {
+    const jql = "project = DEMO AND customfield_10042 = yes";
+
+    expect(() =>
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: {
+                        name: "customfield_10042",
+                        encodedName: "customfield_99999",
+                      },
+                      operand: { value: "yes" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
+  it("akzeptiert konsistente technische Custom-Field-Aliase", () => {
+    const jql = "project = DEMO AND customfield_10042 = yes";
+
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: {
+                        name: "customfield_10042",
+                        encodedName: "cf[10042]",
+                      },
+                      operand: { value: "yes" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toBe(true);
+  });
+
+  it("akzeptiert issuekey als kontrollierten Alias für key", () => {
+    const jql = "project = DEMO AND key = DEMO-1";
+
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: { name: "issuekey" },
+                      operand: { value: "DEMO-1" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toBe(true);
+  });
+
   it.each([
     [
       "leerem where-Parsebaum",

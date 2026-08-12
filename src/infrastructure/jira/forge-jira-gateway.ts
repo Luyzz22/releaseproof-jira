@@ -172,12 +172,24 @@ export function isLastPage(value: unknown, resource: string): boolean {
       ? null
       : requirePageInteger(page.total, resource, "total");
 
+  const hasCompleteNumericPagination =
+    startAt !== null && maxResults !== null && total !== null;
+  const numericIsLast = hasCompleteNumericPagination
+    ? startAt + maxResults >= total
+    : null;
+
   if (typeof page.isLast === "boolean") {
+    if (numericIsLast !== null && page.isLast !== numericIsLast) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        `${resource} returned contradictory pagination metadata.`,
+      );
+    }
     return page.isLast;
   }
 
-  if (startAt !== null && maxResults !== null && total !== null) {
-    return startAt + maxResults >= total;
+  if (numericIsLast !== null) {
+    return numericIsLast;
   }
 
   throw new AppError(
@@ -418,7 +430,7 @@ function requireMappedFixVersion(
   const version = requireRecord(value, "Issue search fixVersion");
   const id = stringValue(version.id);
   const name = stringValue(version.name);
-  if (!id || !name) {
+  if (!id || !/^\d+$/.test(id) || !name) {
     throw new AppError(
       "JIRA_UNAVAILABLE",
       "Issue search fixVersion returned an unexpected response.",

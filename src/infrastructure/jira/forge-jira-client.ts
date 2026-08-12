@@ -63,12 +63,59 @@ function normalizedJqlFieldCandidate(value: string): string {
   return normalized === "issuekey" ? "key" : normalized;
 }
 
-function jiraFieldCandidates(value: unknown): string[] | null {
+interface JiraFieldIdentity {
+  name: string | null;
+  encodedName: string | null;
+}
+
+function isCustomFieldReference(value: string): boolean {
+  return /^customfield_\d+$/.test(value);
+}
+
+function jiraFieldIdentity(value: unknown): JiraFieldIdentity | null {
   if (!isRecord(value)) return null;
-  const candidates = [value.name, value.encodedName]
-    .filter(isNonEmptyString)
-    .map(normalizedJqlFieldCandidate);
-  return candidates.length > 0 ? [...new Set(candidates)] : null;
+
+  const name = isNonEmptyString(value.name)
+    ? normalizedJqlFieldCandidate(value.name)
+    : null;
+  const encodedName = isNonEmptyString(value.encodedName)
+    ? normalizedJqlFieldCandidate(value.encodedName)
+    : null;
+  if (name === null && encodedName === null) return null;
+
+  if (
+    name !== null &&
+    encodedName !== null &&
+    isCustomFieldReference(name) &&
+    isCustomFieldReference(encodedName) &&
+    name !== encodedName
+  ) {
+    return null;
+  }
+
+  return { name, encodedName };
+}
+
+function jiraFieldMatchesExpected(
+  identity: JiraFieldIdentity,
+  expectedField: string,
+): boolean {
+  const expected = normalizedJqlFieldCandidate(expectedField);
+
+  if (isCustomFieldReference(expected)) {
+    if (identity.encodedName !== null) {
+      if (identity.encodedName !== expected) return false;
+      return (
+        identity.name === null ||
+        !isCustomFieldReference(identity.name) ||
+        identity.name === expected
+      );
+    }
+    return identity.name === expected;
+  }
+
+  if (identity.name !== null) return identity.name === expected;
+  return identity.encodedName === expected;
 }
 
 function jiraSingleOperandValue(value: unknown): string | null {
@@ -94,7 +141,7 @@ function jiraListOperandValues(value: unknown): string[] | null {
 }
 
 interface JiraWhereSemanticClause {
-  fieldCandidates: string[];
+  fieldIdentity: JiraFieldIdentity;
   operator: string;
   values: string[];
 }
@@ -123,15 +170,15 @@ function jiraWhereClauseSemantics(
     return clauses;
   }
 
-  const fieldCandidates = jiraFieldCandidates(value.field);
-  if (!fieldCandidates || typeof value.operator !== "string") return null;
+  const fieldIdentity = jiraFieldIdentity(value.field);
+  if (!fieldIdentity || typeof value.operator !== "string") return null;
   const operator = value.operator.toLocaleLowerCase("en-US");
 
   if (JQL_COMPARISON_OPERATORS.has(operator)) {
     const operand = jiraSingleOperandValue(value.operand);
     return operand === null
       ? null
-      : [{ fieldCandidates, operator, values: [operand] }];
+      : [{ fieldIdentity, operator, values: [operand] }];
   }
 
   if (JQL_LIST_OPERATORS.has(operator)) {
@@ -140,7 +187,7 @@ function jiraWhereClauseSemantics(
       ? null
       : [
           {
-            fieldCandidates,
+            fieldIdentity,
             operator: operator.toUpperCase(),
             values: operands,
           },
@@ -158,7 +205,7 @@ function jiraWhereClauseSemantics(
     }
     return [
       {
-        fieldCandidates,
+        fieldIdentity,
         operator: operator === "is" ? "IS EMPTY" : "IS NOT EMPTY",
         values: [],
       },
@@ -189,9 +236,11 @@ function jiraWhereSemanticallyMatches(
   return expected.every((expectedClause, index) => {
     const actualClause = actual[index];
     if (!actualClause) return false;
-    const expectedField = normalizedJqlFieldCandidate(expectedClause.field);
     return (
-      actualClause.fieldCandidates.includes(expectedField) &&
+      jiraFieldMatchesExpected(
+        actualClause.fieldIdentity,
+        expectedClause.field,
+      ) &&
       actualClause.operator === expectedClause.operator &&
       sameStrings(expectedClause.values, actualClause.values)
     );

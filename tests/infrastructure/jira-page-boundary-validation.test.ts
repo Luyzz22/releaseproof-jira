@@ -122,6 +122,64 @@ describe("paginierte Jira-Metadatengrenze", () => {
     ).toBe(true);
   });
 
+  it("akzeptiert konsistente kombinierte Pagination-Metadaten", () => {
+    expect(
+      isLastPage(
+        {
+          values: [],
+          isLast: true,
+          startAt: 100,
+          maxResults: 50,
+          total: 150,
+        },
+        "Project search",
+      ),
+    ).toBe(true);
+
+    expect(
+      isLastPage(
+        {
+          values: [],
+          isLast: false,
+          startAt: 0,
+          maxResults: 100,
+          total: 150,
+        },
+        "Project search",
+      ),
+    ).toBe(false);
+  });
+
+  it.each([
+    [
+      "isLast=true trotz numerisch weiterer Seite",
+      {
+        values: [],
+        isLast: true,
+        startAt: 0,
+        maxResults: 100,
+        total: 150,
+      },
+    ],
+    [
+      "isLast=false trotz numerisch letzter Seite",
+      {
+        values: [],
+        isLast: false,
+        startAt: 100,
+        maxResults: 50,
+        total: 150,
+      },
+    ],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "weist widersprüchliche Pagination mit %s fail-closed zurück",
+    (_case, payload) => {
+      expect(() => isLastPage(payload, "Project search")).toThrowError(
+        expect.objectContaining({ code: "JIRA_UNAVAILABLE" }),
+      );
+    },
+  );
+
   it.each([
     ["nicht-booleschem isLast", { values: [], isLast: "true" }],
     [

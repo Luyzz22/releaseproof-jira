@@ -339,6 +339,7 @@ describe("Jira-Issue-Pagination", () => {
     ["Version ohne id", { name: "1.0.0" }],
     ["Version ohne name", { id: "30001" }],
     ["Version mit leerer id", { id: " ", name: "1.0.0" }],
+    ["Version mit nichtnumerischer id", { id: "30001x", name: "1.0.0" }],
   ] satisfies ReadonlyArray<readonly [string, unknown]>)(
     "bricht bei malformed %s vollständig ab",
     async (_case, malformedVersion) => {
@@ -368,6 +369,29 @@ describe("Jira-Issue-Pagination", () => {
       fields: {
         ...jiraIssue(1).fields,
         fixVersions: [{ id: "30001", name: "1.0.0" }, { id: "30002" }],
+      },
+    };
+
+    await expect(
+      collectIssueSearchPages(
+        {
+          jql: "project = DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [sourceIssue] }),
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+  });
+
+  it("verwirft bei gemischten numerischen und nichtnumerischen fixVersions das gesamte Ergebnis", async () => {
+    const sourceIssue = {
+      ...jiraIssue(1),
+      fields: {
+        ...jiraIssue(1).fields,
+        fixVersions: [
+          { id: "30001", name: "1.0.0" },
+          { id: "30002x", name: "2.0.0" },
+        ],
       },
     };
 
