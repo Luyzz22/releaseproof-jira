@@ -149,7 +149,11 @@ function requirePageInteger(
   return value;
 }
 
-export function isLastPage(value: unknown, resource: string): boolean {
+export function isLastPage(
+  value: unknown,
+  resource: string,
+  expectedStartAt?: number,
+): boolean {
   const page = requireRecord(value, resource);
   const values = requireArray(page.values, `${resource} values`);
 
@@ -164,6 +168,27 @@ export function isLastPage(value: unknown, resource: string): boolean {
     page.startAt === undefined
       ? null
       : requirePageInteger(page.startAt, resource, "startAt");
+  if (expectedStartAt !== undefined) {
+    if (!Number.isInteger(expectedStartAt) || expectedStartAt < 0) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        `${resource} received an invalid expected pagination offset.`,
+      );
+    }
+    if (startAt !== null && startAt !== expectedStartAt) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        `${resource} returned pagination metadata for an unexpected offset.`,
+      );
+    }
+    if (expectedStartAt > 0 && startAt === null) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        `${resource} returned pagination metadata without the requested offset.`,
+      );
+    }
+  }
+
   const maxResults =
     page.maxResults === undefined
       ? null
@@ -636,7 +661,12 @@ export function mapProjectMetadata(value: unknown): ProjectMetadata {
     const issueType = requireRecord(item, "Project metadata issue type");
     const id = stringValue(issueType.id);
     const name = stringValue(issueType.name);
-    if (!id || !name || typeof issueType.subtask !== "boolean") {
+    if (
+      !id ||
+      !/^\d+$/.test(id) ||
+      !name ||
+      typeof issueType.subtask !== "boolean"
+    ) {
       throw new AppError(
         "JIRA_UNAVAILABLE",
         "Project metadata issue type returned an unexpected response.",
@@ -678,7 +708,7 @@ export class ForgeJiraGateway implements JiraGateway {
           ),
       );
       projects.push(...mapProjectSearchPage(data));
-      if (isLastPage(data, "Project search")) {
+      if (isLastPage(data, "Project search", startAt)) {
         complete = true;
         break;
       }
@@ -718,7 +748,7 @@ export class ForgeJiraGateway implements JiraGateway {
           ),
       );
       fields.push(...mapFieldSearchPage(data));
-      if (isLastPage(data, "Field search")) {
+      if (isLastPage(data, "Field search", startAt)) {
         complete = true;
         break;
       }
@@ -740,7 +770,7 @@ export class ForgeJiraGateway implements JiraGateway {
           ),
       );
       versions.push(...mapVersionSearchPage(data));
-      if (isLastPage(data, "Version search")) {
+      if (isLastPage(data, "Version search", startAt)) {
         complete = true;
         break;
       }

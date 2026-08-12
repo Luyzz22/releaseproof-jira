@@ -28,6 +28,10 @@ describe("Jira-Projektmetadaten", () => {
   });
 
   it.each([
+    [
+      "nichtnumerische Vorgangstyp-ID",
+      [{ id: "Story", name: "Story", subtask: false, statuses: [] }],
+    ],
     ["fehlendes subtask-Flag", [{ id: "10001", name: "Story", statuses: [] }]],
     [
       "falsch typisiertes subtask-Flag",

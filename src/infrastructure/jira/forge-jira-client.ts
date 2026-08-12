@@ -112,6 +112,13 @@ function jiraFieldMatchesExpected(
     return identity.name === expected;
   }
 
+  if (
+    identity.encodedName !== null &&
+    isCustomFieldReference(identity.encodedName)
+  ) {
+    return false;
+  }
+
   if (identity.name !== null) return identity.name === expected;
   return identity.encodedName === expected;
 }

@@ -180,6 +180,31 @@ describe("paginierte Jira-Metadatengrenze", () => {
     },
   );
 
+  it("bindet numerische Pagination an den angeforderten Offset", () => {
+    const payload = {
+      values: Array.from({ length: 50 }, () => null),
+      isLast: true,
+      startAt: 100,
+      maxResults: 100,
+      total: 150,
+    };
+
+    expect(isLastPage(payload, "Project search", 100)).toBe(true);
+    expect(() => isLastPage(payload, "Project search", 0)).toThrowError(
+      expect.objectContaining({ code: "JIRA_UNAVAILABLE" }),
+    );
+  });
+
+  it("verlangt auf Folgeseiten startAt zur Offset-Bindung", () => {
+    expect(() =>
+      isLastPage({ values: [], isLast: true }, "Version search", 100),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+
+    expect(isLastPage({ values: [], isLast: true }, "Version search", 0)).toBe(
+      true,
+    );
+  });
+
   it("weist eine terminal deklarierte, aber unvollständig gelieferte Seite zurück", () => {
     expect(() =>
       isLastPage(

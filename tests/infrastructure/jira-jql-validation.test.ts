@@ -731,4 +731,45 @@ describe("Jira-JQL-Validierungsantwort", () => {
       ),
     ).toBe(true);
   });
+
+  it.each([
+    [
+      "project-Systemfeld",
+      "project = DEMO",
+      {
+        field: { name: "project", encodedName: "customfield_10042" },
+        operand: { value: "DEMO" },
+        operator: "=",
+      },
+    ],
+    [
+      "status-Systemfeld",
+      "project = DEMO AND status = Fertig",
+      {
+        clauses: [
+          {
+            field: { name: "project" },
+            operand: { value: "DEMO" },
+            operator: "=",
+          },
+          {
+            field: { name: "status", encodedName: "customfield_10042" },
+            operand: { value: "Fertig" },
+            operator: "=",
+          },
+        ],
+        operator: "and",
+      },
+    ],
+  ] satisfies ReadonlyArray<readonly [string, string, unknown]>)(
+    "weist Custom-ID für %s fail-closed zurück",
+    (_case, jql, where) => {
+      expect(() =>
+        parsedJqlIsValid(
+          { queries: [{ query: jql, structure: { where } }] },
+          jql,
+        ),
+      ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+    },
+  );
 });
