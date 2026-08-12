@@ -314,20 +314,31 @@ export function hasOnlyKnownReleaseScopeJqlFields(
   );
 }
 
-function normalizedReleaseScopeJqlSemantics(value: string): string | null {
+export interface ReleaseScopeJqlSemanticClause {
+  field: string;
+  operator: string;
+  values: string[];
+}
+
+export function parseReleaseScopeJqlSemantics(
+  value: string,
+): ReleaseScopeJqlSemanticClause[] | null {
   const tokenized = tokenizeJql(value);
   if (!tokenized.ok) return null;
 
   const parsed = parseConjunctiveJql(tokenized.tokens);
   if (!parsed.ok) return null;
 
-  return JSON.stringify(
-    parsed.clauses.map((clause) => ({
-      field: normalizedJqlFieldReference(clause.field.value),
-      operator: clause.operator,
-      values: clause.values.map((valueToken) => valueToken.value),
-    })),
-  );
+  return parsed.clauses.map((clause) => ({
+    field: normalizedJqlFieldReference(clause.field.value),
+    operator: clause.operator,
+    values: clause.values.map((valueToken) => valueToken.value),
+  }));
+}
+
+function normalizedReleaseScopeJqlSemantics(value: string): string | null {
+  const semantics = parseReleaseScopeJqlSemantics(value);
+  return semantics === null ? null : JSON.stringify(semantics);
 }
 
 export function releaseScopeJqlSemanticallyMatches(

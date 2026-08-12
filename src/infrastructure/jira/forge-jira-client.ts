@@ -1,7 +1,10 @@
 import api, { route } from "@forge/api";
 import type { JiraJqlValidator } from "../../application/ports";
 import { AppError } from "../../shared/errors";
-import { releaseScopeJqlSemanticallyMatches } from "../../shared/validation";
+import {
+  parseReleaseScopeJqlSemantics,
+  releaseScopeJqlSemanticallyMatches,
+} from "../../shared/validation";
 import { ForgeJiraGateway, parseResponse } from "./forge-jira-gateway";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -37,70 +40,162 @@ function requireNonEmptyStrings(value: unknown, resource: string): string[] {
   });
 }
 
-const JQL_COMPOUND_OPERATORS = new Set(["and", "or", "not"]);
-const JQL_FIELD_VALUE_OPERATORS = new Set([
+const JQL_COMPARISON_OPERATORS = new Set([
   "=",
   "!=",
   ">",
   "<",
   ">=",
   "<=",
-  "in",
-  "not in",
   "~",
   "!~",
-  "is",
-  "is not",
 ]);
+const JQL_LIST_OPERATORS = new Set(["in", "not in"]);
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function isValidJqlUnitaryOperand(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  if (isNonEmptyString(value.value)) return true;
-  if (value.keyword === "empty") return true;
-  return (
-    isNonEmptyString(value.function) &&
-    Array.isArray(value.arguments) &&
-    value.arguments.every((argument) => typeof argument === "string")
-  );
+function normalizedJqlFieldCandidate(value: string): string {
+  const normalized = value.trim().toLocaleLowerCase("en-US");
+  const customFieldMatch = /^cf\[(\d+)\]$/.exec(normalized);
+  if (customFieldMatch) return `customfield_${customFieldMatch[1]}`;
+  return normalized === "issuekey" ? "key" : normalized;
 }
 
-function isValidJqlOperand(value: unknown): boolean {
-  if (isValidJqlUnitaryOperand(value)) return true;
+function jiraFieldCandidates(value: unknown): string[] | null {
+  if (!isRecord(value)) return null;
+  const candidates = [value.name, value.encodedName]
+    .filter(isNonEmptyString)
+    .map(normalizedJqlFieldCandidate);
+  return candidates.length > 0 ? [...new Set(candidates)] : null;
+}
+
+function jiraSingleOperandValue(value: unknown): string | null {
+  if (!isRecord(value) || typeof value.value !== "string") return null;
+  return value.value;
+}
+
+function jiraListOperandValues(value: unknown): string[] | null {
   if (
     !isRecord(value) ||
     !Array.isArray(value.values) ||
     value.values.length === 0
   ) {
-    return false;
+    return null;
   }
-  return value.values.every(isValidJqlUnitaryOperand);
+
+  const values: string[] = [];
+  for (const entry of value.values) {
+    if (!isRecord(entry) || typeof entry.value !== "string") return null;
+    values.push(entry.value);
+  }
+  return values;
 }
 
-function isValidJqlWhereClause(value: unknown): boolean {
-  if (!isRecord(value)) return false;
+interface JiraWhereSemanticClause {
+  fieldCandidates: string[];
+  operator: string;
+  values: string[];
+}
+
+function jiraWhereClauseSemantics(
+  value: unknown,
+): JiraWhereSemanticClause[] | null {
+  if (!isRecord(value)) return null;
 
   if (value.clauses !== undefined) {
-    return (
-      Array.isArray(value.clauses) &&
-      value.clauses.length > 0 &&
-      isNonEmptyString(value.operator) &&
-      JQL_COMPOUND_OPERATORS.has(value.operator) &&
-      value.clauses.every(isValidJqlWhereClause)
-    );
+    if (
+      !Array.isArray(value.clauses) ||
+      value.clauses.length === 0 ||
+      typeof value.operator !== "string" ||
+      value.operator.toLocaleLowerCase("en-US") !== "and"
+    ) {
+      return null;
+    }
+
+    const clauses: JiraWhereSemanticClause[] = [];
+    for (const child of value.clauses) {
+      const childClauses = jiraWhereClauseSemantics(child);
+      if (!childClauses) return null;
+      clauses.push(...childClauses);
+    }
+    return clauses;
   }
 
-  const field = isRecord(value.field) ? value.field : null;
+  const fieldCandidates = jiraFieldCandidates(value.field);
+  if (!fieldCandidates || typeof value.operator !== "string") return null;
+  const operator = value.operator.toLocaleLowerCase("en-US");
+
+  if (JQL_COMPARISON_OPERATORS.has(operator)) {
+    const operand = jiraSingleOperandValue(value.operand);
+    return operand === null
+      ? null
+      : [{ fieldCandidates, operator, values: [operand] }];
+  }
+
+  if (JQL_LIST_OPERATORS.has(operator)) {
+    const operands = jiraListOperandValues(value.operand);
+    return operands === null
+      ? null
+      : [
+          {
+            fieldCandidates,
+            operator: operator.toUpperCase(),
+            values: operands,
+          },
+        ];
+  }
+
+  if (operator === "is" || operator === "is not") {
+    const operand = isRecord(value.operand) ? value.operand : null;
+    if (
+      !operand ||
+      typeof operand.keyword !== "string" ||
+      operand.keyword.toLocaleLowerCase("en-US") !== "empty"
+    ) {
+      return null;
+    }
+    return [
+      {
+        fieldCandidates,
+        operator: operator === "is" ? "IS EMPTY" : "IS NOT EMPTY",
+        values: [],
+      },
+    ];
+  }
+
+  return null;
+}
+
+function sameStrings(
+  expected: readonly string[],
+  actual: readonly string[],
+): boolean {
   return (
-    field !== null &&
-    isNonEmptyString(field.name) &&
-    isNonEmptyString(value.operator) &&
-    JQL_FIELD_VALUE_OPERATORS.has(value.operator) &&
-    isValidJqlOperand(value.operand)
+    expected.length === actual.length &&
+    expected.every((value, index) => value === actual[index])
   );
+}
+
+function jiraWhereSemanticallyMatches(
+  value: unknown,
+  requestedJql: string,
+): boolean {
+  const expected = parseReleaseScopeJqlSemantics(requestedJql);
+  const actual = jiraWhereClauseSemantics(value);
+  if (!expected || !actual || expected.length !== actual.length) return false;
+
+  return expected.every((expectedClause, index) => {
+    const actualClause = actual[index];
+    if (!actualClause) return false;
+    const expectedField = normalizedJqlFieldCandidate(expectedClause.field);
+    return (
+      actualClause.fieldCandidates.includes(expectedField) &&
+      actualClause.operator === expectedClause.operator &&
+      sameStrings(expectedClause.values, actualClause.values)
+    );
+  });
 }
 
 export function parsedJqlIsValid(
@@ -148,7 +243,7 @@ export function parsedJqlIsValid(
     structure.where,
     "JQL validation where structure",
   );
-  if (!isValidJqlWhereClause(where)) {
+  if (!jiraWhereSemanticallyMatches(where, requestedJql)) {
     throw new AppError(
       "JIRA_UNAVAILABLE",
       "JQL validation returned an unexpected response.",

@@ -180,7 +180,7 @@ describe("Jira-JQL-Validierungsantwort", () => {
     ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
   });
 
-  it("akzeptiert Warnungsantworten mit nachgewiesener Parse-Struktur", () => {
+  it("akzeptiert Warnungsantworten mit semantisch passender Parse-Struktur", () => {
     const jql = "project = DEMO AND labels = future-label";
     expect(
       parsedJqlIsValid(
@@ -189,7 +189,287 @@ describe("Jira-JQL-Validierungsantwort", () => {
             {
               query: jql,
               warnings: ["The value does not currently exist."],
-              structure: validStructure,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: { name: "labels" },
+                      operand: { value: "future-label" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      "abweichendem Projektwert",
+      "project = DEMO AND status = Fertig",
+      {
+        clauses: [
+          {
+            field: { name: "project" },
+            operand: { value: "OTHER" },
+            operator: "=",
+          },
+          {
+            field: { name: "status" },
+            operand: { value: "Fertig" },
+            operator: "=",
+          },
+        ],
+        operator: "and",
+      },
+    ],
+    [
+      "abweichendem Feldoperator",
+      "project = DEMO AND status ~ Fertig",
+      {
+        clauses: [
+          {
+            field: { name: "project" },
+            operand: { value: "DEMO" },
+            operator: "=",
+          },
+          {
+            field: { name: "status" },
+            operand: { value: "Fertig" },
+            operator: "=",
+          },
+        ],
+        operator: "and",
+      },
+    ],
+    [
+      "abweichendem Operand",
+      "project = DEMO AND status = Fertig",
+      {
+        clauses: [
+          {
+            field: { name: "project" },
+            operand: { value: "DEMO" },
+            operator: "=",
+          },
+          {
+            field: { name: "status" },
+            operand: { value: "Offen" },
+            operator: "=",
+          },
+        ],
+        operator: "and",
+      },
+    ],
+    [
+      "fehlender zweiter Clause",
+      "project = DEMO AND status = Fertig",
+      {
+        field: { name: "project" },
+        operand: { value: "DEMO" },
+        operator: "=",
+      },
+    ],
+    [
+      "vertauschter Clause-Reihenfolge",
+      "project = DEMO AND status = Fertig",
+      {
+        clauses: [
+          {
+            field: { name: "status" },
+            operand: { value: "Fertig" },
+            operator: "=",
+          },
+          {
+            field: { name: "project" },
+            operand: { value: "DEMO" },
+            operator: "=",
+          },
+        ],
+        operator: "and",
+      },
+    ],
+    [
+      "OR-Compound trotz passender Terminal-Clauses",
+      "project = DEMO AND status = Fertig",
+      {
+        clauses: [
+          {
+            field: { name: "project" },
+            operand: { value: "DEMO" },
+            operator: "=",
+          },
+          {
+            field: { name: "status" },
+            operand: { value: "Fertig" },
+            operator: "=",
+          },
+        ],
+        operator: "or",
+      },
+    ],
+  ] satisfies ReadonlyArray<readonly [string, string, unknown]>)(
+    "weist formal gültigen Parsebaum mit %s fail-closed zurück",
+    (_case, jql, where) => {
+      expect(() =>
+        parsedJqlIsValid(
+          { queries: [{ query: jql, structure: { where } }] },
+          jql,
+        ),
+      ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+    },
+  );
+
+  it("akzeptiert eine semantisch passende IN-Liste", () => {
+    const jql = "project = DEMO AND labels IN (urgent, blocker)";
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: { name: "labels" },
+                      operand: {
+                        values: [{ value: "urgent" }, { value: "blocker" }],
+                      },
+                      operator: "in",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toBe(true);
+  });
+
+  it("akzeptiert IS EMPTY semantisch gebunden", () => {
+    const jql = "project = DEMO AND assignee IS EMPTY";
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: { name: "assignee" },
+                      operand: { keyword: "empty" },
+                      operator: "is",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toBe(true);
+  });
+
+  it("akzeptiert rekursiv verschachtelte AND-Clauses bei identischer Semantik", () => {
+    const jql = "project = DEMO AND labels = urgent AND status = Fertig";
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      clauses: [
+                        {
+                          field: { name: "labels" },
+                          operand: { value: "urgent" },
+                          operator: "=",
+                        },
+                        {
+                          field: { name: "status" },
+                          operand: { value: "Fertig" },
+                          operator: "=",
+                        },
+                      ],
+                      operator: "and",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+      ),
+    ).toBe(true);
+  });
+
+  it("akzeptiert encodedName als semantische Feld-ID", () => {
+    const jql = "project = DEMO AND customfield_10042 = yes";
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: {
+                        name: "Acceptance Criteria",
+                        encodedName: "customfield_10042",
+                      },
+                      operand: { value: "yes" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
             },
           ],
         },
