@@ -1,5 +1,5 @@
 import api, { route } from "@forge/api";
-import type { JiraJqlValidator } from "../../application/ports";
+import type { JiraField, JiraJqlValidator } from "../../application/ports";
 import { AppError } from "../../shared/errors";
 import {
   parseReleaseScopeJqlSemantics,
@@ -83,44 +83,100 @@ function jiraFieldIdentity(value: unknown): JiraFieldIdentity | null {
     : null;
   if (name === null && encodedName === null) return null;
 
-  if (name !== null && encodedName !== null) {
-    if (isCustomFieldReference(encodedName)) {
-      if (isCustomFieldReference(name) && name !== encodedName) return null;
-    } else if (name !== encodedName) {
-      return null;
+  return { name, encodedName };
+}
+
+interface ExpectedJiraFieldIdentity {
+  canonical: string;
+  names: ReadonlySet<string>;
+  custom: boolean;
+}
+
+const CONTROLLED_SYSTEM_FIELD_REFERENCES = new Set(["project", "key"]);
+
+function expectedJiraFieldIdentity(
+  expectedField: string,
+  fields: readonly JiraField[],
+): ExpectedJiraFieldIdentity | null {
+  const expected = normalizedJqlFieldCandidate(expectedField);
+
+  if (CONTROLLED_SYSTEM_FIELD_REFERENCES.has(expected)) {
+    return {
+      canonical: expected,
+      names: new Set([expected]),
+      custom: false,
+    };
+  }
+
+  const idMatches = fields.filter(
+    (field) => normalizedJqlFieldCandidate(field.id) === expected,
+  );
+  const candidates =
+    idMatches.length > 0
+      ? idMatches
+      : fields.filter(
+          (field) => normalizedJqlFieldCandidate(field.name) === expected,
+        );
+
+  if (candidates.length === 0) {
+    return {
+      canonical: expected,
+      names: new Set([expected]),
+      custom: isCustomFieldReference(expected),
+    };
+  }
+
+  const canonicalIds = new Set(
+    candidates.map((field) => normalizedJqlFieldCandidate(field.id)),
+  );
+  if (canonicalIds.size !== 1) return null;
+
+  const canonical = canonicalIds.values().next().value;
+  if (typeof canonical !== "string") return null;
+
+  const names = new Set<string>([expected, canonical]);
+  for (const field of fields) {
+    if (normalizedJqlFieldCandidate(field.id) === canonical) {
+      names.add(normalizedJqlFieldCandidate(field.name));
     }
   }
 
-  return { name, encodedName };
+  return {
+    canonical,
+    names,
+    custom: isCustomFieldReference(canonical),
+  };
 }
 
 function jiraFieldMatchesExpected(
   identity: JiraFieldIdentity,
   expectedField: string,
+  fields: readonly JiraField[],
 ): boolean {
-  const expected = normalizedJqlFieldCandidate(expectedField);
+  const expected = expectedJiraFieldIdentity(expectedField, fields);
+  if (!expected) return false;
 
-  if (isCustomFieldReference(expected)) {
+  if (expected.custom) {
     if (identity.encodedName !== null) {
-      if (identity.encodedName !== expected) return false;
+      if (identity.encodedName !== expected.canonical) return false;
       return (
         identity.name === null ||
         !isCustomFieldReference(identity.name) ||
-        identity.name === expected
+        identity.name === expected.canonical
       );
     }
-    return identity.name === expected;
+    return identity.name !== null && expected.names.has(identity.name);
   }
 
-  if (
-    identity.encodedName !== null &&
-    isCustomFieldReference(identity.encodedName)
-  ) {
+  if (identity.encodedName !== null) {
+    if (isCustomFieldReference(identity.encodedName)) return false;
+    if (!expected.names.has(identity.encodedName)) return false;
+  }
+  if (identity.name !== null && !expected.names.has(identity.name)) {
     return false;
   }
 
-  if (identity.name !== null) return identity.name === expected;
-  return identity.encodedName === expected;
+  return identity.name !== null || identity.encodedName !== null;
 }
 
 function jiraSingleOperandValue(value: unknown): string | null {
@@ -233,6 +289,7 @@ function sameStrings(
 function jiraWhereSemanticallyMatches(
   value: unknown,
   requestedJql: string,
+  fields: readonly JiraField[],
 ): boolean {
   const expected = parseReleaseScopeJqlSemantics(requestedJql);
   const actual = jiraWhereClauseSemantics(value);
@@ -245,6 +302,7 @@ function jiraWhereSemanticallyMatches(
       jiraFieldMatchesExpected(
         actualClause.fieldIdentity,
         expectedClause.field,
+        fields,
       ) &&
       actualClause.operator === expectedClause.operator &&
       sameStrings(expectedClause.values, actualClause.values)
@@ -255,6 +313,7 @@ function jiraWhereSemanticallyMatches(
 export function parsedJqlIsValid(
   value: unknown,
   requestedJql: string,
+  fields: readonly JiraField[] = [],
 ): boolean {
   const payload = requireRecord(value, "JQL validation");
   const queries = requireArray(payload.queries, "JQL validation");
@@ -297,7 +356,7 @@ export function parsedJqlIsValid(
     structure.where,
     "JQL validation where structure",
   );
-  if (!jiraWhereSemanticallyMatches(where, requestedJql)) {
+  if (!jiraWhereSemanticallyMatches(where, requestedJql, fields)) {
     throw new AppError(
       "JIRA_UNAVAILABLE",
       "JQL validation returned an unexpected response.",
@@ -311,7 +370,10 @@ export class ForgeJiraClient
   extends ForgeJiraGateway
   implements JiraJqlValidator
 {
-  async validateJql(jql: string): Promise<boolean> {
+  async validateJql(
+    jql: string,
+    fields: readonly JiraField[],
+  ): Promise<boolean> {
     const validation = "strict";
     const data = await parseResponse(
       await api
@@ -325,6 +387,6 @@ export class ForgeJiraClient
           body: JSON.stringify({ queries: [jql] }),
         }),
     );
-    return parsedJqlIsValid(data, jql);
+    return parsedJqlIsValid(data, jql, fields);
   }
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isLastPage,
   mapFieldSearchPage,
+  nextPageStartAt,
   mapProjectSearchPage,
   mapVersionDetail,
   mapVersionSearchPage,
@@ -64,6 +65,15 @@ describe("paginierte Jira-Metadatengrenze", () => {
     ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
   });
 
+  it("weist eine nichtnumerische Projekt-ID fail-closed zurück", () => {
+    expect(() =>
+      mapProjectSearchPage({
+        values: [{ ...project, id: "broken" }],
+        isLast: true,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
   it("leitet custom bei paginierten Jira-Feldern aus der Feld-ID ab", () => {
     expect(
       mapFieldSearchPage({
@@ -107,6 +117,17 @@ describe("paginierte Jira-Metadatengrenze", () => {
       ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
     },
   );
+
+  it("leitet den nächsten Offset aus der tatsächlich gelieferten Seite ab", () => {
+    expect(nextPageStartAt(0, 50, "Project search")).toBe(50);
+    expect(nextPageStartAt(50, 50, "Project search")).toBe(100);
+  });
+
+  it("weist eine nicht fortschreitende Pagination fail-closed zurück", () => {
+    expect(() => nextPageStartAt(50, 0, "Field search")).toThrowError(
+      expect.objectContaining({ code: "JIRA_UNAVAILABLE" }),
+    );
+  });
 
   it("akzeptiert vollständige numerische Pagination ohne isLast", () => {
     expect(

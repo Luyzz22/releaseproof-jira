@@ -442,6 +442,88 @@ describe("Jira-JQL-Validierungsantwort", () => {
     ).toBe(true);
   });
 
+  it("akzeptiert ein Custom Field über den bekannten Anzeigenamen", () => {
+    const jql = 'project = DEMO AND "Acceptance Criteria" = yes';
+    const fields = [
+      {
+        id: "customfield_10042",
+        name: "Acceptance Criteria",
+        custom: true,
+        schemaType: "string",
+      },
+    ];
+
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: {
+                        name: "Acceptance Criteria",
+                        encodedName: "customfield_10042",
+                      },
+                      operand: { value: "yes" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+        fields,
+      ),
+    ).toBe(true);
+  });
+
+  it("schützt das Systemfeld project trotz gleichnamigem Custom Field", () => {
+    const jql = "project = DEMO";
+    const fields = [
+      {
+        id: "customfield_10042",
+        name: "project",
+        custom: true,
+        schemaType: "string",
+      },
+    ];
+
+    expect(() =>
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  field: {
+                    name: "project",
+                    encodedName: "customfield_10042",
+                  },
+                  operand: { value: "DEMO" },
+                  operator: "=",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+        fields,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
   it("akzeptiert encodedName als semantische Feld-ID", () => {
     const jql = "project = DEMO AND customfield_10042 = yes";
     expect(

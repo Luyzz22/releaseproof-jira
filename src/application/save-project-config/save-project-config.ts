@@ -52,7 +52,7 @@ export async function saveProjectConfig(
         "Release scope references an unknown Jira field.",
       );
     }
-    if (!(await jira.validateJql(input.releaseScopeJql))) {
+    if (!(await jira.validateJql(input.releaseScopeJql, fields))) {
       throw new AppError(
         "INVALID_INPUT",
         "Release scope contains a Jira-invalid field, value, or operator.",

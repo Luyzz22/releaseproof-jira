@@ -57,7 +57,7 @@ export interface JiraGateway {
 }
 
 export interface JiraJqlValidator {
-  validateJql(jql: string): Promise<boolean>;
+  validateJql(jql: string, fields: readonly JiraField[]): Promise<boolean>;
 }
 
 export interface ProjectConfigRepository {

@@ -65,7 +65,7 @@ export async function analyzeRelease(
         "Stored JQL scope references an unknown Jira field.",
       );
     }
-    if (!(await jira.validateJql(config.releaseScopeJql))) {
+    if (!(await jira.validateJql(config.releaseScopeJql, fields))) {
       throw new AppError(
         "STORAGE_CORRUPT",
         "Stored JQL scope contains a Jira-invalid field, value, or operator.",

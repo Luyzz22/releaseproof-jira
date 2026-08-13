@@ -236,12 +236,39 @@ export function isLastPage(
   );
 }
 
+export function nextPageStartAt(
+  currentStartAt: number,
+  pageLength: number,
+  resource: string,
+): number {
+  if (
+    !Number.isInteger(currentStartAt) ||
+    currentStartAt < 0 ||
+    !Number.isInteger(pageLength) ||
+    pageLength <= 0
+  ) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      `${resource} returned a non-advancing pagination page.`,
+    );
+  }
+
+  const nextStartAt = currentStartAt + pageLength;
+  if (!Number.isSafeInteger(nextStartAt)) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      `${resource} returned an invalid pagination range.`,
+    );
+  }
+  return nextStartAt;
+}
+
 function mapProject(value: unknown): JiraProject | null {
   if (!isRecord(value)) return null;
   const id = stringValue(value.id);
   const key = stringValue(value.key);
   const name = stringValue(value.name);
-  return id && key && name ? { id, key, name } : null;
+  return id && /^\d+$/.test(id) && key && name ? { id, key, name } : null;
 }
 
 function requireMappedProject(value: unknown, resource: string): JiraProject {
@@ -698,8 +725,8 @@ export class ForgeJiraGateway implements JiraGateway {
   async listProjects(): Promise<JiraProject[]> {
     const projects: JiraProject[] = [];
     let complete = false;
+    let startAt = 0;
     for (let page = 0; page < MAX_PAGES; page += 1) {
-      const startAt = page * PAGE_SIZE;
       const data = await parseResponse(
         await api
           .asUser()
@@ -707,11 +734,13 @@ export class ForgeJiraGateway implements JiraGateway {
             route`/rest/api/3/project/search?startAt=${startAt}&maxResults=${PAGE_SIZE}`,
           ),
       );
-      projects.push(...mapProjectSearchPage(data));
+      const pageProjects = mapProjectSearchPage(data);
+      projects.push(...pageProjects);
       if (isLastPage(data, "Project search", startAt)) {
         complete = true;
         break;
       }
+      startAt = nextPageStartAt(startAt, pageProjects.length, "Project search");
     }
     if (!complete) throwPaginationLimit("Project pagination");
     return projects;
@@ -738,8 +767,8 @@ export class ForgeJiraGateway implements JiraGateway {
   async listFields(projectId: string): Promise<JiraField[]> {
     const fields: JiraField[] = [];
     let complete = false;
+    let startAt = 0;
     for (let page = 0; page < MAX_PAGES; page += 1) {
-      const startAt = page * PAGE_SIZE;
       const data = await parseResponse(
         await api
           .asUser()
@@ -747,11 +776,13 @@ export class ForgeJiraGateway implements JiraGateway {
             route`/rest/api/3/field/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&projectIds=${projectId}`,
           ),
       );
-      fields.push(...mapFieldSearchPage(data));
+      const pageFields = mapFieldSearchPage(data);
+      fields.push(...pageFields);
       if (isLastPage(data, "Field search", startAt)) {
         complete = true;
         break;
       }
+      startAt = nextPageStartAt(startAt, pageFields.length, "Field search");
     }
     if (!complete) throwPaginationLimit("Field pagination");
     return fields;
@@ -760,8 +791,8 @@ export class ForgeJiraGateway implements JiraGateway {
   async listVersions(projectIdOrKey: string): Promise<JiraVersion[]> {
     const versions: JiraVersion[] = [];
     let complete = false;
+    let startAt = 0;
     for (let page = 0; page < MAX_PAGES; page += 1) {
-      const startAt = page * PAGE_SIZE;
       const data = await parseResponse(
         await api
           .asUser()
@@ -769,11 +800,13 @@ export class ForgeJiraGateway implements JiraGateway {
             route`/rest/api/3/project/${projectIdOrKey}/version?startAt=${startAt}&maxResults=${PAGE_SIZE}&orderBy=-releaseDate`,
           ),
       );
-      versions.push(...mapVersionSearchPage(data));
+      const pageVersions = mapVersionSearchPage(data);
+      versions.push(...pageVersions);
       if (isLastPage(data, "Version search", startAt)) {
         complete = true;
         break;
       }
+      startAt = nextPageStartAt(startAt, pageVersions.length, "Version search");
     }
     if (!complete) throwPaginationLimit("Version pagination");
     return versions;

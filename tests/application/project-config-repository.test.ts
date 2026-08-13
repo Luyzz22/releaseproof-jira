@@ -53,6 +53,7 @@ class ControlledJiraConfigGateway
   readonly calls: string[] = [];
   readonly metadataCalls: string[] = [];
   readonly jqlCalls: string[] = [];
+  readonly jqlFieldCalls: JiraField[][] = [];
 
   constructor(
     private readonly fields: JiraField[],
@@ -70,8 +71,9 @@ class ControlledJiraConfigGateway
     return Promise.resolve(structuredClone(this.metadata));
   }
 
-  validateJql(jql: string): Promise<boolean> {
+  validateJql(jql: string, fields: readonly JiraField[]): Promise<boolean> {
     this.jqlCalls.push(jql);
+    this.jqlFieldCalls.push(fields.map((field) => ({ ...field })));
     return Promise.resolve(this.jqlValid);
   }
 }
@@ -357,6 +359,10 @@ describe("In-Memory ProjectConfig Repository", () => {
     ["Jira-Feld-ID", "project = DEMO AND status = Fertig"],
     ["Jira-Feldname", 'project = DEMO AND "Status" = Fertig'],
     [
+      "Custom-Field-Anzeigename",
+      'project = DEMO AND "Akzeptanzkriterien" = vorhanden',
+    ],
+    [
       "Custom-Field-ID",
       `project = DEMO AND ${projectConfig.acceptanceCriteriaFieldId} = vorhanden`,
     ],
@@ -374,6 +380,9 @@ describe("In-Memory ProjectConfig Repository", () => {
       );
 
       expect(jira.jqlCalls).toEqual([releaseScopeJql]);
+      expect(jira.jqlFieldCalls).toEqual([
+        [supportedCustomStringField, statusJqlField],
+      ]);
       expect(saved.releaseScopeJql).toBe(releaseScopeJql);
       expect(repository.saved).toEqual([saved]);
     },

@@ -26,6 +26,7 @@ class FakeJiraGateway implements JiraGateway, JiraJqlValidator {
   readonly issueSearchCalls: string[] = [];
   readonly metadataCalls: string[] = [];
   readonly jqlValidationCalls: string[] = [];
+  readonly jqlValidationFieldCalls: JiraField[][] = [];
   readonly version: JiraVersion = {
     id: "30001",
     name: "Kundenrelease 2.4",
@@ -65,8 +66,12 @@ class FakeJiraGateway implements JiraGateway, JiraJqlValidator {
   async listFields() {
     return this.fields;
   }
-  async validateJql(jql: string): Promise<boolean> {
+  async validateJql(
+    jql: string,
+    fields: readonly JiraField[],
+  ): Promise<boolean> {
     this.jqlValidationCalls.push(jql);
+    this.jqlValidationFieldCalls.push(fields.map((field) => ({ ...field })));
     return this.jqlValid;
   }
   async listVersions(): Promise<JiraVersion[]> {
@@ -229,6 +234,16 @@ describe("Analyze Release Use Case", () => {
     expect(result.release.issues[0]?.key).toBe("DEMO-42");
     expect(result.release.releaseScopeMode).toBe("JQL_SCOPE");
     expect(jira.jqlValidationCalls).toEqual([projectConfig.releaseScopeJql]);
+    expect(jira.jqlValidationFieldCalls).toEqual([
+      [
+        {
+          id: "customfield_10042",
+          name: "Akzeptanzkriterien",
+          custom: true,
+          schemaType: "string",
+        },
+      ],
+    ]);
   });
 
   it.each([
