@@ -134,12 +134,14 @@ function expectedJiraFieldIdentity(
   const canonical = canonicalIds.values().next().value;
   if (typeof canonical !== "string") return null;
 
-  const names = new Set<string>([expected, canonical]);
-  for (const field of fields) {
-    if (normalizedJqlFieldCandidate(field.id) === canonical) {
-      names.add(normalizedJqlFieldCandidate(field.name));
-    }
-  }
+  const canonicalFieldNames = new Set(
+    fields
+      .filter((field) => normalizedJqlFieldCandidate(field.id) === canonical)
+      .map((field) => normalizedJqlFieldCandidate(field.name)),
+  );
+  if (canonicalFieldNames.size > 1) return null;
+
+  const names = new Set<string>([expected, canonical, ...canonicalFieldNames]);
 
   return {
     canonical,

@@ -678,6 +678,7 @@ export async function collectIssueSearchPages(
   validateFieldId(input.acceptanceCriteriaFieldId);
   const issues: ReleaseIssue[] = [];
   let nextPageToken: string | undefined;
+  const seenPageTokens = new Set<string>();
   const fields = Array.from(
     new Set([
       "summary",
@@ -735,6 +736,14 @@ export async function collectIssueSearchPages(
         "Issue search returned an unexpected response.",
       );
     }
+
+    if (seenPageTokens.has(pageToken)) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Issue search returned a non-advancing pagination token.",
+      );
+    }
+    seenPageTokens.add(pageToken);
 
     issues.push(...pageIssues);
     nextPageToken = pageToken;

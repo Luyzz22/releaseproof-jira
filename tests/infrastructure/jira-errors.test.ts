@@ -228,6 +228,109 @@ describe("Jira-Issue-Pagination", () => {
     expect(issues.map((item) => item.key)).toEqual(["DEMO-1", "DEMO-2"]);
   });
 
+  it("bricht bei einem unmittelbar wiederholten Enhanced-JQL-Token fail-closed ab", async () => {
+    let calls = 0;
+
+    await expect(
+      collectIssueSearchPagesRaw(
+        {
+          jql: "project = DEMO",
+          projectKey: "DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        (request) => {
+          calls += 1;
+          return Promise.resolve(
+            request.nextPageToken
+              ? {
+                  issues: [jiraIssue(2)],
+                  isLast: false,
+                  nextPageToken: "page-2",
+                }
+              : {
+                  issues: [jiraIssue(1)],
+                  isLast: false,
+                  nextPageToken: "page-2",
+                },
+          );
+        },
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+
+    expect(calls).toBe(2);
+  });
+
+  it("bricht bei einem zyklischen Enhanced-JQL-Token fail-closed ab", async () => {
+    let calls = 0;
+
+    await expect(
+      collectIssueSearchPagesRaw(
+        {
+          jql: "project = DEMO",
+          projectKey: "DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        (request) => {
+          calls += 1;
+          if (!request.nextPageToken) {
+            return Promise.resolve({
+              issues: [jiraIssue(1)],
+              isLast: false,
+              nextPageToken: "page-2",
+            });
+          }
+          if (request.nextPageToken === "page-2") {
+            return Promise.resolve({
+              issues: [jiraIssue(2)],
+              isLast: false,
+              nextPageToken: "page-3",
+            });
+          }
+          return Promise.resolve({
+            issues: [jiraIssue(3)],
+            isLast: false,
+            nextPageToken: "page-2",
+          });
+        },
+      ),
+    ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+
+    expect(calls).toBe(3);
+  });
+
+  it("akzeptiert eine fortschreitende dreiseitige Enhanced-JQL-Pagination", async () => {
+    const issues = await collectIssueSearchPagesRaw(
+      {
+        jql: "project = DEMO",
+        projectKey: "DEMO",
+        acceptanceCriteriaFieldId: "customfield_10042",
+      },
+      (request) => {
+        if (!request.nextPageToken) {
+          return Promise.resolve({
+            issues: [jiraIssue(1)],
+            isLast: false,
+            nextPageToken: "page-2",
+          });
+        }
+        if (request.nextPageToken === "page-2") {
+          return Promise.resolve({
+            issues: [jiraIssue(2)],
+            isLast: false,
+            nextPageToken: "page-3",
+          });
+        }
+        return Promise.resolve({ issues: [jiraIssue(3)], isLast: true });
+      },
+    );
+
+    expect(issues.map((item) => item.key)).toEqual([
+      "DEMO-1",
+      "DEMO-2",
+      "DEMO-3",
+    ]);
+  });
+
   it("fordert description bei einem Custom Field nicht zusätzlich an", async () => {
     let requestedFields: string[] = [];
 
@@ -695,6 +798,8 @@ describe("Jira-Issue-Pagination", () => {
   });
 
   it("bricht nach 100 REST-Seiten ab statt Teilresultate zu liefern", async () => {
+    let pageNumber = 0;
+
     await expect(
       collectIssueSearchPages(
         {
@@ -702,9 +807,17 @@ describe("Jira-Issue-Pagination", () => {
           projectKey: "DEMO",
           acceptanceCriteriaFieldId: "customfield_10042",
         },
-        () => Promise.resolve({ issues: [], nextPageToken: "more" }),
+        () => {
+          pageNumber += 1;
+          return Promise.resolve({
+            issues: [],
+            nextPageToken: `page-${pageNumber + 1}`,
+          });
+        },
       ),
     ).rejects.toMatchObject({ code: "RESULT_LIMIT_EXCEEDED" });
+
+    expect(pageNumber).toBe(100);
   });
 
   it.each([
