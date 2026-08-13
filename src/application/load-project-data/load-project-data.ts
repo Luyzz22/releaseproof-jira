@@ -30,7 +30,7 @@ export async function loadProjectData(
   projectKey: string,
 ) {
   const [project, metadata, fields, versions, configState] = await Promise.all([
-    jira.getProject(projectKey),
+    jira.getProject(projectKey, projectId),
     jira.getProjectMetadata(projectKey),
     jira.listFields(projectId),
     jira.listVersions(projectKey),

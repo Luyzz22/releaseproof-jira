@@ -22,8 +22,11 @@ class BootstrapJiraGateway implements JiraGateway {
     return [];
   }
 
-  async getProject(): Promise<JiraProject> {
-    this.calls.push("project");
+  async getProject(
+    projectIdOrKey: string,
+    expectedProjectId: string,
+  ): Promise<JiraProject> {
+    this.calls.push(`project:${projectIdOrKey}:${expectedProjectId}`);
     return { id: "10000", key: "DEMO", name: "Demoagentur" };
   }
 
@@ -133,7 +136,12 @@ describe("Load Project Data Recovery", () => {
 
     expect(data.config).toBeNull();
     expect(data.configRecoveryRequired).toBe(true);
-    expect(jira.calls).toEqual(["project", "metadata", "fields", "versions"]);
+    expect(jira.calls).toEqual([
+      "project:DEMO:10000",
+      "metadata",
+      "fields",
+      "versions",
+    ]);
     expect(data.statuses).toHaveLength(1);
     expect(data.issueTypes).toHaveLength(1);
     expect(data.fields).toHaveLength(1);

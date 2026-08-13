@@ -161,8 +161,8 @@ function jiraFieldMatchesExpected(
       if (identity.encodedName !== expected.canonical) return false;
       return (
         identity.name === null ||
-        !isCustomFieldReference(identity.name) ||
-        identity.name === expected.canonical
+        expected.names.has(identity.name) ||
+        !isCustomFieldReference(identity.name)
       );
     }
     return identity.name !== null && expected.names.has(identity.name);

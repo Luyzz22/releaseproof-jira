@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mapProjectMetadata } from "../../src/infrastructure/jira/forge-jira-gateway";
+import {
+  mapProjectDetail,
+  mapProjectMetadata,
+} from "../../src/infrastructure/jira/forge-jira-gateway";
 
 const validIssueType = {
   id: "10001",
@@ -7,6 +10,52 @@ const validIssueType = {
   subtask: false,
   statuses: [{ id: "31", name: "Fertig" }],
 };
+
+describe("Jira-Projektdetailbindung", () => {
+  const validProject = { id: "10000", key: "DEMO", name: "Demo" };
+
+  it("akzeptiert ein Projektdetail mit passender Forge-Projekt-ID und passendem Schlüssel", () => {
+    expect(mapProjectDetail(validProject, "DEMO", "10000")).toEqual(
+      validProject,
+    );
+  });
+
+  it("weist einen fremden Projektschlüssel fail-closed zurück", () => {
+    expect(() =>
+      mapProjectDetail(
+        { id: "10000", key: "OTHER", name: "Other" },
+        "DEMO",
+        "10000",
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
+  it("weist eine fremde Projekt-ID fail-closed zurück", () => {
+    expect(() =>
+      mapProjectDetail(
+        { id: "10001", key: "DEMO", name: "Demo" },
+        "DEMO",
+        "10000",
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
+  it("weist gleichzeitig fremde Projekt-ID und fremden Schlüssel fail-closed zurück", () => {
+    expect(() =>
+      mapProjectDetail(
+        { id: "10001", key: "OTHER", name: "Other" },
+        "DEMO",
+        "10000",
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
+  it("bindet auch eine numerisch angefragte Projektdetailantwort an die Anfrage", () => {
+    expect(mapProjectDetail(validProject, "10000", "10000")).toEqual(
+      validProject,
+    );
+  });
+});
 
 describe("Jira-Projektmetadaten", () => {
   it("bildet vollständige Projektmetadaten ab", () => {

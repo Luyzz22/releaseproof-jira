@@ -39,7 +39,10 @@ export interface ProjectMetadata {
 
 export interface JiraGateway {
   listProjects(): Promise<JiraProject[]>;
-  getProject(projectIdOrKey: string): Promise<JiraProject>;
+  getProject(
+    projectIdOrKey: string,
+    expectedProjectId: string,
+  ): Promise<JiraProject>;
   getProjectMetadata(projectIdOrKey: string): Promise<ProjectMetadata>;
   listFields(projectId: string): Promise<JiraField[]>;
   listVersions(projectIdOrKey: string): Promise<JiraVersion[]>;

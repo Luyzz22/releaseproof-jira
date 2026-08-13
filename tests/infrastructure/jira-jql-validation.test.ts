@@ -488,6 +488,98 @@ describe("Jira-JQL-Validierungsantwort", () => {
     ).toBe(true);
   });
 
+  it("akzeptiert einen technisch wirkenden Custom-Field-Anzeigenamen über Metadaten", () => {
+    const jql = 'project = DEMO AND "customfield_99999" = yes';
+    const fields = [
+      {
+        id: "customfield_10042",
+        name: "customfield_99999",
+        custom: true,
+        schemaType: "string",
+      },
+    ];
+
+    expect(
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: {
+                        name: "customfield_99999",
+                        encodedName: "customfield_10042",
+                      },
+                      operand: { value: "yes" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+        fields,
+      ),
+    ).toBe(true);
+  });
+
+  it("weist einen fremden technisch wirkenden Alias trotz passender encodedName fail-closed zurück", () => {
+    const jql = 'project = DEMO AND "customfield_99999" = yes';
+    const fields = [
+      {
+        id: "customfield_10042",
+        name: "customfield_99999",
+        custom: true,
+        schemaType: "string",
+      },
+    ];
+
+    expect(() =>
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: {
+                        name: "customfield_77777",
+                        encodedName: "customfield_10042",
+                      },
+                      operand: { value: "yes" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+        fields,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
   it("schützt das Systemfeld project trotz gleichnamigem Custom Field", () => {
     const jql = "project = DEMO";
     const fields = [

@@ -280,6 +280,26 @@ function requireMappedProject(value: unknown, resource: string): JiraProject {
   );
 }
 
+export function mapProjectDetail(
+  value: unknown,
+  requestedProjectIdOrKey: string,
+  expectedProjectId: string,
+): JiraProject {
+  const project = requireMappedProject(value, "Project");
+  const requestMatches = /^\d+$/.test(requestedProjectIdOrKey)
+    ? project.id === requestedProjectIdOrKey
+    : project.key === requestedProjectIdOrKey;
+
+  if (!requestMatches || project.id !== expectedProjectId) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Project returned an unexpected response.",
+    );
+  }
+
+  return project;
+}
+
 function mapVersion(value: unknown): JiraVersion | null {
   if (!isRecord(value)) return null;
   const id = stringValue(value.id);
@@ -746,13 +766,16 @@ export class ForgeJiraGateway implements JiraGateway {
     return projects;
   }
 
-  async getProject(projectIdOrKey: string): Promise<JiraProject> {
+  async getProject(
+    projectIdOrKey: string,
+    expectedProjectId: string,
+  ): Promise<JiraProject> {
     const data = await parseResponse(
       await api
         .asUser()
         .requestJira(route`/rest/api/3/project/${projectIdOrKey}`),
     );
-    return requireMappedProject(data, "Project");
+    return mapProjectDetail(data, projectIdOrKey, expectedProjectId);
   }
 
   async getProjectMetadata(projectIdOrKey: string): Promise<ProjectMetadata> {
