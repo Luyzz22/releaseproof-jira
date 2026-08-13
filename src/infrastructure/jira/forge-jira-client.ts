@@ -159,11 +159,11 @@ function jiraFieldMatchesExpected(
   if (expected.custom) {
     if (identity.encodedName !== null) {
       if (identity.encodedName !== expected.canonical) return false;
-      return (
-        identity.name === null ||
-        expected.names.has(identity.name) ||
-        !isCustomFieldReference(identity.name)
-      );
+      if (identity.name === null || expected.names.has(identity.name)) {
+        return true;
+      }
+
+      return fields.length === 0 && !isCustomFieldReference(identity.name);
     }
     return identity.name !== null && expected.names.has(identity.name);
   }

@@ -709,10 +709,35 @@ export async function collectIssueSearchPages(
           input.projectKey,
         ),
     );
+    if (typeof pageData.isLast !== "boolean") {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Issue search returned an unexpected response.",
+      );
+    }
+
     const pageToken = optionalPageToken(pageData.nextPageToken, "Issue search");
+
+    if (pageData.isLast) {
+      if (pageToken !== undefined) {
+        throw new AppError(
+          "JIRA_UNAVAILABLE",
+          "Issue search returned an unexpected response.",
+        );
+      }
+      issues.push(...pageIssues);
+      return issues;
+    }
+
+    if (pageToken === undefined) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Issue search returned an unexpected response.",
+      );
+    }
+
     issues.push(...pageIssues);
     nextPageToken = pageToken;
-    if (!nextPageToken) return issues;
   }
 
   throwPaginationLimit("Issue pagination");

@@ -580,6 +580,52 @@ describe("Jira-JQL-Validierungsantwort", () => {
     ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
   });
 
+  it("weist einen fremden normalen Anzeigenamen trotz passender encodedName und Metadaten fail-closed zurück", () => {
+    const jql = 'project = DEMO AND "Acceptance Criteria" = yes';
+    const fields = [
+      {
+        id: "customfield_10042",
+        name: "Acceptance Criteria",
+        custom: true,
+        schemaType: "string",
+      },
+    ];
+
+    expect(() =>
+      parsedJqlIsValid(
+        {
+          queries: [
+            {
+              query: jql,
+              structure: {
+                where: {
+                  clauses: [
+                    {
+                      field: { name: "project" },
+                      operand: { value: "DEMO" },
+                      operator: "=",
+                    },
+                    {
+                      field: {
+                        name: "Status",
+                        encodedName: "customfield_10042",
+                      },
+                      operand: { value: "yes" },
+                      operator: "=",
+                    },
+                  ],
+                  operator: "and",
+                },
+              },
+            },
+          ],
+        },
+        jql,
+        fields,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
   it("schützt das Systemfeld project trotz gleichnamigem Custom Field", () => {
     const jql = "project = DEMO";
     const fields = [

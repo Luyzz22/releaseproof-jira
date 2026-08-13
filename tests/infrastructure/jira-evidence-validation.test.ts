@@ -88,6 +88,7 @@ async function mapFields(fields: Record<string, unknown>) {
   return collectIssueSearchPages(input, () =>
     Promise.resolve({
       issues: [{ ...baseIssue(), fields }],
+      isLast: true,
     }),
   );
 }

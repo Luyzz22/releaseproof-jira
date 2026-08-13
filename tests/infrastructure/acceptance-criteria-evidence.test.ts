@@ -27,7 +27,11 @@ async function mapAcceptanceCriteria(value: unknown) {
       projectKey: "DEMO",
       acceptanceCriteriaFieldId: "customfield_10042",
     },
-    () => Promise.resolve({ issues: [issueWithAcceptanceCriteria(value)] }),
+    () =>
+      Promise.resolve({
+        issues: [issueWithAcceptanceCriteria(value)],
+        isLast: true,
+      }),
   );
   return issues[0]?.hasAcceptanceCriteria;
 }
@@ -48,6 +52,7 @@ async function mapDescriptionAcceptanceCriteria(value: unknown) {
             fields: { ...baseIssue.fields, description: value },
           },
         ],
+        isLast: true,
       }),
   );
   return issues[0]?.hasAcceptanceCriteria;

@@ -1,9 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
   buildVersionJql,
-  collectIssueSearchPages,
+  collectIssueSearchPages as collectIssueSearchPagesRaw,
   parseResponse,
 } from "../../src/infrastructure/jira/forge-jira-gateway";
+
+function withDefaultIssueSearchPaginationState(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return value;
+  }
+
+  const page = value as Record<string, unknown>;
+  if ("isLast" in page) return value;
+
+  const token = page.nextPageToken;
+  return {
+    ...page,
+    isLast: !(typeof token === "string" && token.trim().length > 0),
+  };
+}
+
+const collectIssueSearchPages: typeof collectIssueSearchPagesRaw = (
+  input,
+  loadPage,
+) =>
+  collectIssueSearchPagesRaw(input, async (request) =>
+    withDefaultIssueSearchPaginationState(await loadPage(request)),
+  );
 
 function response(status: number, retryAfter: string | null = null) {
   return {
@@ -146,6 +169,65 @@ const malformedIssueCases: ReadonlyArray<readonly [string, unknown]> = [
 ];
 
 describe("Jira-Issue-Pagination", () => {
+  it.each([
+    ["fehlendem isLast", { issues: [] }],
+    ["nicht-booleschem isLast", { issues: [], isLast: "false" }],
+    ["nichtterminaler Seite ohne nextPageToken", { issues: [], isLast: false }],
+    [
+      "terminaler Seite mit nextPageToken",
+      { issues: [], isLast: true, nextPageToken: "unexpected" },
+    ],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "weist %s fail-closed zurück",
+    async (_case, pageData) => {
+      await expect(
+        collectIssueSearchPagesRaw(
+          {
+            jql: "project = DEMO",
+            projectKey: "DEMO",
+            acceptanceCriteriaFieldId: "customfield_10042",
+          },
+          () => Promise.resolve(pageData),
+        ),
+      ).rejects.toMatchObject({ code: "JIRA_UNAVAILABLE" });
+    },
+  );
+
+  it("akzeptiert eine explizit terminale Enhanced-JQL-Seite", async () => {
+    await expect(
+      collectIssueSearchPagesRaw(
+        {
+          jql: "project = DEMO",
+          projectKey: "DEMO",
+          acceptanceCriteriaFieldId: "customfield_10042",
+        },
+        () => Promise.resolve({ issues: [], isLast: true }),
+      ),
+    ).resolves.toEqual([]);
+  });
+
+  it("führt eine explizit nichtterminale Seite nur mit Token fort", async () => {
+    const issues = await collectIssueSearchPagesRaw(
+      {
+        jql: "project = DEMO AND key in (DEMO-1, DEMO-2)",
+        projectKey: "DEMO",
+        acceptanceCriteriaFieldId: "customfield_10042",
+      },
+      (request) =>
+        Promise.resolve(
+          request.nextPageToken
+            ? { issues: [jiraIssue(2)], isLast: true }
+            : {
+                issues: [jiraIssue(1)],
+                isLast: false,
+                nextPageToken: "page-2",
+              },
+        ),
+    );
+
+    expect(issues.map((item) => item.key)).toEqual(["DEMO-1", "DEMO-2"]);
+  });
+
   it("fordert description bei einem Custom Field nicht zusätzlich an", async () => {
     let requestedFields: string[] = [];
 
