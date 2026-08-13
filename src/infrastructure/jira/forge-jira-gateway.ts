@@ -386,10 +386,27 @@ export function mapFieldSearchPage(value: unknown): JiraField[] {
   });
 }
 
-export function mapVersionSearchPage(value: unknown): JiraVersion[] {
-  return pageValues(value, "Version search").map((item) =>
-    requireMappedVersion(item, "Version search version"),
-  );
+export function mapVersionSearchPage(
+  value: unknown,
+  expectedProjectId: string,
+): JiraVersion[] {
+  if (!/^\d+$/.test(expectedProjectId)) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Version search received an invalid expected project context.",
+    );
+  }
+
+  return pageValues(value, "Version search").map((item) => {
+    const version = requireMappedVersion(item, "Version search version");
+    if (version.projectId !== expectedProjectId) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Version search version returned an unexpected project context.",
+      );
+    }
+    return version;
+  });
 }
 
 function mapStatus(value: unknown): StatusRef | null {
@@ -811,7 +828,10 @@ export class ForgeJiraGateway implements JiraGateway {
     return fields;
   }
 
-  async listVersions(projectIdOrKey: string): Promise<JiraVersion[]> {
+  async listVersions(
+    projectIdOrKey: string,
+    expectedProjectId: string,
+  ): Promise<JiraVersion[]> {
     const versions: JiraVersion[] = [];
     let complete = false;
     let startAt = 0;
@@ -823,7 +843,7 @@ export class ForgeJiraGateway implements JiraGateway {
             route`/rest/api/3/project/${projectIdOrKey}/version?startAt=${startAt}&maxResults=${PAGE_SIZE}&orderBy=-releaseDate`,
           ),
       );
-      const pageVersions = mapVersionSearchPage(data);
+      const pageVersions = mapVersionSearchPage(data, expectedProjectId);
       versions.push(...pageVersions);
       if (isLastPage(data, "Version search", startAt)) {
         complete = true;

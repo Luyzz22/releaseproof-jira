@@ -33,7 +33,7 @@ export async function loadProjectData(
     jira.getProject(projectKey, projectId),
     jira.getProjectMetadata(projectKey),
     jira.listFields(projectId),
-    jira.listVersions(projectKey),
+    jira.listVersions(projectKey, projectId),
     loadConfigForBootstrap(repository, projectId),
   ]);
 

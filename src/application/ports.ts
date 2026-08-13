@@ -45,7 +45,10 @@ export interface JiraGateway {
   ): Promise<JiraProject>;
   getProjectMetadata(projectIdOrKey: string): Promise<ProjectMetadata>;
   listFields(projectId: string): Promise<JiraField[]>;
-  listVersions(projectIdOrKey: string): Promise<JiraVersion[]>;
+  listVersions(
+    projectIdOrKey: string,
+    expectedProjectId: string,
+  ): Promise<JiraVersion[]>;
   getVersion(versionId: string): Promise<JiraVersion>;
   listIssuesForVersion(input: {
     projectKey: string;

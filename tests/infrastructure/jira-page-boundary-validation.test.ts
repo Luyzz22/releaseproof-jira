@@ -35,7 +35,9 @@ describe("paginierte Jira-Metadatengrenze", () => {
         schemaType: "string",
       },
     ]);
-    expect(mapVersionSearchPage({ values: [version], isLast: true })).toEqual([
+    expect(
+      mapVersionSearchPage({ values: [version], isLast: true }, "10000"),
+    ).toEqual([
       {
         ...version,
         projectId: "10000",
@@ -285,10 +287,38 @@ describe("paginierte Jira-Metadatengrenze", () => {
     "weist Version mit %s fail-closed zurück",
     (_case, malformedVersion) => {
       expect(() =>
-        mapVersionSearchPage({ values: [malformedVersion], isLast: true }),
+        mapVersionSearchPage(
+          { values: [malformedVersion], isLast: true },
+          "10000",
+        ),
       ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
     },
   );
+
+  it("bindet paginierte Versionen an die erwartete Projekt-ID", () => {
+    expect(
+      mapVersionSearchPage({ values: [version], isLast: true }, "10000"),
+    ).toEqual([{ ...version, projectId: "10000" }]);
+
+    expect(() =>
+      mapVersionSearchPage(
+        { values: [{ ...version, projectId: 10001 }], isLast: true },
+        "10000",
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
+
+  it("verwirft eine gemischte Versionsseite mit fremdem Projektkontext vollständig", () => {
+    expect(() =>
+      mapVersionSearchPage(
+        {
+          values: [version, { ...version, id: "30002", projectId: 10001 }],
+          isLast: true,
+        },
+        "10000",
+      ),
+    ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+  });
 
   it("bindet eine Version-Detailantwort an die angefragte ID", () => {
     expect(mapVersionDetail(version, "30001")).toEqual({
@@ -302,10 +332,13 @@ describe("paginierte Jira-Metadatengrenze", () => {
 
   it("verwirft bei gemischten gültigen und malformed Versionen die gesamte Seite", () => {
     expect(() =>
-      mapVersionSearchPage({
-        values: [version, { ...version, id: "30002", archived: null }],
-        isLast: true,
-      }),
+      mapVersionSearchPage(
+        {
+          values: [version, { ...version, id: "30002", archived: null }],
+          isLast: true,
+        },
+        "10000",
+      ),
     ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
   });
 });

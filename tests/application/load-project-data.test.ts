@@ -53,8 +53,11 @@ class BootstrapJiraGateway implements JiraGateway {
     ];
   }
 
-  async listVersions(): Promise<JiraVersion[]> {
-    this.calls.push("versions");
+  async listVersions(
+    projectIdOrKey: string,
+    expectedProjectId: string,
+  ): Promise<JiraVersion[]> {
+    this.calls.push(`versions:${projectIdOrKey}:${expectedProjectId}`);
     return [
       {
         id: "30001",
@@ -140,7 +143,7 @@ describe("Load Project Data Recovery", () => {
       "project:DEMO:10000",
       "metadata",
       "fields",
-      "versions",
+      "versions:DEMO:10000",
     ]);
     expect(data.statuses).toHaveLength(1);
     expect(data.issueTypes).toHaveLength(1);
