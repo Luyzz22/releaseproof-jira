@@ -1,0 +1,46 @@
+{
+  "name": "releaseproof-jira",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministischer Release-Readiness-Bericht für Jira Cloud",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "forge:deploy": "npm run build && forge deploy",
+    "forge:lint": "forge lint",
+    "lint": "eslint .",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "@forge/api": "8.0.1",
+    "@forge/bridge": "6.1.0",
+    "@forge/kvs": "2.0.1",
+    "@forge/resolver": "2.0.0",
+    "jsonschema": "1.5.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.7.0",
+    "prettier": "3.9.5",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.63.0",
+    "vite": "8.1.4",
+    "vitest": "4.1.10"
+  }
+}
