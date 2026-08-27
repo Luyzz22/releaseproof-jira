@@ -368,9 +368,12 @@ export function mapFieldSearchPage(value: unknown): JiraField[] {
       );
     }
 
-    const schema = requireRecord(field.schema, "Field search field schema");
-    const schemaType = stringValue(schema.type);
-    if (!schemaType) {
+    const schema =
+      field.schema === undefined || field.schema === null
+        ? null
+        : requireRecord(field.schema, "Field search field schema");
+    const schemaType = schema === null ? null : stringValue(schema.type);
+    if (schema !== null && schemaType === null) {
       throw new AppError(
         "JIRA_UNAVAILABLE",
         "Field search field schema returned an unexpected response.",

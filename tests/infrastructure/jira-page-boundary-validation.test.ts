@@ -105,10 +105,30 @@ describe("paginierte Jira-Metadatengrenze", () => {
     ]);
   });
 
+  it("toleriert fehlende Schema-Metadaten mit schemaType null", () => {
+    expect(
+      mapFieldSearchPage({
+        values: [
+          {
+            id: "description",
+            name: "Beschreibung",
+          },
+        ],
+        isLast: true,
+      }),
+    ).toEqual([
+      {
+        id: "description",
+        name: "Beschreibung",
+        custom: false,
+        schemaType: null,
+      },
+    ]);
+  });
+
   it.each([
     ["fehlender ID", { ...field, id: undefined }],
     ["fehlender Name", { ...field, name: undefined }],
-    ["fehlendes Schema", { ...field, schema: undefined }],
     ["fehlender Schema-Typ", { ...field, schema: {} }],
     ["malformed Schema-Typ", { ...field, schema: { type: {} } }],
   ] satisfies ReadonlyArray<readonly [string, unknown]>)(
