@@ -287,7 +287,17 @@ function parseConjunctiveJql(tokens: readonly JqlToken[]): ParseJqlResult {
 interface JiraFieldReference {
   id: string;
   name: string;
+  schemaType?: string | null;
+  schemaItemsType?: string | null;
 }
+
+const USER_IDENTITY_JQL_SYSTEM_FIELDS = new Set([
+  "assignee",
+  "reporter",
+  "creator",
+  "watcher",
+  "voter",
+]);
 
 function normalizedJqlFieldReference(value: string): string {
   return value.trim().toLocaleLowerCase("en-US");
@@ -312,6 +322,60 @@ export function hasOnlyKnownReleaseScopeJqlFields(
   return parsed.clauses.every((clause) =>
     knownFields.has(normalizedJqlFieldReference(clause.field.value)),
   );
+}
+
+function hasEstablishedNonUserSchema(field: JiraFieldReference): boolean {
+  const fieldId = normalizedJqlFieldReference(field.id);
+  if (USER_IDENTITY_JQL_SYSTEM_FIELDS.has(fieldId)) return false;
+
+  const schemaType =
+    field.schemaType === undefined || field.schemaType === null
+      ? null
+      : normalizedJqlFieldReference(field.schemaType);
+  if (schemaType === null || schemaType === "user") return false;
+
+  if (schemaType !== "array") return true;
+
+  const schemaItemsType =
+    field.schemaItemsType === undefined || field.schemaItemsType === null
+      ? null
+      : normalizedJqlFieldReference(field.schemaItemsType);
+  return schemaItemsType !== null && schemaItemsType !== "user";
+}
+
+export function hasNoUserIdentityReleaseScopeJqlFields(
+  value: string,
+  fields: readonly JiraFieldReference[],
+): boolean {
+  const tokenized = tokenizeJql(value);
+  if (!tokenized.ok) return false;
+
+  const parsed = parseConjunctiveJql(tokenized.tokens);
+  if (!parsed.ok) return false;
+
+  const safeBuiltInFields = new Set(["project", "key", "issuekey"]);
+  const fieldsByReference = new Map<string, JiraFieldReference[]>();
+
+  for (const field of fields) {
+    for (const reference of [field.id, field.name]) {
+      const normalizedReference = normalizedJqlFieldReference(reference);
+      const matchingFields = fieldsByReference.get(normalizedReference) ?? [];
+      matchingFields.push(field);
+      fieldsByReference.set(normalizedReference, matchingFields);
+    }
+  }
+
+  return parsed.clauses.every((clause) => {
+    const reference = normalizedJqlFieldReference(clause.field.value);
+    if (safeBuiltInFields.has(reference)) return true;
+
+    const matchingFields = fieldsByReference.get(reference);
+    return (
+      matchingFields !== undefined &&
+      matchingFields.length > 0 &&
+      matchingFields.every(hasEstablishedNonUserSchema)
+    );
+  });
 }
 
 export interface ReleaseScopeJqlSemanticClause {

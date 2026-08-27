@@ -2,6 +2,7 @@ import type { ProjectConfig } from "../../domain/models/readiness";
 import { hasSupportedAcceptanceCriteriaField } from "../../shared/acceptance-criteria-field";
 import { AppError } from "../../shared/errors";
 import {
+  hasNoUserIdentityReleaseScopeJqlFields,
   hasOnlyKnownReleaseScopeJqlFields,
   type ProjectConfigInput,
 } from "../../shared/validation";
@@ -50,6 +51,14 @@ export async function saveProjectConfig(
       throw new AppError(
         "INVALID_INPUT",
         "Release scope references an unknown Jira field.",
+      );
+    }
+    if (
+      !hasNoUserIdentityReleaseScopeJqlFields(input.releaseScopeJql, fields)
+    ) {
+      throw new AppError(
+        "INVALID_INPUT",
+        "Release scope must not reference Jira user fields.",
       );
     }
     if (!(await jira.validateJql(input.releaseScopeJql, fields))) {

@@ -380,11 +380,28 @@ export function mapFieldSearchPage(value: unknown): JiraField[] {
       );
     }
 
+    const schemaItemsType =
+      schema === null || schema.items === undefined || schema.items === null
+        ? null
+        : stringValue(schema.items);
+    if (
+      schema !== null &&
+      schema.items !== undefined &&
+      schema.items !== null &&
+      schemaItemsType === null
+    ) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Field search field schema items returned an unexpected response.",
+      );
+    }
+
     return {
       id,
       name,
       custom: /^customfield_\d+$/.test(id),
       schemaType,
+      ...(schemaItemsType === null ? {} : { schemaItemsType }),
     };
   });
 }
