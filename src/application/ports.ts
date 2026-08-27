@@ -22,6 +22,7 @@ export interface JiraField {
   name: string;
   custom: boolean;
   schemaType: string | null;
+  schemaItemsType?: string | null;
 }
 
 export interface JiraVersion {

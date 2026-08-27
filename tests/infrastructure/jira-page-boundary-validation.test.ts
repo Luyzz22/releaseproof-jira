@@ -126,11 +126,38 @@ describe("paginierte Jira-Metadatengrenze", () => {
     ]);
   });
 
+  it("bildet schema.items für Multi-User-Felder ab", () => {
+    expect(
+      mapFieldSearchPage({
+        values: [
+          {
+            id: "customfield_20001",
+            name: "Freigabeverantwortliche",
+            schema: { type: "array", items: "user" },
+          },
+        ],
+        isLast: true,
+      }),
+    ).toEqual([
+      {
+        id: "customfield_20001",
+        name: "Freigabeverantwortliche",
+        custom: true,
+        schemaType: "array",
+        schemaItemsType: "user",
+      },
+    ]);
+  });
+
   it.each([
     ["fehlender ID", { ...field, id: undefined }],
     ["fehlender Name", { ...field, name: undefined }],
     ["fehlender Schema-Typ", { ...field, schema: {} }],
     ["malformed Schema-Typ", { ...field, schema: { type: {} } }],
+    [
+      "malformed Schema-Items-Typ",
+      { ...field, schema: { type: "array", items: {} } },
+    ],
   ] satisfies ReadonlyArray<readonly [string, unknown]>)(
     "weist Feld mit %s fail-closed zurück",
     (_case, malformedField) => {

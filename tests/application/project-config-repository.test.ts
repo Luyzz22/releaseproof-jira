@@ -331,6 +331,147 @@ describe("In-Memory ProjectConfig Repository", () => {
     expect(jira.jqlCalls).toHaveLength(0);
   });
 
+  it.each([
+    [
+      "Custom-Feld ohne Schema-Metadaten",
+      "project = DEMO AND customfield_21003 = value",
+      {
+        id: "customfield_21003",
+        name: "Unbekanntes Feld",
+        custom: true,
+        schemaType: null,
+      },
+    ],
+    [
+      "Array-Feld ohne Items-Metadaten",
+      "project = DEMO AND customfield_21004 = value",
+      {
+        id: "customfield_21004",
+        name: "Unbekannte Liste",
+        custom: true,
+        schemaType: "array",
+      },
+    ],
+  ] satisfies ReadonlyArray<readonly [string, string, JiraField]>)(
+    "lehnt JQL-Feld mit unbestimmbarer Datenschutzklassifikation %s fail-closed ab",
+    async (_case, releaseScopeJql, unknownField) => {
+      const existing = structuredClone(projectConfig);
+      const repository = new ControlledProjectConfigRepository(existing);
+      const jira = jiraFields([supportedCustomStringField, unknownField]);
+
+      await expect(
+        saveProjectConfig(
+          jira,
+          repository,
+          { now: () => "2026-08-27T14:35:00.000Z" },
+          { ...projectConfig, releaseScopeJql },
+        ),
+      ).rejects.toMatchObject({
+        code: "INVALID_INPUT",
+        message: "Release scope must not reference Jira user fields.",
+      });
+
+      expect(jira.calls).toEqual([projectConfig.projectId]);
+      expect(jira.jqlCalls).toHaveLength(0);
+      expect(repository.reads).toHaveLength(0);
+      expect(repository.saved).toHaveLength(0);
+      expect(repository.snapshot()).toEqual(existing);
+    },
+  );
+
+  it("akzeptiert ein Array-Feld nur mit eindeutig nicht-userbezogenem Items-Schema", async () => {
+    const repository = new ControlledProjectConfigRepository(null);
+    const nonUserArrayField: JiraField = {
+      id: "customfield_21005",
+      name: "Komponenten",
+      custom: true,
+      schemaType: "array",
+      schemaItemsType: "string",
+    };
+    const jira = jiraFields([supportedCustomStringField, nonUserArrayField]);
+    const releaseScopeJql = "project = DEMO AND customfield_21005 = backend";
+
+    const saved = await saveProjectConfig(
+      jira,
+      repository,
+      { now: () => "2026-08-27T14:36:00.000Z" },
+      { ...projectConfig, releaseScopeJql },
+    );
+
+    expect(jira.jqlCalls).toEqual([releaseScopeJql]);
+    expect(saved.releaseScopeJql).toBe(releaseScopeJql);
+    expect(repository.saved).toEqual([saved]);
+  });
+
+  it.each([
+    [
+      "Systemfeld assignee über Feld-ID",
+      "project = DEMO AND assignee = user-123",
+      {
+        id: "assignee",
+        name: "Bearbeiter",
+        custom: false,
+        schemaType: "user",
+      },
+    ],
+    [
+      "Systemfeld reporter auch ohne Schema-Metadaten",
+      'project = DEMO AND "Ersteller" = user-123',
+      {
+        id: "reporter",
+        name: "Ersteller",
+        custom: false,
+        schemaType: null,
+      },
+    ],
+    [
+      "Single-User-Custom-Field",
+      "project = DEMO AND customfield_21001 = user-123",
+      {
+        id: "customfield_21001",
+        name: "Release Owner",
+        custom: true,
+        schemaType: "user",
+      },
+    ],
+    [
+      "Multi-User-Custom-Field",
+      'project = DEMO AND "Freigabeverantwortliche" = user-123',
+      {
+        id: "customfield_21002",
+        name: "Freigabeverantwortliche",
+        custom: true,
+        schemaType: "array",
+        schemaItemsType: "user",
+      },
+    ],
+  ] satisfies ReadonlyArray<readonly [string, string, JiraField]>)(
+    "lehnt personenbezogenes JQL-Feld %s vor Jira-Validierung und KVS ab",
+    async (_case, releaseScopeJql, personalField) => {
+      const existing = structuredClone(projectConfig);
+      const repository = new ControlledProjectConfigRepository(existing);
+      const jira = jiraFields([supportedCustomStringField, personalField]);
+
+      await expect(
+        saveProjectConfig(
+          jira,
+          repository,
+          { now: () => "2026-08-27T14:30:00.000Z" },
+          { ...projectConfig, releaseScopeJql },
+        ),
+      ).rejects.toMatchObject({
+        code: "INVALID_INPUT",
+        message: "Release scope must not reference Jira user fields.",
+      });
+
+      expect(jira.calls).toEqual([projectConfig.projectId]);
+      expect(jira.jqlCalls).toHaveLength(0);
+      expect(repository.reads).toHaveLength(0);
+      expect(repository.saved).toHaveLength(0);
+      expect(repository.snapshot()).toEqual(existing);
+    },
+  );
+
   it("lehnt eine von Jira als ungültig bewertete Feld-Operator-Kombination vor KVS ab", async () => {
     const repository = new ControlledProjectConfigRepository(projectConfig);
     const jira = jiraFields(
