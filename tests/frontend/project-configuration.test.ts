@@ -126,7 +126,7 @@ describe("Projektkonfiguration – Berechtigungsgrenze", () => {
     expect(markup).toContain(
       "Nur Jira-Projektadministratoren können diese Konfiguration ändern.",
     );
-    expect(markup).toContain("disabled=\"\"");
+    expect(markup).toContain('disabled=""');
     expect(markup).not.toContain("Konfiguration speichern");
   });
 });

@@ -141,7 +141,9 @@ export function ProjectConfiguration({
         </p>
         {!data.canConfigure ? (
           <div className="scope-notice scope-notice--warning" role="status">
-            <strong>Nur Jira-Projektadministratoren können diese Konfiguration ändern.</strong>
+            <strong>
+              Nur Jira-Projektadministratoren können diese Konfiguration ändern.
+            </strong>
             <p>
               Sie können die aktuell gespeicherten Kriterien ansehen und
               Release-Analysen ausführen. Änderungen müssen von einem

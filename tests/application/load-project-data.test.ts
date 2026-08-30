@@ -16,9 +16,7 @@ import type {
 import { AppError } from "../../src/shared/errors";
 import { projectConfig } from "../fixtures/release";
 
-class BootstrapJiraGateway
-  implements JiraGateway, JiraProjectPermissionReader
-{
+class BootstrapJiraGateway implements JiraGateway, JiraProjectPermissionReader {
   readonly calls: string[] = [];
   readonly permissionCalls: string[] = [];
 

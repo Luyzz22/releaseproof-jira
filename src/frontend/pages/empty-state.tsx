@@ -40,9 +40,9 @@ export function EmptyState({
             {administrationRequired ? (
               recoveryRequired ? (
                 <>
-                  Die gespeicherte Projektkonfiguration ist beschädigt oder nicht
-                  mehr kompatibel. Ein Jira-Projektadministrator muss eine neue
-                  gültige Konfiguration speichern.
+                  Die gespeicherte Projektkonfiguration ist beschädigt oder
+                  nicht mehr kompatibel. Ein Jira-Projektadministrator muss eine
+                  neue gültige Konfiguration speichern.
                 </>
               ) : (
                 <>
