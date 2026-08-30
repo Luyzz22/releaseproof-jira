@@ -67,6 +67,10 @@ export interface JiraJqlValidator {
   validateJql(jql: string, fields: readonly JiraField[]): Promise<boolean>;
 }
 
+export interface JiraProjectPermissionReader {
+  canAdministerProject(projectKey: string): Promise<boolean>;
+}
+
 export interface ProjectConfigRepository {
   get(projectId: string): Promise<ProjectConfig | null>;
   save(config: ProjectConfig): Promise<void>;

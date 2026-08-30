@@ -3,6 +3,7 @@ import type {
   JiraField,
   JiraGateway,
   JiraJqlValidator,
+  JiraProjectPermissionReader,
   ProjectConfigRepository,
   ProjectMetadata,
 } from "../../src/application/ports";
@@ -48,18 +49,26 @@ const validMetadata: ProjectMetadata = {
 class ControlledJiraConfigGateway
   implements
     Pick<JiraGateway, "listFields" | "getProjectMetadata">,
-    JiraJqlValidator
+    JiraJqlValidator,
+    JiraProjectPermissionReader
 {
   readonly calls: string[] = [];
   readonly metadataCalls: string[] = [];
   readonly jqlCalls: string[] = [];
   readonly jqlFieldCalls: JiraField[][] = [];
+  readonly permissionCalls: string[] = [];
 
   constructor(
     private readonly fields: JiraField[],
     private readonly metadata: ProjectMetadata = validMetadata,
     private readonly jqlValid = true,
+    private readonly canConfigure = true,
   ) {}
+
+  canAdministerProject(projectKey: string): Promise<boolean> {
+    this.permissionCalls.push(projectKey);
+    return Promise.resolve(this.canConfigure);
+  }
 
   listFields(projectId: string): Promise<JiraField[]> {
     this.calls.push(projectId);
@@ -197,11 +206,49 @@ function jiraFields(
   fields: readonly JiraField[] = [supportedCustomStringField],
   metadata: ProjectMetadata = validMetadata,
   jqlValid = true,
+  canConfigure = true,
 ) {
-  return new ControlledJiraConfigGateway([...fields], metadata, jqlValid);
+  return new ControlledJiraConfigGateway(
+    [...fields],
+    metadata,
+    jqlValid,
+    canConfigure,
+  );
 }
 
 describe("In-Memory ProjectConfig Repository", () => {
+  it("lehnt Nicht-Administratoren vor Metadaten- und KVS-Zugriff ab", async () => {
+    const existing = structuredClone(projectConfig);
+    const repository = new ControlledProjectConfigRepository(existing);
+    const jira = jiraFields(
+      [supportedCustomStringField],
+      validMetadata,
+      true,
+      false,
+    );
+
+    await expect(
+      saveProjectConfig(
+        jira,
+        repository,
+        { now: () => "2026-08-30T16:00:00.000Z" },
+        projectConfig,
+      ),
+    ).rejects.toMatchObject({
+      code: "PERMISSION_DENIED",
+      message:
+        "Project configuration requires Jira project administration permission.",
+    });
+
+    expect(jira.permissionCalls).toEqual([projectConfig.projectKey]);
+    expect(jira.calls).toHaveLength(0);
+    expect(jira.metadataCalls).toHaveLength(0);
+    expect(jira.jqlCalls).toHaveLength(0);
+    expect(repository.reads).toHaveLength(0);
+    expect(repository.saved).toHaveLength(0);
+    expect(repository.snapshot()).toEqual(existing);
+  });
+
   it("speichert und lädt eine defensive Kopie", async () => {
     const repository = new InMemoryProjectConfigRepository();
     await repository.save(projectConfig);

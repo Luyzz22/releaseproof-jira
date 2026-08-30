@@ -11,6 +11,7 @@ const data: BootstrapData = {
   statuses: [{ id: "31", name: "Fertig" }],
   issueTypes: [{ id: "10001", name: "Story", subtask: false }],
   fields: [],
+  canConfigure: true,
   versions: [
     {
       id: "30001",
@@ -25,6 +26,20 @@ const data: BootstrapData = {
 };
 
 describe("Release-Auswahl", () => {
+  it("kennzeichnet Konfiguration für Nicht-Administratoren als Ansicht", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ReleaseSelection, {
+        data: { ...data, canConfigure: false },
+        analyzing: false,
+        onAnalyze: () => Promise.resolve(),
+        onConfigure: () => undefined,
+      }),
+    );
+
+    expect(markup).toContain("Projektkonfiguration ansehen");
+    expect(markup).not.toContain("Projektkonfiguration bearbeiten");
+  });
+
   it("verwendet vollständig deutsche Analyseterminologie", () => {
     const markup = renderToStaticMarkup(
       createElement(ReleaseSelection, {

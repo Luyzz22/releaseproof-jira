@@ -4,6 +4,7 @@ import { loadProjectData } from "../../src/application/load-project-data/load-pr
 import type {
   JiraGateway,
   JiraProject,
+  JiraProjectPermissionReader,
   JiraVersion,
   ProjectConfigRepository,
   ProjectMetadata,
@@ -15,8 +16,18 @@ import type {
 import { AppError } from "../../src/shared/errors";
 import { projectConfig } from "../fixtures/release";
 
-class BootstrapJiraGateway implements JiraGateway {
+class BootstrapJiraGateway
+  implements JiraGateway, JiraProjectPermissionReader
+{
   readonly calls: string[] = [];
+  readonly permissionCalls: string[] = [];
+
+  constructor(private readonly canConfigure = true) {}
+
+  canAdministerProject(projectKey: string): Promise<boolean> {
+    this.permissionCalls.push(projectKey);
+    return Promise.resolve(this.canConfigure);
+  }
 
   async listProjects(): Promise<JiraProject[]> {
     return [];
@@ -95,8 +106,11 @@ class BootstrapConfigRepository implements ProjectConfigRepository {
   }
 }
 
-async function bootstrap(readResult: ProjectConfig | null | Error) {
-  const jira = new BootstrapJiraGateway();
+async function bootstrap(
+  readResult: ProjectConfig | null | Error,
+  canConfigure = true,
+) {
+  const jira = new BootstrapJiraGateway(canConfigure);
   const data = await loadProjectData(
     jira,
     new BootstrapConfigRepository(readResult),
@@ -123,6 +137,14 @@ describe("Load Project Data Recovery", () => {
 
     expect(data.config).toEqual(projectConfig);
     expect(data.configRecoveryRequired).toBe(false);
+    expect(data.canConfigure).toBe(true);
+  });
+
+  it("liefert die Projekt-Admin-Berechtigung explizit an die UI", async () => {
+    const { data, jira } = await bootstrap(projectConfig, false);
+
+    expect(data.canConfigure).toBe(false);
+    expect(jira.permissionCalls).toEqual(["DEMO"]);
   });
 
   it("behandelt eine fehlende Konfiguration als normalen Erststart", async () => {

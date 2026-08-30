@@ -20,6 +20,7 @@ export interface BootstrapData {
   issueTypes: JiraIssueType[];
   fields: JiraField[];
   versions: JiraVersion[];
+  canConfigure: boolean;
   config: ProjectConfig | null;
   configRecoveryRequired: boolean;
 }

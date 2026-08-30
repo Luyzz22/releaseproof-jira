@@ -37,6 +37,7 @@ export function ProjectConfiguration({
   onSave: (input: ProjectConfigInput) => Promise<void>;
 }) {
   const existing = data.config;
+  const editingDisabled = !data.canConfigure || saving;
   const fieldOptions = useMemo(
     () => data.fields.filter(isSupportedAcceptanceCriteriaField),
     [data.fields],
@@ -89,6 +90,7 @@ export function ProjectConfiguration({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!data.canConfigure) return;
     if (
       !hasSupportedAcceptanceCriteriaField(
         data.fields,
@@ -137,6 +139,16 @@ export function ProjectConfiguration({
           Legen Sie einmal fest, welche Jira-Nachweise für eine Kundenabnahme
           erforderlich sind.
         </p>
+        {!data.canConfigure ? (
+          <div className="scope-notice scope-notice--warning" role="status">
+            <strong>Nur Jira-Projektadministratoren können diese Konfiguration ändern.</strong>
+            <p>
+              Sie können die aktuell gespeicherten Kriterien ansehen und
+              Release-Analysen ausführen. Änderungen müssen von einem
+              Projektadministrator gespeichert werden.
+            </p>
+          </div>
+        ) : null}
       </div>
       <form onSubmit={(event) => void submit(event)} className="form-stack">
         <Panel>
@@ -155,6 +167,7 @@ export function ProjectConfiguration({
               <label className="choice choice--stack">
                 <span>
                   <input
+                    disabled={editingDisabled}
                     type="radio"
                     name="release-scope-mode"
                     value="VERSION_ONLY"
@@ -171,6 +184,7 @@ export function ProjectConfiguration({
               <label className="choice choice--stack">
                 <span>
                   <input
+                    disabled={editingDisabled}
                     type="radio"
                     name="release-scope-mode"
                     value="JQL_SCOPE"
@@ -200,6 +214,7 @@ export function ProjectConfiguration({
             <label className="field">
               <span>Projektgebundene JQL-Abfrage</span>
               <textarea
+                disabled={editingDisabled}
                 value={releaseScopeJql}
                 onChange={(event) => setReleaseScopeJql(event.target.value)}
                 maxLength={RELEASE_SCOPE_JQL_MAX_LENGTH}
@@ -220,6 +235,7 @@ export function ProjectConfiguration({
               {data.statuses.map((status) => (
                 <label className="choice" key={status.id}>
                   <input
+                    disabled={editingDisabled}
                     type="checkbox"
                     checked={acceptedStatusIds.includes(status.id)}
                     onChange={() =>
@@ -237,6 +253,7 @@ export function ProjectConfiguration({
               {data.issueTypes.map((type) => (
                 <label className="choice" key={type.id}>
                   <input
+                    disabled={editingDisabled}
                     type="checkbox"
                     checked={includedIssueTypes.includes(type.id)}
                     onChange={() =>
@@ -260,6 +277,7 @@ export function ProjectConfiguration({
           <label className="field">
             <span>Feld für Akzeptanzkriterien</span>
             <select
+              disabled={editingDisabled}
               value={acceptanceCriteriaFieldId}
               onChange={(event) =>
                 setAcceptanceCriteriaFieldId(event.target.value)
@@ -290,6 +308,7 @@ export function ProjectConfiguration({
               Blockierungs-Labels <small>durch Komma getrennt</small>
             </span>
             <input
+              disabled={editingDisabled}
               value={blockerLabels}
               onChange={(event) => setBlockerLabels(event.target.value)}
               placeholder="release-blocker, security-blocker"
@@ -297,6 +316,7 @@ export function ProjectConfiguration({
           </label>
           <label className="switch-row">
             <input
+              disabled={editingDisabled}
               type="checkbox"
               checked={blockOnOpenSubtasks}
               onChange={(event) => setBlockOnOpenSubtasks(event.target.checked)}
@@ -310,6 +330,7 @@ export function ProjectConfiguration({
           </label>
           <label className="switch-row">
             <input
+              disabled={editingDisabled}
               type="checkbox"
               checked={requireApprovalMarker}
               onChange={(event) =>
@@ -327,6 +348,7 @@ export function ProjectConfiguration({
             <label className="field field--nested">
               <span>Freigabe-Label</span>
               <input
+                disabled={editingDisabled}
                 value={approvalMarker}
                 onChange={(event) => setApprovalMarker(event.target.value)}
                 placeholder="customer-approved"
@@ -343,9 +365,11 @@ export function ProjectConfiguration({
           <span>
             Konfiguration wird projektbezogen in Forge KVS gespeichert.
           </span>
-          <button className="button" type="submit" disabled={saving}>
-            {saving ? "Wird gespeichert …" : "Konfiguration speichern"}
-          </button>
+          {data.canConfigure ? (
+            <button className="button" type="submit" disabled={saving}>
+              {saving ? "Wird gespeichert …" : "Konfiguration speichern"}
+            </button>
+          ) : null}
         </div>
       </form>
     </div>

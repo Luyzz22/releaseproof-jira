@@ -38,6 +38,7 @@ function recoveryBootstrapData(): BootstrapData {
       },
     ],
     versions: [],
+    canConfigure: true,
     config: null,
     configRecoveryRequired: true,
   };

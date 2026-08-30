@@ -27,10 +27,28 @@ const recoveryData = {
     },
   ],
   config: null,
+  canConfigure: true,
   configRecoveryRequired: true,
 } satisfies BootstrapData & { configRecoveryRequired: boolean };
 
 describe("Recovery Empty State", () => {
+  it("zeigt Nicht-Administratoren keinen Konfigurations-Save-Pfad", () => {
+    const markup = renderToStaticMarkup(
+      createElement(EmptyState, {
+        data: {
+          ...recoveryData,
+          canConfigure: false,
+          configRecoveryRequired: false,
+        },
+        onConfigure: () => undefined,
+      }),
+    );
+
+    expect(markup).toContain("Projektadministration erforderlich");
+    expect(markup).toContain("Jira-Projektadministrator");
+    expect(markup).not.toContain("Projekt jetzt konfigurieren");
+  });
+
   it("verwendet im Erstzustand ausschließlich deutsche Bereitschaftsterminologie", () => {
     const markup = renderToStaticMarkup(
       createElement(EmptyState, {
