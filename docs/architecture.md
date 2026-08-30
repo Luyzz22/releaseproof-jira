@@ -71,6 +71,9 @@ Schema-Version 2 ergänzt `releaseScopeMode` und optional `releaseScopeJql`. Dat
 
 - Forge übernimmt Authentifizierung und Installationsisolation.
 - Jira-Anfragen laufen `asUser`; Sichtbarkeit und Projektberechtigungen des Nutzers bleiben wirksam.
+- Der Bootstrap ermittelt im aktuellen Projektkontext über `GET /rest/api/3/mypermissions`, ob der Nutzer `ADMINISTER_PROJECTS` besitzt, und liefert dieses Ergebnis als `canConfigure` an die UI.
+- Der Save-Use-Case prüft `ADMINISTER_PROJECTS` erneut serverseitig als erste Operation. Ohne Projektadministrationsberechtigung erfolgen weder Metadatenvalidierung noch KVS-Read/Write; eine unerwartete Permission-Antwort wird fail-closed abgelehnt.
+- Nicht-Administratoren können eine bestehende Konfiguration read-only einsehen sowie Analysen und Reports ausführen.
 - Resolver-Payloads sind nicht vertrauenswürdig und werden validiert.
 - Technisch erzeugte Versions-JQL enthält nur validierte Jira-IDs und Projektkeys.
 - Explizite Scope-JQL ist höchstens 2.000 Zeichen lang, muss mit der aktuellen Projektbegrenzung beginnen und darf weder `fixVersion`, ein ausbrechendes `OR` noch eine zweite Projektreferenz enthalten.

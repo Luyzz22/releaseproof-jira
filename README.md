@@ -19,6 +19,7 @@ Feldunterstützung; nicht-textuelle Werte werden nicht als Nachweis interpretier
 - Forge Resolver als validierte Backend-Grenze.
 - Jira Cloud REST API v3 read-only im aktuellen Benutzerkontext.
 - Forge KVS nur für Projektkonfiguration und Schema-Version.
+- Projektkonfigurationen dürfen serverseitig nur von Jira-Projektadministratoren geändert werden; Analysen bleiben read-only.
 - Reine TypeScript-Domain-Regeln mit Vitest.
 - Atlassian Design Tokens, Dark-Mode-Synchronisierung und barrierearme Tastatur-/Screenreader-Navigation.
 - Lazy Loading für umfangreiche Analyse-, Detail- und Report-Ansichten.
@@ -125,6 +126,7 @@ Endpunkte und Begründungen stehen in [docs/permissions.md](docs/permissions.md)
 - Vollständige Jira-Quelltexte werden weder zusätzlich persistiert noch geloggt.
 - Vollständige Issues und Berichte werden nicht in Forge KVS gespeichert.
 - Es gibt keine externen Datenübertragungen und keine Telemetrie.
+- Vor jedem Speichern einer Projektkonfiguration prüft ReleaseProof im aktuellen Projektkontext `ADMINISTER_PROJECTS`; bei fehlender oder nicht eindeutig auswertbarer Berechtigung wird fail-closed nicht gespeichert.
 - Resolver-Payloads werden mit Zod validiert.
 - Scope-JQL wird mit derselben Regelmenge im Browser und erneut in Resolver/Application/Jira-Adapter validiert; der Server ist maßgeblich.
 - Fehlerantworten enthalten keine Upstream-Bodies, Stack Traces oder Jira-Inhalte.
