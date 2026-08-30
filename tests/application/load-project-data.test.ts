@@ -20,11 +20,14 @@ class BootstrapJiraGateway implements JiraGateway, JiraProjectPermissionReader {
   readonly calls: string[] = [];
   readonly permissionCalls: string[] = [];
 
-  constructor(private readonly canConfigure = true) {}
+  constructor(private readonly permissionResult: boolean | Error = true) {}
 
   canAdministerProject(projectKey: string): Promise<boolean> {
     this.permissionCalls.push(projectKey);
-    return Promise.resolve(this.canConfigure);
+    if (this.permissionResult instanceof Error) {
+      return Promise.reject(this.permissionResult);
+    }
+    return Promise.resolve(this.permissionResult);
   }
 
   async listProjects(): Promise<JiraProject[]> {
@@ -106,9 +109,9 @@ class BootstrapConfigRepository implements ProjectConfigRepository {
 
 async function bootstrap(
   readResult: ProjectConfig | null | Error,
-  canConfigure = true,
+  permissionResult: boolean | Error = true,
 ) {
-  const jira = new BootstrapJiraGateway(canConfigure);
+  const jira = new BootstrapJiraGateway(permissionResult);
   const data = await loadProjectData(
     jira,
     new BootstrapConfigRepository(readResult),
@@ -143,6 +146,24 @@ describe("Load Project Data Recovery", () => {
 
     expect(data.canConfigure).toBe(false);
     expect(jira.permissionCalls).toEqual(["DEMO"]);
+  });
+
+  it("degradiert einen Permission-Reader-Fehler auf read-only", async () => {
+    const { data, jira } = await bootstrap(
+      projectConfig,
+      new AppError("JIRA_UNAVAILABLE", "Permission lookup failed."),
+    );
+
+    expect(data.config).toEqual(projectConfig);
+    expect(data.configRecoveryRequired).toBe(false);
+    expect(data.canConfigure).toBe(false);
+    expect(jira.permissionCalls).toEqual(["DEMO"]);
+    expect(jira.calls).toEqual([
+      "project:DEMO:10000",
+      "metadata",
+      "fields",
+      "versions:DEMO:10000",
+    ]);
   });
 
   it("behandelt eine fehlende Konfiguration als normalen Erststart", async () => {

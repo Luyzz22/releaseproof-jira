@@ -27,6 +27,17 @@ async function loadConfigForBootstrap(
   }
 }
 
+async function loadCanConfigureForBootstrap(
+  jira: JiraProjectPermissionReader,
+  projectKey: string,
+): Promise<boolean> {
+  try {
+    return await jira.canAdministerProject(projectKey);
+  } catch {
+    return false;
+  }
+}
+
 export async function loadProjectData(
   jira: JiraGateway & JiraProjectPermissionReader,
   repository: ProjectConfigRepository,
@@ -40,7 +51,7 @@ export async function loadProjectData(
       jira.listFields(projectId),
       jira.listVersions(projectKey, projectId),
       loadConfigForBootstrap(repository, projectId),
-      jira.canAdministerProject(projectKey),
+      loadCanConfigureForBootstrap(jira, projectKey),
     ]);
 
   return {

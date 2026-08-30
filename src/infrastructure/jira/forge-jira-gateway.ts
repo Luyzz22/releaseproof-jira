@@ -826,6 +826,7 @@ export function mapAdministerProjectPermission(value: unknown): boolean {
 
   if (
     stringValue(permission.key) !== "ADMINISTER_PROJECTS" ||
+    stringValue(permission.type) !== "PROJECT" ||
     typeof permission.havePermission !== "boolean"
   ) {
     throw new AppError(

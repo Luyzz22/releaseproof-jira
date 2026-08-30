@@ -85,3 +85,11 @@
 - Die Parser-Antwort wird fail-closed ausgewertet: Genau ein Query-Ergebnis ist erforderlich; Fehler machen die JQL ungültig, und ein fehlerfreies Ergebnis wird nur mit nicht leerem Query-Text und vorhandener Parse-Struktur als Erfolg akzeptiert.
 - Unvollständige oder unerwartete 200-Antworten werden als Jira-Verfügbarkeitsfehler behandelt, statt eine nicht nachweislich validierte JQL zu persistieren.
 - Es wurden keine externen Remotes, zusätzlichen Egress-Ziele oder neuen Berechtigungen eingeführt.
+
+## 2026-08-30 — Projektgebundene Konfigurationsautorisation
+
+- Für die Autorisierung von ReleaseProof-Projektkonfigurationen wird neu ausschließlich read-only `GET /rest/api/3/mypermissions?projectKey=<PROJECT_KEY>&permissions=ADMINISTER_PROJECTS` verwendet.
+- Der Request läuft mit `api.asUser()` im aktuellen Jira-Projektkontext. Er benötigt im verwendeten Classic-Scope-Modell weiterhin nur `read:jira-work`; Manifest und Consent-Surface bleiben unverändert.
+- Die Antwort wird an der Write-Boundary fail-closed ausgewertet: `permissions.ADMINISTER_PROJECTS` muss den Key `ADMINISTER_PROJECTS`, den Typ `PROJECT` und ein boolesches `havePermission` enthalten. Fehlende oder abweichende Werte autorisieren niemals einen KVS-Schreibzugriff.
+- `saveProjectConfig` führt die Projekt-Admin-Prüfung als erste serverseitige Operation aus. Bei fehlender Berechtigung erfolgen weder Jira-Metadatenvalidierung noch KVS-Read/Write.
+- Der Bootstrap verwendet dieselbe Permission-Quelle nur als Präsentationssignal `canConfigure`. Schlägt die Permission-Abfrage dort technisch oder strukturell fehl, wird `canConfigure: false` geliefert, damit bestehende Konfigurationen, Analysen und Reports read-only nutzbar bleiben. Der Save-Pfad reautorisiert unabhängig davon strikt.

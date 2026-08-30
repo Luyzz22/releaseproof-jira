@@ -36,6 +36,29 @@ describe("Jira-Projektadministrationsberechtigung", () => {
       },
     ],
     [
+      "fehlendem Permission-Typ",
+      {
+        permissions: {
+          ADMINISTER_PROJECTS: {
+            key: "ADMINISTER_PROJECTS",
+            havePermission: true,
+          },
+        },
+      },
+    ],
+    [
+      "falschem Permission-Typ",
+      {
+        permissions: {
+          ADMINISTER_PROJECTS: {
+            key: "ADMINISTER_PROJECTS",
+            type: "GLOBAL",
+            havePermission: true,
+          },
+        },
+      },
+    ],
+    [
       "fehlendem havePermission",
       {
         permissions: {
