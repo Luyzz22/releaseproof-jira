@@ -4,6 +4,7 @@ import type {
   JiraGateway,
   JiraIssueType,
   JiraProject,
+  JiraProjectPermissionReader,
   JiraStatus,
   JiraVersion,
   ProjectMetadata,
@@ -812,7 +813,46 @@ export function mapProjectMetadata(value: unknown): ProjectMetadata {
   return { statuses: [...statusMap.values()], issueTypes };
 }
 
-export class ForgeJiraGateway implements JiraGateway {
+export function mapAdministerProjectPermission(value: unknown): boolean {
+  const payload = requireRecord(value, "My permissions");
+  const permissions = requireRecord(
+    payload.permissions,
+    "My permissions permissions",
+  );
+  const permission = requireRecord(
+    permissions.ADMINISTER_PROJECTS,
+    "My permissions ADMINISTER_PROJECTS",
+  );
+
+  if (
+    stringValue(permission.key) !== "ADMINISTER_PROJECTS" ||
+    stringValue(permission.type) !== "PROJECT" ||
+    typeof permission.havePermission !== "boolean"
+  ) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "My permissions returned an unexpected response.",
+    );
+  }
+
+  return permission.havePermission;
+}
+
+export class ForgeJiraGateway
+  implements JiraGateway, JiraProjectPermissionReader
+{
+  async canAdministerProject(projectKey: string): Promise<boolean> {
+    const permission = "ADMINISTER_PROJECTS";
+    const data = await parseResponse(
+      await api
+        .asUser()
+        .requestJira(
+          route`/rest/api/3/mypermissions?projectKey=${projectKey}&permissions=${permission}`,
+        ),
+    );
+    return mapAdministerProjectPermission(data);
+  }
+
   async listProjects(): Promise<JiraProject[]> {
     const projects: JiraProject[] = [];
     let complete = false;

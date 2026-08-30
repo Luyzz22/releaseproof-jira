@@ -1,6 +1,10 @@
 import type { ProjectConfig } from "../../domain/models/readiness";
 import { AppError } from "../../shared/errors";
-import type { ProjectConfigRepository, JiraGateway } from "../ports";
+import type {
+  JiraGateway,
+  JiraProjectPermissionReader,
+  ProjectConfigRepository,
+} from "../ports";
 
 type BootstrapConfigState =
   | { config: ProjectConfig | null; configRecoveryRequired: false }
@@ -23,19 +27,32 @@ async function loadConfigForBootstrap(
   }
 }
 
+async function loadCanConfigureForBootstrap(
+  jira: JiraProjectPermissionReader,
+  projectKey: string,
+): Promise<boolean> {
+  try {
+    return await jira.canAdministerProject(projectKey);
+  } catch {
+    return false;
+  }
+}
+
 export async function loadProjectData(
-  jira: JiraGateway,
+  jira: JiraGateway & JiraProjectPermissionReader,
   repository: ProjectConfigRepository,
   projectId: string,
   projectKey: string,
 ) {
-  const [project, metadata, fields, versions, configState] = await Promise.all([
-    jira.getProject(projectKey, projectId),
-    jira.getProjectMetadata(projectKey),
-    jira.listFields(projectId),
-    jira.listVersions(projectKey, projectId),
-    loadConfigForBootstrap(repository, projectId),
-  ]);
+  const [project, metadata, fields, versions, configState, canConfigure] =
+    await Promise.all([
+      jira.getProject(projectKey, projectId),
+      jira.getProjectMetadata(projectKey),
+      jira.listFields(projectId),
+      jira.listVersions(projectKey, projectId),
+      loadConfigForBootstrap(repository, projectId),
+      loadCanConfigureForBootstrap(jira, projectKey),
+    ]);
 
   return {
     project,
@@ -43,6 +60,7 @@ export async function loadProjectData(
     issueTypes: metadata.issueTypes.filter((type) => !type.subtask),
     fields,
     versions: versions.filter((version) => !version.archived),
+    canConfigure,
     ...configState,
   };
 }

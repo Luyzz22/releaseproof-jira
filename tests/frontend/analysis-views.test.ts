@@ -15,6 +15,7 @@ const bootstrapData: BootstrapData = {
   issueTypes: [{ id: "10001", name: "Story", subtask: false }],
   fields: [],
   versions: [],
+  canConfigure: true,
   config: config(),
   configRecoveryRequired: false,
 };

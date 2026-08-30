@@ -10,17 +10,26 @@ import type {
   Clock,
   JiraGateway,
   JiraJqlValidator,
+  JiraProjectPermissionReader,
   ProjectConfigRepository,
 } from "../ports";
 import { hasValidProjectConfigMetadataIds } from "../project-config-metadata";
 
 export async function saveProjectConfig(
   jira: Pick<JiraGateway, "listFields" | "getProjectMetadata"> &
-    JiraJqlValidator,
+    JiraJqlValidator &
+    JiraProjectPermissionReader,
   repository: ProjectConfigRepository,
   clock: Clock,
   input: ProjectConfigInput,
 ): Promise<ProjectConfig> {
+  if (!(await jira.canAdministerProject(input.projectKey))) {
+    throw new AppError(
+      "PERMISSION_DENIED",
+      "Project configuration requires Jira project administration permission.",
+    );
+  }
+
   const [fields, metadata] = await Promise.all([
     jira.listFields(input.projectId),
     jira.getProjectMetadata(input.projectId),

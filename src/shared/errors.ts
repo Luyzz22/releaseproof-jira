@@ -40,7 +40,7 @@ const PUBLIC_MESSAGES: Record<AppErrorCode, string> = {
   VERSION_NOT_FOUND:
     "Die ausgewählte Jira-Version existiert nicht mehr oder ist nicht zugänglich.",
   PERMISSION_DENIED:
-    "Für diese Jira-Daten fehlen die erforderlichen Leseberechtigungen.",
+    "Für diese Aktion fehlen die erforderlichen Jira-Berechtigungen.",
   RATE_LIMITED:
     "Jira begrenzt die Anfragen vorübergehend. Bitte versuchen Sie es später erneut.",
   RESULT_LIMIT_EXCEEDED:

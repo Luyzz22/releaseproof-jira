@@ -100,7 +100,9 @@ export function ReleaseSelection({
           </button>
         </form>
         <button type="button" className="text-button" onClick={onConfigure}>
-          Projektkonfiguration bearbeiten
+          {data.canConfigure
+            ? "Projektkonfiguration bearbeiten"
+            : "Projektkonfiguration ansehen"}
         </button>
       </Panel>
       <aside className="trust-panel">

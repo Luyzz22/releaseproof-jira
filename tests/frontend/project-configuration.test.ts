@@ -75,6 +75,7 @@ const unsupportedFieldCases: ReadonlyArray<readonly [string, JiraField]> = [
 function renderConfiguration(
   fields: JiraField[],
   existingConfig: ProjectConfig | null = null,
+  canConfigure = true,
 ): string {
   const data: BootstrapData = {
     siteUrl: "https://demo.atlassian.net",
@@ -83,6 +84,7 @@ function renderConfiguration(
     issueTypes: [{ id: "10001", name: "Story", subtask: false }],
     fields,
     versions: [],
+    canConfigure,
     config: existingConfig,
     configRecoveryRequired: false,
   };
@@ -110,6 +112,22 @@ describe("Projektkonfiguration – Metadaten-Recovery", () => {
         [{ id: "10001" }, { id: "10003" }],
       ),
     ).toEqual(["10001", "10003"]);
+  });
+});
+
+describe("Projektkonfiguration – Berechtigungsgrenze", () => {
+  it("rendert Nicht-Administratoren read-only und ohne Save-Pfad", () => {
+    const markup = renderConfiguration(
+      [supportedDescriptionField],
+      config({ acceptanceCriteriaFieldId: "description" }),
+      false,
+    );
+
+    expect(markup).toContain(
+      "Nur Jira-Projektadministratoren können diese Konfiguration ändern.",
+    );
+    expect(markup).toContain('disabled=""');
+    expect(markup).not.toContain("Konfiguration speichern");
   });
 });
 
