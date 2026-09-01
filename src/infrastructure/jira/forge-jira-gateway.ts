@@ -824,7 +824,7 @@ function normalizedAuthorizedProjectId(
   ) {
     return String(value);
   }
-  if (typeof value === "string" && /^\\d+$/.test(value)) {
+  if (typeof value === "string" && /^\d+$/.test(value)) {
     return value;
   }
   throw new AppError(
@@ -837,7 +837,7 @@ export function mapAdministerProjectAuthorization(
   value: unknown,
   expectedProjectId: string,
 ): boolean {
-  if (!/^\\d+$/.test(expectedProjectId)) {
+  if (!/^\d+$/.test(expectedProjectId)) {
     throw new AppError("INVALID_INPUT", "Unsafe Jira project ID rejected.");
   }
 
@@ -892,7 +892,7 @@ export class ForgeJiraGateway
   implements JiraGateway, JiraProjectPermissionReader
 {
   async canAdministerProject(projectId: string): Promise<boolean> {
-    if (!/^\\d+$/.test(projectId)) {
+    if (!/^\d+$/.test(projectId)) {
       throw new AppError("INVALID_INPUT", "Unsafe Jira project ID rejected.");
     }
 
