@@ -1,88 +1,67 @@
 import { describe, expect, it } from "vitest";
-import { mapAdministerProjectPermission } from "../../src/infrastructure/jira/forge-jira-gateway";
+import { mapAdministerProjectAuthorization } from "../../src/infrastructure/jira/forge-jira-gateway";
 
-describe("Jira-Projektadministrationsberechtigung", () => {
+describe("Jira-Projektadministrationsautorisierung", () => {
   it.each([
-    [true, true],
-    [false, false],
-  ])("bildet havePermission=%s exakt ab", (havePermission, expected) => {
-    expect(
-      mapAdministerProjectPermission({
-        permissions: {
-          ADMINISTER_PROJECTS: {
-            id: "23",
-            key: "ADMINISTER_PROJECTS",
-            name: "Administer projects",
-            type: "PROJECT",
-            havePermission,
-          },
-        },
-      }),
-    ).toBe(expected);
-  });
-
-  it.each([
-    ["fehlendem permissions-Objekt", {}],
-    ["fehlender ADMINISTER_PROJECTS-Berechtigung", { permissions: {} }],
-    [
-      "falschem Permission-Key",
-      {
-        permissions: {
-          ADMINISTER_PROJECTS: {
-            key: "BROWSE_PROJECTS",
-            havePermission: true,
-          },
-        },
-      },
-    ],
-    [
-      "fehlendem Permission-Typ",
-      {
-        permissions: {
-          ADMINISTER_PROJECTS: {
-            key: "ADMINISTER_PROJECTS",
-            havePermission: true,
-          },
-        },
-      },
-    ],
-    [
-      "falschem Permission-Typ",
-      {
-        permissions: {
-          ADMINISTER_PROJECTS: {
-            key: "ADMINISTER_PROJECTS",
-            type: "GLOBAL",
-            havePermission: true,
-          },
-        },
-      },
-    ],
-    [
-      "fehlendem havePermission",
-      {
-        permissions: {
-          ADMINISTER_PROJECTS: { key: "ADMINISTER_PROJECTS" },
-        },
-      },
-    ],
-    [
-      "nicht-booleschem havePermission",
-      {
-        permissions: {
-          ADMINISTER_PROJECTS: {
-            key: "ADMINISTER_PROJECTS",
-            havePermission: "true",
-          },
-        },
-      },
-    ],
-  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
-    "weist %s fail-closed zurück",
-    (_case, value) => {
-      expect(() => mapAdministerProjectPermission(value)).toThrowError(
-        expect.objectContaining({ code: "JIRA_UNAVAILABLE" }),
-      );
+    [[{ permission: "ADMINISTER_PROJECTS", projects: [10000] }], true],
+    [[{ permission: "ADMINISTER_PROJECTS", projects: ["10000"] }], true],
+    [[{ permission: "ADMINISTER_PROJECTS", projects: [] }], false],
+    [[], false],
+    [[{ permission: "BROWSE_PROJECTS", projects: [10000] }], false],
+    [[{ permission: "ADMINISTER_PROJECTS" }], false],
+  ] satisfies ReadonlyArray<readonly [unknown, boolean]>)(
+    "bildet den aktuellen Nutzergrant %# fail-closed ab",
+    (value, expected) => {
+      expect(mapAdministerProjectAuthorization(value, "10000")).toBe(expected);
     },
   );
+
+  it.each([
+    [
+      "einem fremden Projekt",
+      [{ permission: "ADMINISTER_PROJECTS", projects: [10001] }],
+    ],
+    [
+      "mehreren Projekten",
+      [{ permission: "ADMINISTER_PROJECTS", projects: [10000, 10001] }],
+    ],
+    [
+      "doppelten Permission-Grants",
+      [
+        { permission: "ADMINISTER_PROJECTS", projects: [10000] },
+        { permission: "ADMINISTER_PROJECTS", projects: [10000] },
+      ],
+    ],
+    [
+      "einem Issue-Kontext",
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [10000],
+          issues: [10010],
+        },
+      ],
+    ],
+    [
+      "einer ungültigen Projekt-ID",
+      [{ permission: "ADMINISTER_PROJECTS", projects: ["SCRUM"] }],
+    ],
+    ["einem nicht-arrayförmigen Ergebnis", {}],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "weist %s zurück",
+    (_case, value) => {
+      expect(() =>
+        mapAdministerProjectAuthorization(value, "10000"),
+      ).toThrowError(expect.objectContaining({ code: "JIRA_UNAVAILABLE" }));
+    },
+  );
+
+  it("weist einen ungültigen erwarteten Projektkontext zurück", () => {
+    expect(() =>
+      mapAdministerProjectAuthorization(
+        [{ permission: "ADMINISTER_PROJECTS", projects: [10000] }],
+        "SCRUM",
+      ),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_INPUT" }));
+  });
 });

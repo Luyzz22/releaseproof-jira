@@ -1,4 +1,4 @@
-import api, { route } from "@forge/api";
+import api, { authorize, route } from "@forge/api";
 import type {
   JiraField,
   JiraGateway,
@@ -813,44 +813,97 @@ export function mapProjectMetadata(value: unknown): ProjectMetadata {
   return { statuses: [...statusMap.values()], issueTypes };
 }
 
-export function mapAdministerProjectPermission(value: unknown): boolean {
-  const payload = requireRecord(value, "My permissions");
-  const permissions = requireRecord(
-    payload.permissions,
-    "My permissions permissions",
-  );
-  const permission = requireRecord(
-    permissions.ADMINISTER_PROJECTS,
-    "My permissions ADMINISTER_PROJECTS",
-  );
-
+function normalizedAuthorizedProjectId(
+  value: unknown,
+  resource: string,
+): string {
   if (
-    stringValue(permission.key) !== "ADMINISTER_PROJECTS" ||
-    stringValue(permission.type) !== "PROJECT" ||
-    typeof permission.havePermission !== "boolean"
+    typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value > 0
   ) {
+    return String(value);
+  }
+  if (typeof value === "string" && /^\\d+$/.test(value)) {
+    return value;
+  }
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `${resource} returned an unexpected project ID.`,
+  );
+}
+
+export function mapAdministerProjectAuthorization(
+  value: unknown,
+  expectedProjectId: string,
+): boolean {
+  if (!/^\\d+$/.test(expectedProjectId)) {
+    throw new AppError("INVALID_INPUT", "Unsafe Jira project ID rejected.");
+  }
+
+  const grants = requireArray(value, "Jira authorization");
+  const matching = grants.filter((grantValue) => {
+    if (!isRecord(grantValue)) return false;
+    return stringValue(grantValue.permission) === "ADMINISTER_PROJECTS";
+  });
+
+  if (matching.length === 0) return false;
+  if (matching.length !== 1) {
     throw new AppError(
       "JIRA_UNAVAILABLE",
-      "My permissions returned an unexpected response.",
+      "Jira authorization returned duplicate permission grants.",
     );
   }
 
-  return permission.havePermission;
+  const grant = requireRecord(matching[0], "Jira authorization grant");
+  if (grant.issues !== undefined) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Jira authorization returned an unexpected issue context.",
+    );
+  }
+
+  if (grant.projects === undefined || grant.projects === null) {
+    return false;
+  }
+
+  const projectIds = requireArray(
+    grant.projects,
+    "Jira authorization projects",
+  ).map((projectId) =>
+    normalizedAuthorizedProjectId(projectId, "Jira authorization"),
+  );
+
+  if (projectIds.length === 0) return false;
+  if (
+    projectIds.length !== 1 ||
+    projectIds[0] !== expectedProjectId
+  ) {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Jira authorization returned an unexpected project context.",
+    );
+  }
+
+  return true;
 }
 
 export class ForgeJiraGateway
   implements JiraGateway, JiraProjectPermissionReader
 {
-  async canAdministerProject(projectKey: string): Promise<boolean> {
-    const permission = "ADMINISTER_PROJECTS";
-    const data = await parseResponse(
-      await api
-        .asUser()
-        .requestJira(
-          route`/rest/api/3/mypermissions?projectKey=${projectKey}&permissions=${permission}`,
-        ),
-    );
-    return mapAdministerProjectPermission(data);
+  async canAdministerProject(projectId: string): Promise<boolean> {
+    if (!/^\\d+$/.test(projectId)) {
+      throw new AppError("INVALID_INPUT", "Unsafe Jira project ID rejected.");
+    }
+
+    const grants = await authorize().onJira([
+      {
+        permissions: ["ADMINISTER_PROJECTS"],
+        projects: [projectId],
+      },
+    ]);
+
+    return mapAdministerProjectAuthorization(grants, projectId);
   }
 
   async listProjects(): Promise<JiraProject[]> {

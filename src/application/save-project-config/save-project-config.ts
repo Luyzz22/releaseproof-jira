@@ -23,7 +23,7 @@ export async function saveProjectConfig(
   clock: Clock,
   input: ProjectConfigInput,
 ): Promise<ProjectConfig> {
-  if (!(await jira.canAdministerProject(input.projectKey))) {
+  if (!(await jira.canAdministerProject(input.projectId))) {
     throw new AppError(
       "PERMISSION_DENIED",
       "Project configuration requires Jira project administration permission.",

@@ -22,8 +22,8 @@ class BootstrapJiraGateway implements JiraGateway, JiraProjectPermissionReader {
 
   constructor(private readonly permissionResult: boolean | Error = true) {}
 
-  canAdministerProject(projectKey: string): Promise<boolean> {
-    this.permissionCalls.push(projectKey);
+  canAdministerProject(projectId: string): Promise<boolean> {
+    this.permissionCalls.push(projectId);
     if (this.permissionResult instanceof Error) {
       return Promise.reject(this.permissionResult);
     }
@@ -145,7 +145,7 @@ describe("Load Project Data Recovery", () => {
     const { data, jira } = await bootstrap(projectConfig, false);
 
     expect(data.canConfigure).toBe(false);
-    expect(jira.permissionCalls).toEqual(["DEMO"]);
+    expect(jira.permissionCalls).toEqual(["10000"]);
   });
 
   it("degradiert einen Permission-Reader-Fehler auf read-only", async () => {
@@ -157,7 +157,7 @@ describe("Load Project Data Recovery", () => {
     expect(data.config).toEqual(projectConfig);
     expect(data.configRecoveryRequired).toBe(false);
     expect(data.canConfigure).toBe(false);
-    expect(jira.permissionCalls).toEqual(["DEMO"]);
+    expect(jira.permissionCalls).toEqual(["10000"]);
     expect(jira.calls).toEqual([
       "project:DEMO:10000",
       "metadata",

@@ -65,8 +65,8 @@ class ControlledJiraConfigGateway
     private readonly canConfigure = true,
   ) {}
 
-  canAdministerProject(projectKey: string): Promise<boolean> {
-    this.permissionCalls.push(projectKey);
+  canAdministerProject(projectId: string): Promise<boolean> {
+    this.permissionCalls.push(projectId);
     return Promise.resolve(this.canConfigure);
   }
 
@@ -240,7 +240,7 @@ describe("In-Memory ProjectConfig Repository", () => {
         "Project configuration requires Jira project administration permission.",
     });
 
-    expect(jira.permissionCalls).toEqual([projectConfig.projectKey]);
+    expect(jira.permissionCalls).toEqual([projectConfig.projectId]);
     expect(jira.calls).toHaveLength(0);
     expect(jira.metadataCalls).toHaveLength(0);
     expect(jira.jqlCalls).toHaveLength(0);
