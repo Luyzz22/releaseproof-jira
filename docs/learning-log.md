@@ -104,3 +104,11 @@
 - Manifest, Forge-Scopes, Remotes und Persistenzmodell bleiben unverändert.
 
 - Compound- oder Zusatz-Grants der Forge Authorize API werden ebenfalls fail-closed behandelt: Da ReleaseProof genau ein Permission-/Projekt-Tupel anfragt, muss die Antwort entweder leer oder exakt ein vollständig erwarteter `ADMINISTER_PROJECTS`-Grant für die angefragte Projekt-ID sein. Zusätzliche, fremde oder malformed Grants dürfen nicht herausgefiltert und anschließend ignoriert werden.
+
+## 2026-09-01 — Forge-Authorize-Response-Shape im Runtime-E2E korrigiert
+
+- Der erste Authorize-Fix interpretierte die Rückgabe von `authorize().onJira(...)` fälschlich als Array von Grants. Die aktuelle Forge-Dokumentation definiert dagegen eine einzelne Response `{ permission: string; issues?: number[]; projects?: number[] }`.
+- Diese falsche Array-Annahme war in Unit-Tests reproduziert und deshalb durch Typecheck und Tests nicht sichtbar: Der Mapper akzeptierte `unknown`, während die Tests ebenfalls Arrays verwendeten.
+- Im echten Development-Runtime führte die Objekt-Response zu `JIRA_UNAVAILABLE`. Der Bootstrap degradierte diesen Fehler korrekt auf `canConfigure:false`, wodurch sowohl Nicht-Admins als auch legitime Projektadministratoren read-only erschienen. Der Save-Pfad blieb dadurch fail-closed.
+- Der Mapper validiert nun die dokumentierte einzelne Response: `permission` muss `ADMINISTER_PROJECTS` sein, `issues` darf nicht vorhanden sein, ein fehlendes oder leeres `projects` bedeutet `false`, und ein nicht exakt zur erwarteten numerischen Projekt-ID passender Projektkontext wird fail-closed abgelehnt.
+- Regressionstests verwenden die dokumentierte Objektform und lehnen die alte Array-Annahme ausdrücklich ab. Manifest, Scopes, Remotes und Persistenz bleiben unverändert.
