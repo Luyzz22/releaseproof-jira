@@ -829,6 +829,69 @@ function normalizedAuthorizedProjectId(
   );
 }
 
+function summarizeAuthorizeRuntimeResult(
+  value: unknown,
+  expectedProjectId: string,
+): Record<string, unknown> {
+  const kind = Array.isArray(value)
+    ? "array"
+    : value === null
+      ? "null"
+      : typeof value;
+
+  if (!isRecord(value)) {
+    return {
+      kind,
+      expectedProjectId,
+    };
+  }
+
+  const projects = Array.isArray(value.projects) ? value.projects : null;
+  const projectIds =
+    projects === null
+      ? []
+      : projects.flatMap((projectId) => {
+          if (
+            typeof projectId === "number" &&
+            Number.isSafeInteger(projectId) &&
+            projectId > 0
+          ) {
+            return [String(projectId)];
+          }
+          if (typeof projectId === "string" && /^\d+$/.test(projectId)) {
+            return [projectId];
+          }
+          return [];
+        });
+
+  return {
+    kind,
+    expectedProjectId,
+    permission:
+      typeof value.permission === "string" ? value.permission : null,
+    projectsPresent: value.projects !== undefined,
+    projectsArray: projects !== null,
+    projectCount: projects?.length ?? null,
+    projectIds,
+    issuesPresent: Object.prototype.hasOwnProperty.call(value, "issues"),
+  };
+}
+
+function summarizeAuthorizeRuntimeError(
+  error: unknown,
+): Record<string, unknown> {
+  if (!(error instanceof Error)) {
+    return { kind: "non-error" };
+  }
+
+  const record = error as Error & { code?: unknown };
+  return {
+    kind: "error",
+    name: error.name,
+    code: typeof record.code === "string" ? record.code : null,
+  };
+}
+
 export function mapAdministerProjectAuthorization(
   value: unknown,
   expectedProjectId: string,
@@ -881,14 +944,36 @@ export class ForgeJiraGateway
       throw new AppError("INVALID_INPUT", "Unsafe Jira project ID rejected.");
     }
 
-    const grant = await authorize().onJira([
-      {
-        permissions: ["ADMINISTER_PROJECTS"],
-        projects: [projectId],
-      },
-    ]);
+    let grant: unknown;
+    try {
+      grant = await authorize().onJira([
+        {
+          permissions: ["ADMINISTER_PROJECTS"],
+          projects: [projectId],
+        },
+      ]);
+    } catch (error) {
+      console.warn(
+        "RELEASEPROOF_AUTH_DIAG_CALL_ERROR",
+        JSON.stringify(summarizeAuthorizeRuntimeError(error)),
+      );
+      throw error;
+    }
 
-    return mapAdministerProjectAuthorization(grant, projectId);
+    console.info(
+      "RELEASEPROOF_AUTH_DIAG_RESULT",
+      JSON.stringify(summarizeAuthorizeRuntimeResult(grant, projectId)),
+    );
+
+    try {
+      return mapAdministerProjectAuthorization(grant, projectId);
+    } catch (error) {
+      console.warn(
+        "RELEASEPROOF_AUTH_DIAG_MAPPER_ERROR",
+        JSON.stringify(summarizeAuthorizeRuntimeError(error)),
+      );
+      throw error;
+    }
   }
 
   async listProjects(): Promise<JiraProject[]> {
