@@ -44,10 +44,7 @@ describe("Jira-Projektadministrationsautorisierung", () => {
     ],
     [
       "einem gültigen Grant plus malformed Grant",
-      [
-        { permission: "ADMINISTER_PROJECTS", projects: [10000] },
-        null,
-      ],
+      [{ permission: "ADMINISTER_PROJECTS", projects: [10000] }, null],
     ],
     [
       "einem Issue-Kontext",
