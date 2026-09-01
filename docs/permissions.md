@@ -14,7 +14,7 @@ Read-only Classic Scope, von Atlassian für die verwendeten Jira-REST-v3-Operati
 | Version validieren                       | `GET /rest/api/3/version/{id}`                      |
 | Scope-Issues und benötigte Details laden | `POST /rest/api/3/search/jql`                       |
 | Projektgebundene JQL strikt validieren   | `POST /rest/api/3/jql/parse`                        |
-| Projekt-Admin-Recht für Konfiguration    | Forge Authorize API → Jira Bulk Permissions          |
+| Projekt-Admin-Recht für Konfiguration    | Forge Authorize API → Jira Bulk Permissions         |
 
 Die Requests laufen mit `api.asUser()`. Zusätzlich muss der Nutzer im jeweiligen Jira-Projekt `Browse Projects` besitzen; Issue-Security bleibt wirksam.
 

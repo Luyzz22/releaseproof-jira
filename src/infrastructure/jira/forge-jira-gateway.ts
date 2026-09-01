@@ -817,11 +817,7 @@ function normalizedAuthorizedProjectId(
   value: unknown,
   resource: string,
 ): string {
-  if (
-    typeof value === "number" &&
-    Number.isSafeInteger(value) &&
-    value > 0
-  ) {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) {
     return String(value);
   }
   if (typeof value === "string" && /^\d+$/.test(value)) {
@@ -875,10 +871,7 @@ export function mapAdministerProjectAuthorization(
   );
 
   if (projectIds.length === 0) return false;
-  if (
-    projectIds.length !== 1 ||
-    projectIds[0] !== expectedProjectId
-  ) {
+  if (projectIds.length !== 1 || projectIds[0] !== expectedProjectId) {
     throw new AppError(
       "JIRA_UNAVAILABLE",
       "Jira authorization returned an unexpected project context.",
