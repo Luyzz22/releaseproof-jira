@@ -14,11 +14,11 @@ Read-only Classic Scope, von Atlassian für die verwendeten Jira-REST-v3-Operati
 | Version validieren                       | `GET /rest/api/3/version/{id}`                      |
 | Scope-Issues und benötigte Details laden | `POST /rest/api/3/search/jql`                       |
 | Projektgebundene JQL strikt validieren   | `POST /rest/api/3/jql/parse`                        |
-| Projekt-Admin-Recht für Konfiguration    | `GET /rest/api/3/mypermissions`                     |
+| Projekt-Admin-Recht für Konfiguration    | Forge Authorize API → Jira Bulk Permissions         |
 
 Die Requests laufen mit `api.asUser()`. Zusätzlich muss der Nutzer im jeweiligen Jira-Projekt `Browse Projects` besitzen; Issue-Security bleibt wirksam.
 
-Zum Speichern oder Reparieren der ReleaseProof-Projektkonfiguration muss der aktuelle Nutzer im betroffenen Projekt `ADMINISTER_PROJECTS` besitzen. ReleaseProof prüft dies mit `GET /rest/api/3/mypermissions?projectKey=...&permissions=ADMINISTER_PROJECTS` serverseitig vor jedem KVS-Schreibpfad. Der Endpunkt ist read-only und wird durch den bestehenden Classic Scope `read:jira-work` abgedeckt; es wird kein zusätzlicher Admin- oder Write-Scope angefordert. Die Save-Boundary akzeptiert nur eine Antwort mit `key: ADMINISTER_PROJECTS`, `type: PROJECT` und booleschem `havePermission`; jede Abweichung wird fail-closed behandelt. Für den Bootstrap wird ein Permission-Reader-Ausfall dagegen ausschließlich als `canConfigure: false` dargestellt, damit die bestehende read-only Analyse-/Report-Nutzung nicht ausfällt.
+Zum Speichern oder Reparieren der ReleaseProof-Projektkonfiguration muss der aktuelle Nutzer im betroffenen Projekt `ADMINISTER_PROJECTS` besitzen. ReleaseProof prüft dies serverseitig mit der Forge Authorize API (`authorize().onJira(...)`) gegen exakt die numerische `projectId` aus dem vertrauenswürdigen Forge-Projektkontext. Die Authorize API prüft die Berechtigungen des aktuellen Nutzers über Jiras Bulk-Permissions-Mechanismus. Der bestehende Classic Scope `read:jira-work` bleibt unverändert; es wird kein zusätzlicher Admin- oder Write-Scope angefordert. Die Save-Boundary akzeptiert nur einen Grant für exakt das erwartete Projekt; fehlende oder unerwartete Grant-Kontexte werden fail-closed behandelt. Für den Bootstrap wird ein Permission-Reader-Ausfall ausschließlich als `canConfigure: false` dargestellt, damit die bestehende read-only Analyse-/Report-Nutzung nicht ausfällt.
 
 Der Suchendpunkt ist für beide Scope-Modi identisch. `VERSION_ONLY` verwendet serverseitig erzeugtes JQL; `JQL_SCOPE` verwendet den unveränderten, projektgebunden validierten Ausdruck. Zusätzlich prüft `POST /rest/api/3/jql/parse` explizite JQL vor Persistenz und erneut vor Analyse mit `validation=strict`. Der Parser-Aufruf validiert ausschließlich die Abfrage; er verändert keine Jira-Daten. Es entstehen keine Jira-Schreiboperationen, keine externen Remotes und keine zusätzlichen Scopes.
 
@@ -45,4 +45,5 @@ Es werden keine vollständigen Issues, Analysen, Reports oder personenbezogenen 
 - [Jira issue fields](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-fields/)
 - [Jira issue search](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/)
 - [Jira JQL APIs](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-jql/)
-- [Jira permissions / Get my permissions](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-permissions/)
+- [Forge Authorize API](https://developer.atlassian.com/platform/forge/runtime-reference/authorize-api/)
+- [Jira permissions / Bulk permissions](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-permissions/)

@@ -34,7 +34,7 @@ Modelle, Regeln und Aggregation sind reine TypeScript-Module. Regeln verändern 
 
 ### Infrastructure Layer
 
-- Jira-Adapter: `@forge/api`, `api.asUser().requestJira(route...)`, REST v3, Pagination und ADF-Normalisierung.
+- Jira-Adapter: `@forge/api`, `api.asUser().requestJira(route...)`, REST v3, Pagination und ADF-Normalisierung. Projektadmin-Autorisierung verwendet zusätzlich die Forge Authorize API für den aktuellen Nutzer.
 - Storage-Adapter: `@forge/kvs`, installationsisolierte Schlüssel `project-config:<projectId>` und `schema-version`.
 
 ## Datenfluss
@@ -71,8 +71,8 @@ Schema-Version 2 ergänzt `releaseScopeMode` und optional `releaseScopeJql`. Dat
 
 - Forge übernimmt Authentifizierung und Installationsisolation.
 - Jira-Anfragen laufen `asUser`; Sichtbarkeit und Projektberechtigungen des Nutzers bleiben wirksam.
-- Der Bootstrap ermittelt im aktuellen Projektkontext über `GET /rest/api/3/mypermissions`, ob der Nutzer `ADMINISTER_PROJECTS` besitzt, und liefert dieses Ergebnis als `canConfigure` an die UI. Schlägt diese reine Präsentationsabfrage technisch oder strukturell fehl, wird `canConfigure: false` geliefert, damit bestehende Konfigurationen, Analysen und Reports read-only erreichbar bleiben.
-- Der Save-Use-Case prüft `ADMINISTER_PROJECTS` unabhängig davon erneut serverseitig als erste Operation. Die Jira-Antwort muss explizit `key: ADMINISTER_PROJECTS`, `type: PROJECT` und ein boolesches `havePermission` enthalten. Ohne nachgewiesene Projektadministrationsberechtigung erfolgen weder Metadatenvalidierung noch KVS-Read/Write.
+- Der Bootstrap ermittelt über die Forge Authorize API für die aktuelle numerische Jira-`projectId`, ob der aufrufende Nutzer `ADMINISTER_PROJECTS` besitzt, und liefert dieses Ergebnis als `canConfigure` an die UI. Schlägt diese reine Präsentationsabfrage technisch oder strukturell fehl, wird `canConfigure: false` geliefert, damit bestehende Konfigurationen, Analysen und Reports read-only erreichbar bleiben.
+- Der Save-Use-Case prüft `ADMINISTER_PROJECTS` unabhängig davon erneut serverseitig als erste Operation über dieselbe Authorize-Grenze. Nur ein Grant für exakt die erwartete numerische Projekt-ID autorisiert den Schreibpfad; fehlende, doppelte, fremde oder anderweitig unerwartete Grant-Kontexte werden fail-closed behandelt. Ohne nachgewiesene Projektadministrationsberechtigung erfolgen weder Metadatenvalidierung noch KVS-Read/Write.
 - Nicht-Administratoren können eine bestehende Konfiguration read-only einsehen sowie Analysen und Reports ausführen.
 - Resolver-Payloads sind nicht vertrauenswürdig und werden validiert.
 - Technisch erzeugte Versions-JQL enthält nur validierte Jira-IDs und Projektkeys.

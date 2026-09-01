@@ -93,3 +93,14 @@
 - Die Antwort wird an der Write-Boundary fail-closed ausgewertet: `permissions.ADMINISTER_PROJECTS` muss den Key `ADMINISTER_PROJECTS`, den Typ `PROJECT` und ein boolesches `havePermission` enthalten. Fehlende oder abweichende Werte autorisieren niemals einen KVS-Schreibzugriff.
 - `saveProjectConfig` führt die Projekt-Admin-Prüfung als erste serverseitige Operation aus. Bei fehlender Berechtigung erfolgen weder Jira-Metadatenvalidierung noch KVS-Read/Write.
 - Der Bootstrap verwendet dieselbe Permission-Quelle nur als Präsentationssignal `canConfigure`. Schlägt die Permission-Abfrage dort technisch oder strukturell fehl, wird `canConfigure: false` geliefert, damit bestehende Konfigurationen, Analysen und Reports read-only nutzbar bleiben. Der Save-Pfad reautorisiert unabhängig davon strikt.
+
+## 2026-09-01 — Runtime-Abgleich der Projektadmin-Autorisierung
+
+- Der Development-E2E auf Forge Development 2.5.0 zeigte einen Widerspruch zwischen dem serverseitigen ReleaseProof-Bootstrap und Jira selbst: Für denselben Nicht-Admin meldete der Browser-Endpunkt `GET /rest/api/3/mypermissions?projectKey=SCRUM&permissions=ADMINISTER_PROJECTS` eindeutig `havePermission: false`, während die über `api.asUser()` im Resolver aufgerufene Variante zu einem editierbaren ReleaseProof-Konfigurationszustand führte.
+- Weil diese Abweichung eine Write-Authorization-Boundary betrifft, wird `GET /mypermissions` nicht länger als serverseitige ReleaseProof-Autorisierungsquelle verwendet.
+- ReleaseProof verwendet stattdessen die Forge Authorize API. `authorize().onJira(...)` prüft die Berechtigung des aktuellen Nutzers über Jiras Bulk-Permissions-Mechanismus und wird an die numerische `projectId` aus dem validierten Forge-Projektkontext gebunden.
+- Die Save-Boundary bleibt die maßgebliche Trust Boundary: Nur ein `ADMINISTER_PROJECTS`-Grant für exakt die erwartete Projekt-ID autorisiert weitere Jira-Metadaten- oder KVS-Zugriffe. Fehlende, fremde, doppelte oder strukturell unerwartete Grants werden fail-closed behandelt.
+- Der Bootstrap nutzt dieselbe Quelle nur für `canConfigure`; technische Fehler degradieren dort weiterhin auf read-only, damit Analyse und Report nicht unnötig ausfallen.
+- Manifest, Forge-Scopes, Remotes und Persistenzmodell bleiben unverändert.
+
+- Compound- oder Zusatz-Grants der Forge Authorize API werden ebenfalls fail-closed behandelt: Da ReleaseProof genau ein Permission-/Projekt-Tupel anfragt, muss die Antwort entweder leer oder exakt ein vollständig erwarteter `ADMINISTER_PROJECTS`-Grant für die angefragte Projekt-ID sein. Zusätzliche, fremde oder malformed Grants dürfen nicht herausgefiltert und anschließend ignoriert werden.

@@ -68,7 +68,7 @@ export interface JiraJqlValidator {
 }
 
 export interface JiraProjectPermissionReader {
-  canAdministerProject(projectKey: string): Promise<boolean>;
+  canAdministerProject(projectId: string): Promise<boolean>;
 }
 
 export interface ProjectConfigRepository {
