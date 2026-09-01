@@ -867,8 +867,7 @@ function summarizeAuthorizeRuntimeResult(
   return {
     kind,
     expectedProjectId,
-    permission:
-      typeof value.permission === "string" ? value.permission : null,
+    permission: typeof value.permission === "string" ? value.permission : null,
     projectsPresent: value.projects !== undefined,
     projectsArray: projects !== null,
     projectCount: projects?.length ?? null,
