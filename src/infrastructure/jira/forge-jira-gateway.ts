@@ -837,16 +837,7 @@ export function mapAdministerProjectAuthorization(
     throw new AppError("INVALID_INPUT", "Unsafe Jira project ID rejected.");
   }
 
-  const grants = requireArray(value, "Jira authorization");
-  if (grants.length === 0) return false;
-  if (grants.length !== 1) {
-    throw new AppError(
-      "JIRA_UNAVAILABLE",
-      "Jira authorization returned an unexpected number of permission grants.",
-    );
-  }
-
-  const grant = requireRecord(grants[0], "Jira authorization grant");
+  const grant = requireRecord(value, "Jira authorization");
   if (stringValue(grant.permission) !== "ADMINISTER_PROJECTS") {
     throw new AppError(
       "JIRA_UNAVAILABLE",
@@ -890,14 +881,14 @@ export class ForgeJiraGateway
       throw new AppError("INVALID_INPUT", "Unsafe Jira project ID rejected.");
     }
 
-    const grants = await authorize().onJira([
+    const grant = await authorize().onJira([
       {
         permissions: ["ADMINISTER_PROJECTS"],
         projects: [projectId],
       },
     ]);
 
-    return mapAdministerProjectAuthorization(grants, projectId);
+    return mapAdministerProjectAuthorization(grant, projectId);
   }
 
   async listProjects(): Promise<JiraProject[]> {
