@@ -7,7 +7,6 @@ describe("Jira-Projektadministrationsautorisierung", () => {
     [[{ permission: "ADMINISTER_PROJECTS", projects: ["10000"] }], true],
     [[{ permission: "ADMINISTER_PROJECTS", projects: [] }], false],
     [[], false],
-    [[{ permission: "BROWSE_PROJECTS", projects: [10000] }], false],
     [[{ permission: "ADMINISTER_PROJECTS" }], false],
   ] satisfies ReadonlyArray<readonly [unknown, boolean]>)(
     "bildet den aktuellen Nutzergrant %# fail-closed ab",
@@ -30,6 +29,24 @@ describe("Jira-Projektadministrationsautorisierung", () => {
       [
         { permission: "ADMINISTER_PROJECTS", projects: [10000] },
         { permission: "ADMINISTER_PROJECTS", projects: [10000] },
+      ],
+    ],
+    [
+      "einem fremden Permission-Grant",
+      [{ permission: "BROWSE_PROJECTS", projects: [10000] }],
+    ],
+    [
+      "einem gültigen Grant plus fremdem Permission-Grant",
+      [
+        { permission: "ADMINISTER_PROJECTS", projects: [10000] },
+        { permission: "BROWSE_PROJECTS", projects: [10000] },
+      ],
+    ],
+    [
+      "einem gültigen Grant plus malformed Grant",
+      [
+        { permission: "ADMINISTER_PROJECTS", projects: [10000] },
+        null,
       ],
     ],
     [

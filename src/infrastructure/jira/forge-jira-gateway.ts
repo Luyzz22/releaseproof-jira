@@ -838,20 +838,21 @@ export function mapAdministerProjectAuthorization(
   }
 
   const grants = requireArray(value, "Jira authorization");
-  const matching = grants.filter((grantValue) => {
-    if (!isRecord(grantValue)) return false;
-    return stringValue(grantValue.permission) === "ADMINISTER_PROJECTS";
-  });
-
-  if (matching.length === 0) return false;
-  if (matching.length !== 1) {
+  if (grants.length === 0) return false;
+  if (grants.length !== 1) {
     throw new AppError(
       "JIRA_UNAVAILABLE",
-      "Jira authorization returned duplicate permission grants.",
+      "Jira authorization returned an unexpected number of permission grants.",
     );
   }
 
-  const grant = requireRecord(matching[0], "Jira authorization grant");
+  const grant = requireRecord(grants[0], "Jira authorization grant");
+  if (stringValue(grant.permission) !== "ADMINISTER_PROJECTS") {
+    throw new AppError(
+      "JIRA_UNAVAILABLE",
+      "Jira authorization returned an unexpected permission grant.",
+    );
+  }
   if (grant.issues !== undefined) {
     throw new AppError(
       "JIRA_UNAVAILABLE",

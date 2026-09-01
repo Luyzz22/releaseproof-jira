@@ -102,3 +102,5 @@
 - Die Save-Boundary bleibt die maßgebliche Trust Boundary: Nur ein `ADMINISTER_PROJECTS`-Grant für exakt die erwartete Projekt-ID autorisiert weitere Jira-Metadaten- oder KVS-Zugriffe. Fehlende, fremde, doppelte oder strukturell unerwartete Grants werden fail-closed behandelt.
 - Der Bootstrap nutzt dieselbe Quelle nur für `canConfigure`; technische Fehler degradieren dort weiterhin auf read-only, damit Analyse und Report nicht unnötig ausfallen.
 - Manifest, Forge-Scopes, Remotes und Persistenzmodell bleiben unverändert.
+
+- Compound- oder Zusatz-Grants der Forge Authorize API werden ebenfalls fail-closed behandelt: Da ReleaseProof genau ein Permission-/Projekt-Tupel anfragt, muss die Antwort entweder leer oder exakt ein vollständig erwarteter `ADMINISTER_PROJECTS`-Grant für die angefragte Projekt-ID sein. Zusätzliche, fremde oder malformed Grants dürfen nicht herausgefiltert und anschließend ignoriert werden.
