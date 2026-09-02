@@ -858,6 +858,24 @@ function summarizeAuthorizeGrant(value: unknown): Record<string, unknown> {
           return [];
         });
 
+  const issues = Array.isArray(value.issues) ? value.issues : null;
+  const issueIds =
+    issues === null
+      ? []
+      : issues.flatMap((issueId) => {
+          if (
+            typeof issueId === "number" &&
+            Number.isSafeInteger(issueId) &&
+            issueId > 0
+          ) {
+            return [String(issueId)];
+          }
+          if (typeof issueId === "string" && /^\d+$/.test(issueId)) {
+            return [issueId];
+          }
+          return [];
+        });
+
   return {
     kind,
     permission: typeof value.permission === "string" ? value.permission : null,
@@ -866,6 +884,9 @@ function summarizeAuthorizeGrant(value: unknown): Record<string, unknown> {
     projectCount: projects?.length ?? null,
     projectIds,
     issuesPresent: Object.prototype.hasOwnProperty.call(value, "issues"),
+    issuesArray: issues !== null,
+    issueCount: issues?.length ?? null,
+    issueIds,
   };
 }
 
