@@ -829,9 +829,8 @@ function normalizedAuthorizedProjectId(
   );
 }
 
-function summarizeAuthorizeRuntimeResult(
+function summarizeAuthorizeGrant(
   value: unknown,
-  expectedProjectId: string,
 ): Record<string, unknown> {
   const kind = Array.isArray(value)
     ? "array"
@@ -840,10 +839,7 @@ function summarizeAuthorizeRuntimeResult(
       : typeof value;
 
   if (!isRecord(value)) {
-    return {
-      kind,
-      expectedProjectId,
-    };
+    return { kind };
   }
 
   const projects = Array.isArray(value.projects) ? value.projects : null;
@@ -866,13 +862,32 @@ function summarizeAuthorizeRuntimeResult(
 
   return {
     kind,
-    expectedProjectId,
-    permission: typeof value.permission === "string" ? value.permission : null,
+    permission:
+      typeof value.permission === "string" ? value.permission : null,
     projectsPresent: value.projects !== undefined,
     projectsArray: projects !== null,
     projectCount: projects?.length ?? null,
     projectIds,
     issuesPresent: Object.prototype.hasOwnProperty.call(value, "issues"),
+  };
+}
+
+function summarizeAuthorizeRuntimeResult(
+  value: unknown,
+  expectedProjectId: string,
+): Record<string, unknown> {
+  if (Array.isArray(value)) {
+    return {
+      kind: "array",
+      expectedProjectId,
+      arrayLength: value.length,
+      grants: value.map(summarizeAuthorizeGrant),
+    };
+  }
+
+  return {
+    expectedProjectId,
+    ...summarizeAuthorizeGrant(value),
   };
 }
 
