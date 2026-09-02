@@ -829,9 +829,7 @@ function normalizedAuthorizedProjectId(
   );
 }
 
-function summarizeAuthorizeGrant(
-  value: unknown,
-): Record<string, unknown> {
+function summarizeAuthorizeGrant(value: unknown): Record<string, unknown> {
   const kind = Array.isArray(value)
     ? "array"
     : value === null
@@ -862,8 +860,7 @@ function summarizeAuthorizeGrant(
 
   return {
     kind,
-    permission:
-      typeof value.permission === "string" ? value.permission : null,
+    permission: typeof value.permission === "string" ? value.permission : null,
     projectsPresent: value.projects !== undefined,
     projectsArray: projects !== null,
     projectCount: projects?.length ?? null,
