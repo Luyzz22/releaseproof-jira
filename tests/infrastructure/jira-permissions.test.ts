@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mapAdministerProjectAuthorization } from "../../src/infrastructure/jira/forge-jira-gateway";
+import {
+  mapAdministerProjectAuthorization,
+  mapProjectAdminProbeStatus,
+} from "../../src/infrastructure/jira/forge-jira-gateway";
 
 describe("Jira-Projektadministrationsautorisierung", () => {
   it.each([
@@ -144,4 +147,26 @@ describe("Jira-Projektadministrationsautorisierung", () => {
       ),
     ).toThrowError(expect.objectContaining({ code: "INVALID_INPUT" }));
   });
+});
+
+describe("Jira-Projektadmin-Probe", () => {
+  it.each([
+    [200, true],
+    [401, false],
+    [403, false],
+  ] satisfies ReadonlyArray<readonly [number, boolean]>)(
+    "bildet HTTP %s auf %s ab",
+    (status, expected) => {
+      expect(mapProjectAdminProbeStatus(status)).toBe(expected);
+    },
+  );
+
+  it.each([0, 201, 400, 404, 429, 500])(
+    "weist unerwarteten HTTP-Status %s fail-closed zurück",
+    (status) => {
+      expect(() => mapProjectAdminProbeStatus(status)).toThrowError(
+        expect.objectContaining({ code: "JIRA_UNAVAILABLE" }),
+      );
+    },
+  );
 });
