@@ -122,3 +122,15 @@
 - Der produktive Mapper akzeptiert strikt sowohl die dokumentierte Einzelobjekt-Form als auch die empirisch beobachtete Singleton-Array-Form. Leere oder mehrfache Top-Level-Grant-Arrays werden nicht stillschweigend normalisiert.
 - Die Autorisierungssemantik bleibt eng: exakt `ADMINISTER_PROJECTS`, exakt die erwartete numerische Projekt-ID für `true`, `projects: []` für `false`; fremde, mehrfache oder malformed Projektkontexte führen zu `JIRA_UNAVAILABLE`.
 - Die temporäre Diagnose-Instrumentierung bleibt auf einem separaten Branch und wird nicht in den produktiven Fix übernommen. Manifest, Scopes, Remotes und Persistenzmodell bleiben unverändert.
+
+## 2026-09-02 — Production-spezifischer Authorize-False-Positive und duale Enforcement-Grenze
+
+- Production 2.2.0 wurde aus demselben exakten Source-SHA deployed, der in Development 2.11.0 beide Human-E2E-Pfade bestanden hatte.
+- Im Production-Smoke erschien der bekannte Nicht-Administrator dennoch mit editierbarer Konfiguration und sichtbarem Save-Control.
+- Jira Ground Truth im exakt selben Incognito-Browser meldete für SCRUM weiterhin `ADMINISTER_PROJECTS.havePermission=false`. Damit ist ein Rollen- oder Accountwechsel ausgeschlossen und der Production-Pfad von Forge Authorize verhielt sich für diese Installation falsch positiv.
+- Ein positiver `authorize().onJira(...)`-Grant reicht deshalb nicht mehr allein zur Autorisierung eines Konfigurationsschreibzugriffs.
+- ReleaseProof verlangt zusätzlich einen serverseitigen read-only `api.asUser()`-Aufruf auf `GET /rest/api/3/project/{projectId}/permissionscheme`. Jira dokumentiert diesen Endpunkt mit `Administer Projects` für genau das Projekt oder globalem Jira-Admin als Operation-Permission; der bestehende Classic Scope `read:jira-work` genügt.
+- Die Gesamtentscheidung ist eine AND-Bedingung: Authorize muss strikt positiv sein und der geschützte Jira-Read muss HTTP 200 liefern. 401/403 ergeben `false`; andere Statuscodes werden fail-closed als technische Jira-Abweichung behandelt.
+- Die Save-Boundary bleibt die erste Operation vor Jira-Metadaten- und KVS-Zugriff. Der Bootstrap degradiert Fehler weiterhin nur auf read-only.
+- Manifest, Forge-Scopes, Remotes und Persistenzmodell bleiben unverändert.
+
