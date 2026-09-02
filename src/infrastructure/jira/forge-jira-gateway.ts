@@ -837,18 +837,34 @@ export function mapAdministerProjectAuthorization(
     throw new AppError("INVALID_INPUT", "Unsafe Jira project ID rejected.");
   }
 
-  const grant = requireRecord(value, "Jira authorization");
+  let grantValue: unknown = value;
+  if (Array.isArray(value)) {
+    const grants = requireArray(value, "Jira authorization grants");
+    if (grants.length !== 1) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Jira authorization returned an unexpected grant count.",
+      );
+    }
+    grantValue = grants[0];
+  }
+
+  const grant = requireRecord(grantValue, "Jira authorization");
   if (stringValue(grant.permission) !== "ADMINISTER_PROJECTS") {
     throw new AppError(
       "JIRA_UNAVAILABLE",
       "Jira authorization returned an unexpected permission grant.",
     );
   }
-  if (grant.issues !== undefined) {
-    throw new AppError(
-      "JIRA_UNAVAILABLE",
-      "Jira authorization returned an unexpected issue context.",
-    );
+
+  if (Object.prototype.hasOwnProperty.call(grant, "issues")) {
+    const issueIds = requireArray(grant.issues, "Jira authorization issues");
+    if (issueIds.length !== 0) {
+      throw new AppError(
+        "JIRA_UNAVAILABLE",
+        "Jira authorization returned an unexpected issue context.",
+      );
+    }
   }
 
   if (grant.projects === undefined || grant.projects === null) {

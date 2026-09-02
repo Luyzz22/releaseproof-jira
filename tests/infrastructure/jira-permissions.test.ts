@@ -3,47 +3,123 @@ import { mapAdministerProjectAuthorization } from "../../src/infrastructure/jira
 
 describe("Jira-Projektadministrationsautorisierung", () => {
   it.each([
+    [
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [10000],
+          issues: [],
+        },
+      ],
+      true,
+    ],
+    [
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: ["10000"],
+          issues: [],
+        },
+      ],
+      true,
+    ],
+    [
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [],
+          issues: [],
+        },
+      ],
+      false,
+    ],
     [{ permission: "ADMINISTER_PROJECTS", projects: [10000] }, true],
-    [{ permission: "ADMINISTER_PROJECTS", projects: ["10000"] }, true],
     [{ permission: "ADMINISTER_PROJECTS", projects: [] }, false],
     [{ permission: "ADMINISTER_PROJECTS" }, false],
   ] satisfies ReadonlyArray<readonly [unknown, boolean]>)(
-    "bildet das dokumentierte Forge-Authorize-Ergebnis %# fail-closed ab",
+    "bildet Forge-Authorize-Admin- und Deny-Ergebnisse %# fail-closed ab",
     (value, expected) => {
       expect(mapAdministerProjectAuthorization(value, "10000")).toBe(expected);
     },
   );
 
   it.each([
+    ["einem leeren Grant-Array", []],
+    [
+      "mehreren Grants",
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [10000],
+          issues: [],
+        },
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [10000],
+          issues: [],
+        },
+      ],
+    ],
     [
       "einem fremden Projekt",
-      { permission: "ADMINISTER_PROJECTS", projects: [10001] },
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [10001],
+          issues: [],
+        },
+      ],
     ],
     [
       "mehreren Projekten",
-      { permission: "ADMINISTER_PROJECTS", projects: [10000, 10001] },
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [10000, 10001],
+          issues: [],
+        },
+      ],
     ],
     [
       "einem fremden Permission-Grant",
-      { permission: "BROWSE_PROJECTS", projects: [10000] },
+      [
+        {
+          permission: "BROWSE_PROJECTS",
+          projects: [10000],
+          issues: [],
+        },
+      ],
     ],
     [
-      "einem Issue-Kontext",
-      {
-        permission: "ADMINISTER_PROJECTS",
-        projects: [10000],
-        issues: [10010],
-      },
+      "einem nicht leeren Issue-Kontext",
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [10000],
+          issues: [10010],
+        },
+      ],
+    ],
+    [
+      "einem malformed Issue-Kontext",
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: [10000],
+          issues: null,
+        },
+      ],
     ],
     [
       "einer ungültigen Projekt-ID",
-      { permission: "ADMINISTER_PROJECTS", projects: ["SCRUM"] },
+      [
+        {
+          permission: "ADMINISTER_PROJECTS",
+          projects: ["SCRUM"],
+          issues: [],
+        },
+      ],
     ],
-    [
-      "der veralteten Array-Annahme",
-      [{ permission: "ADMINISTER_PROJECTS", projects: [10000] }],
-    ],
-    ["einem leeren Array", []],
     ["einem Null-Ergebnis", null],
   ] satisfies ReadonlyArray<readonly [string, unknown]>)(
     "weist %s zurück",
@@ -57,7 +133,13 @@ describe("Jira-Projektadministrationsautorisierung", () => {
   it("weist einen ungültigen erwarteten Projektkontext zurück", () => {
     expect(() =>
       mapAdministerProjectAuthorization(
-        { permission: "ADMINISTER_PROJECTS", projects: [10000] },
+        [
+          {
+            permission: "ADMINISTER_PROJECTS",
+            projects: [10000],
+            issues: [],
+          },
+        ],
         "SCRUM",
       ),
     ).toThrowError(expect.objectContaining({ code: "INVALID_INPUT" }));
