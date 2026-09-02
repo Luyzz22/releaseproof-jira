@@ -122,4 +122,3 @@
 - Der produktive Mapper akzeptiert strikt sowohl die dokumentierte Einzelobjekt-Form als auch die empirisch beobachtete Singleton-Array-Form. Leere oder mehrfache Top-Level-Grant-Arrays werden nicht stillschweigend normalisiert.
 - Die Autorisierungssemantik bleibt eng: exakt `ADMINISTER_PROJECTS`, exakt die erwartete numerische Projekt-ID für `true`, `projects: []` für `false`; fremde, mehrfache oder malformed Projektkontexte führen zu `JIRA_UNAVAILABLE`.
 - Die temporäre Diagnose-Instrumentierung bleibt auf einem separaten Branch und wird nicht in den produktiven Fix übernommen. Manifest, Scopes, Remotes und Persistenzmodell bleiben unverändert.
-

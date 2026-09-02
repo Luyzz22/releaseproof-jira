@@ -44,10 +44,7 @@ describe("Jira-Projektadministrationsautorisierung", () => {
   );
 
   it.each([
-    [
-      "einem leeren Grant-Array",
-      [],
-    ],
+    ["einem leeren Grant-Array", []],
     [
       "mehreren Grants",
       [

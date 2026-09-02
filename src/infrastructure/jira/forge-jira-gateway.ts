@@ -858,10 +858,7 @@ export function mapAdministerProjectAuthorization(
   }
 
   if (Object.prototype.hasOwnProperty.call(grant, "issues")) {
-    const issueIds = requireArray(
-      grant.issues,
-      "Jira authorization issues",
-    );
+    const issueIds = requireArray(grant.issues, "Jira authorization issues");
     if (issueIds.length !== 0) {
       throw new AppError(
         "JIRA_UNAVAILABLE",
