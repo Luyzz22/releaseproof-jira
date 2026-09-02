@@ -889,6 +889,15 @@ export function mapAdministerProjectAuthorization(
   return true;
 }
 
+export function mapProjectAdminProbeStatus(status: number): boolean {
+  if (status === 200) return true;
+  if (status === 401 || status === 403) return false;
+  throw new AppError(
+    "JIRA_UNAVAILABLE",
+    `Jira project-admin probe failed with ${status}.`,
+  );
+}
+
 export class ForgeJiraGateway
   implements JiraGateway, JiraProjectPermissionReader
 {
@@ -904,7 +913,15 @@ export class ForgeJiraGateway
       },
     ]);
 
-    return mapAdministerProjectAuthorization(grant, projectId);
+    if (!mapAdministerProjectAuthorization(grant, projectId)) {
+      return false;
+    }
+
+    const response = await api
+      .asUser()
+      .requestJira(route`/rest/api/3/project/${projectId}/permissionscheme`);
+
+    return mapProjectAdminProbeStatus(response.status);
   }
 
   async listProjects(): Promise<JiraProject[]> {
