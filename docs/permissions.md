@@ -4,16 +4,16 @@
 
 Read-only Classic Scope, von Atlassian für die verwendeten Jira-REST-v3-Operationen empfohlen. Er ist erforderlich für:
 
-| Zweck                                    | Endpunkt                                            |
-| ---------------------------------------- | --------------------------------------------------- |
-| Sichtbare Projekte laden                 | `GET /rest/api/3/project/search`                    |
-| Projektstammdaten laden                  | `GET /rest/api/3/project/{projectIdOrKey}`          |
-| Issue-Typen und Status laden             | `GET /rest/api/3/project/{projectIdOrKey}/statuses` |
-| Verfügbare Felder laden                  | `GET /rest/api/3/field/search`                      |
-| Projektversionen laden                   | `GET /rest/api/3/project/{projectIdOrKey}/version`  |
-| Version validieren                       | `GET /rest/api/3/version/{id}`                      |
-| Scope-Issues und benötigte Details laden | `POST /rest/api/3/search/jql`                       |
-| Projektgebundene JQL strikt validieren   | `POST /rest/api/3/jql/parse`                        |
+| Zweck                                    | Endpunkt                                               |
+| ---------------------------------------- | ------------------------------------------------------ |
+| Sichtbare Projekte laden                 | `GET /rest/api/3/project/search`                       |
+| Projektstammdaten laden                  | `GET /rest/api/3/project/{projectIdOrKey}`             |
+| Issue-Typen und Status laden             | `GET /rest/api/3/project/{projectIdOrKey}/statuses`    |
+| Verfügbare Felder laden                  | `GET /rest/api/3/field/search`                         |
+| Projektversionen laden                   | `GET /rest/api/3/project/{projectIdOrKey}/version`     |
+| Version validieren                       | `GET /rest/api/3/version/{id}`                         |
+| Scope-Issues und benötigte Details laden | `POST /rest/api/3/search/jql`                          |
+| Projektgebundene JQL strikt validieren   | `POST /rest/api/3/jql/parse`                           |
 | Projekt-Admin-Recht für Konfiguration    | Forge Authorize + `GET /project/{id}/permissionscheme` |
 
 Die Requests laufen mit `api.asUser()`. Zusätzlich muss der Nutzer im jeweiligen Jira-Projekt `Browse Projects` besitzen; Issue-Security bleibt wirksam.

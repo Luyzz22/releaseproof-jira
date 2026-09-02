@@ -133,4 +133,3 @@
 - Die Gesamtentscheidung ist eine AND-Bedingung: Authorize muss strikt positiv sein und der geschützte Jira-Read muss HTTP 200 liefern. 401/403 ergeben `false`; andere Statuscodes werden fail-closed als technische Jira-Abweichung behandelt.
 - Die Save-Boundary bleibt die erste Operation vor Jira-Metadaten- und KVS-Zugriff. Der Bootstrap degradiert Fehler weiterhin nur auf read-only.
 - Manifest, Forge-Scopes, Remotes und Persistenzmodell bleiben unverändert.
-

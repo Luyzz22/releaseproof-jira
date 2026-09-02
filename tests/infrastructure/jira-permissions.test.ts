@@ -170,4 +170,3 @@ describe("Jira-Projektadmin-Probe", () => {
     },
   );
 });
-
