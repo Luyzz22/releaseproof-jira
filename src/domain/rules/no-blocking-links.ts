@@ -1,3 +1,4 @@
+import { evidenceOutcome } from "../models/evidence-outcome";
 import { evidence, type ReadinessRule } from "./types";
 
 export const noBlockingLinksRule: ReadinessRule = {
@@ -10,19 +11,17 @@ export const noBlockingLinksRule: ReadinessRule = {
         (link.status === null ||
           !context.config.acceptedStatusIds.includes(link.status.id)),
     );
+
     return evidence(context, {
       ruleId: this.ruleId,
       category: "DEPENDENCY",
       status: unresolved.length > 0 ? "BLOCKED" : "READY",
-      title: "Keine ungelösten Blocker-Verknüpfungen",
-      explanation:
+      outcome:
         unresolved.length > 0
-          ? `Ungelöste blockierende Verknüpfung(en): ${unresolved.map((item) => item.key).join(", ")}.`
-          : "Es wurden keine ungelösten blockierenden Verknüpfungen gefunden.",
-      remediation:
-        unresolved.length > 0
-          ? "Verknüpfte Blocker lösen oder die Jira-Verknüpfung fachlich korrigieren."
-          : "Keine Maßnahme erforderlich.",
+          ? evidenceOutcome("no-blocking-links/blocked", {
+              issueKeys: unresolved.map((item) => item.key),
+            })
+          : evidenceOutcome("no-blocking-links/clear", {}),
       sourceField: "issuelinks",
     });
   },

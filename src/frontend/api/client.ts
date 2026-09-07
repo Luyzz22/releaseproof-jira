@@ -20,8 +20,7 @@ async function transportSafe<T>(
       ok: false,
       error: {
         code: "UNKNOWN_ERROR",
-        message:
-          "Die Verbindung zu Atlassian Forge wurde unterbrochen. Bitte versuchen Sie es erneut.",
+        message: "UNKNOWN_ERROR",
       },
     };
   }

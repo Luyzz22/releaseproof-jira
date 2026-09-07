@@ -21,6 +21,8 @@ import { ErrorState } from "./components/error-state";
 import { InlineError } from "./components/inline-error";
 import { LoadingState } from "./components/loading-state";
 import { useScreenFocus } from "./hooks/use-screen-focus";
+import { useI18n } from "./i18n/context";
+import { I18N_KEYS } from "./i18n/keys";
 import { EmptyState } from "./pages/empty-state";
 import { ReleaseSelection } from "./pages/release-selection";
 
@@ -46,6 +48,7 @@ const ReportView = lazy(() =>
 );
 
 export function App() {
+  const { t } = useI18n();
   const [data, setData] = useState<BootstrapData | null>(null);
   const [result, setResult] = useState<ReleaseReadinessResultDto | null>(null);
   const [screen, setScreen] = useState<AppScreen>("empty");
@@ -154,31 +157,34 @@ export function App() {
   return (
     <div className="app-frame">
       <a className="skip-link" href="#main-content">
-        Zum Hauptinhalt springen
+        {t(I18N_KEYS.shellSkipToMain)}
       </a>
       <header className="topbar no-print">
         <button
           className="brand"
           type="button"
           onClick={() => navigate(data.config ? "release" : "empty")}
-          aria-label="ReleaseProof Startseite"
+          aria-label={t(I18N_KEYS.shellHomeAria)}
         >
           <span aria-hidden="true">RP</span>
           <strong>ReleaseProof</strong>
         </button>
-        <div className="project-context" aria-label="Aktuelles Jira-Projekt">
+        <div
+          className="project-context"
+          aria-label={t(I18N_KEYS.shellProjectContextAria)}
+        >
           <span>{data.project.key}</span>
           <strong>{data.project.name}</strong>
         </div>
         {showNavigation ? (
-          <nav aria-label="Hauptnavigation">
+          <nav aria-label={t(I18N_KEYS.shellPrimaryNavigationAria)}>
             <button
               className={analysisActive ? "active" : ""}
               type="button"
               aria-current={analysisActive ? "page" : undefined}
               onClick={() => navigate("release")}
             >
-              Analyse
+              {t(I18N_KEYS.navigationAnalysis)}
             </button>
             {dashboardAvailable ? (
               <button
@@ -187,7 +193,7 @@ export function App() {
                 aria-current={dashboardActive ? "page" : undefined}
                 onClick={() => navigate("dashboard")}
               >
-                Übersicht
+                {t(I18N_KEYS.navigationOverview)}
               </button>
             ) : null}
             <button
@@ -196,7 +202,7 @@ export function App() {
               aria-current={configurationActive ? "page" : undefined}
               onClick={() => navigate("config")}
             >
-              Konfiguration
+              {t(I18N_KEYS.navigationConfiguration)}
             </button>
           </nav>
         ) : null}

@@ -1,0 +1,357 @@
+{
+  "app": {
+    "title": "ReleaseProof"
+  },
+  "shell": {
+    "homeAria": "ReleaseProof home",
+    "projectContextAria": "Current Jira project",
+    "primaryNavigationAria": "Main navigation",
+    "skipToMain": "Skip to main content"
+  },
+  "navigation": {
+    "analysis": "Analysis",
+    "overview": "Overview",
+    "configuration": "Configuration"
+  },
+  "states": {
+    "loadingFull": "ReleaseProof is loading …",
+    "loadingCompact": "Preparing view …"
+  },
+  "errors": {
+    "analysisUnavailable": "Analysis unavailable",
+    "retryLead": "Earliest retry in approximately",
+    "retrySeconds": "seconds.",
+    "retryAction": "Try again",
+    "dismissAria": "Dismiss error message",
+    "message": {
+      "invalidInput": "The input is invalid. Check the configuration.",
+      "projectContextMissing": "The Jira project context is unavailable.",
+      "configRequired": "Configure the project before starting an analysis.",
+      "versionNotFound": "The selected Jira version no longer exists or is not accessible.",
+      "permissionDenied": "You do not have the required Jira permissions for this action.",
+      "rateLimited": "Jira is temporarily limiting requests. Try again later.",
+      "resultLimitExceeded": "The data set is too large for a synchronous analysis. Reduce the release scope.",
+      "jiraUnavailable": "Jira is temporarily unavailable.",
+      "storageUnavailable": "The project configuration could not be saved or loaded temporarily.",
+      "storageCorrupt": "The stored project configuration is invalid and must be saved again.",
+      "unknown": "An unexpected error occurred. Try again."
+    }
+  },
+  "errorBoundary": {
+    "eyebrow": "Safe recovery mode",
+    "title": "This view could not be displayed.",
+    "description": "No Jira content was logged. Reload the app to continue.",
+    "reload": "Reload ReleaseProof"
+  },
+  "readinessStatus": {
+    "ready": "Ready",
+    "incomplete": "Incomplete",
+    "blocked": "Blocked",
+    "notApplicable": "Not applicable",
+    "ariaLabel": "Readiness status"
+  },
+  "releaseDashboard": {
+    "title": "Release readiness",
+    "analyzedAtLead": "Analyzed at",
+    "issuesLabel": "issues",
+    "scopeLabel": "Scope",
+    "newAnalysis": "New analysis",
+    "openReport": "Open report",
+    "empty": {
+      "eyebrow": "Empty release",
+      "title": "No matching issues found",
+      "description": "The configured scope contains no issues of the selected issue types. The score and status are therefore not interpreted as an assessment of release readiness."
+    },
+    "metric": {
+      "readinessScore": "Readiness score"
+    },
+    "priorities": {
+      "eyebrow": "Priorities",
+      "title": "Top issues"
+    },
+    "matrix": {
+      "eyebrow": "Evidence matrix",
+      "title": "Issues in release",
+      "caption": "Evidence matrix for all analyzed issues",
+      "table": {
+        "issue": "Issue",
+        "type": "Type",
+        "status": "Status",
+        "blockers": "Blockers",
+        "missingEvidence": "Missing evidence",
+        "score": "Score",
+        "actions": "Actions",
+        "details": "Details"
+      }
+    }
+  },
+  "projectConfiguration": {
+    "eyebrow": "Project configuration",
+    "titleLead": "Readiness criteria for",
+    "description": "Configure once which Jira evidence is required for customer acceptance.",
+    "readOnly": {
+      "title": "Only Jira project administrators can change this configuration.",
+      "description": "You can view the currently saved criteria and run release analyses. Changes must be saved by a project administrator."
+    },
+    "workflowScope": {
+      "heading": "Workflow and scope",
+      "description": "Which issues are considered complete and included in the analysis?",
+      "releaseScopeLegend": "Release scope",
+      "versionOnlyDescription": "Backward compatible: loads only issues assigned to the selected fixVersion.",
+      "jqlScopeDescription": "Separates the release scope from the expected Jira version.",
+      "versionOnlyWarning": {
+        "title": "Version gaps remain invisible in this mode.",
+        "description": "Issues without a fixVersion or with a different fixVersion are excluded before evaluation. The version rule is therefore shown accurately as not applicable."
+      },
+      "jqlLabel": "Project-scoped JQL query",
+      "jqlHelpPrefix": "Must start with project =",
+      "jqlHelpSuffix": "and must not contain fixVersion or OR.",
+      "charactersLabel": "characters.",
+      "acceptedStatusesLegend": "Accepted statuses",
+      "relevantIssueTypesLegend": "Relevant issue types"
+    },
+    "evidenceBlockers": {
+      "heading": "Evidence and blocking links",
+      "description": "ReleaseProof reads only the fields required here.",
+      "acceptanceCriteriaFieldLabel": "Acceptance criteria field",
+      "acceptanceCriteriaFieldPlaceholder": "Select field",
+      "acceptanceCriteriaRecovery": {
+        "title": "The previously configured acceptance criteria field is not supported.",
+        "description": "Select a supported text field and save the project configuration again."
+      },
+      "blockingLabelsLabel": "Blocking labels",
+      "commaSeparated": "comma-separated",
+      "blockOpenSubtasksLabel": "Open subtasks block readiness",
+      "requireApprovalMarkerLabel": "Approval marker",
+      "requireApprovalMarkerDescription": "A Jira label serves as explicit approval evidence.",
+      "approvalLabel": "Approval label"
+    },
+    "actions": {
+      "storageDescription": "Configuration is stored per project in Forge KVS.",
+      "saving": "Saving …",
+      "save": "Save configuration"
+    },
+    "validation": {
+      "unsupportedField": "Select a supported text field for acceptance criteria.",
+      "fallback": "Check the project configuration.",
+      "acceptedStatusesRequired": "Select at least one accepted status.",
+      "acceptedStatusesLimitExceeded": "Select no more than {maxItems} accepted statuses.",
+      "includedIssueTypesRequired": "Select at least one relevant issue type.",
+      "includedIssueTypesLimitExceeded": "Select no more than {maxItems} relevant issue types.",
+      "blockerLabelInvalid": "Blocking labels must not be empty.",
+      "blockerLabelTooLong": "A blocking label must not exceed {maxLength} characters.",
+      "blockerLabelsLimitExceeded": "Enter no more than {maxItems} blocking labels.",
+      "approvalMarkerRequired": "An approval label is required when approval checking is enabled.",
+      "approvalMarkerTooLong": "The approval label must not exceed {maxLength} characters.",
+      "releaseScopeJqlForbidden": "A release scope JQL query is only allowed in “Explicit JQL scope” mode.",
+      "releaseScopeJqlRequired": "Enter an explicit release scope.",
+      "releaseScopeEmpty": "The explicit release scope must not be empty.",
+      "releaseScopeTooLong": "The release scope must not exceed {maxLength} characters.",
+      "releaseScopeUnclosedString": "The release scope contains an unclosed quoted string.",
+      "releaseScopeInvalidBareToken": "The release scope contains an unsupported unquoted JQL value. Values containing special characters must be quoted.",
+      "releaseScopeSyntaxInvalid": "The release scope is syntactically incomplete or uses an unsupported JQL form.",
+      "releaseScopeOrForbidden": "OR is not allowed in the release scope because the project restriction must apply to every result.",
+      "releaseScopeFixVersionForbidden": "The release scope must not contain a fixVersion condition.",
+      "releaseScopeProjectRequired": "The release scope must start with “project = PROJECTKEY”.",
+      "releaseScopeAdditionalProjectReference": "The release scope must not redefine the project restriction.",
+      "releaseScopeProjectMismatch": "The release scope must be limited to the current project {expectedProjectKey}."
+    }
+  },
+  "configuration": {
+    "openSubtasksBlockedExplanation": "Unresolved subtasks set the issue to “Blocked”."
+  },
+  "evidence": {
+    "title": {
+      "acceptanceCriteriaPresent": "Acceptance criteria present",
+      "acceptedStatus": "Completion status reached",
+      "approvalMarkerPresent": "Approval marker present",
+      "correctFixVersion": "Correct release version",
+      "noBlockerLabel": "No blocker label",
+      "noBlockingLinks": "No unresolved blocking links",
+      "noOpenSubtasks": "No open subtasks"
+    },
+    "explanation": {
+      "acceptanceCriteriaPresent": "The configured field contains acceptance criteria.",
+      "acceptanceCriteriaMissing": "No usable acceptance criteria were found in the configured field.",
+      "acceptedStatusAccepted": "The status “{statusName}” is configured as completed.",
+      "acceptedStatusNotAccepted": "The status “{statusName}” is not configured as completed.",
+      "acceptedStatusMissing": "The Jira status is missing or could not be read.",
+      "approvalMarkerDisabled": "The approval marker is disabled in the project configuration.",
+      "approvalMarkerPresent": "The approval label “{approvalMarker}” is present.",
+      "approvalMarkerMissing": "The approval label “{approvalMarker}” is missing.",
+      "correctFixVersionVersionOnly": "The version assignment was already pre-filtered by the “Jira version only” mode and therefore cannot be checked independently.",
+      "correctFixVersionAssigned": "The issue is assigned to version “{versionName}”.",
+      "correctFixVersionWrong": "The issue is assigned to {assignedVersionNames} instead of the expected version “{expectedVersionName}”.",
+      "correctFixVersionMissing": "No Jira version is assigned to the issue; “{expectedVersionName}” is expected.",
+      "noBlockerLabelClear": "No configured blocker label was found.",
+      "noBlockerLabelBlocked": "Blocking label present: {blockerLabels}.",
+      "noBlockingLinksClear": "No unresolved blocking links were found.",
+      "noBlockingLinksBlocked": "Unresolved blocking link(s): {issueKeys}.",
+      "noOpenSubtasksDisabled": "The open-subtask check is disabled in the project configuration.",
+      "noOpenSubtasksClear": "No open subtasks were found.",
+      "noOpenSubtasksBlocked": "{count} open subtask(s): {issueKeys}."
+    },
+    "remediation": {
+      "none": "No action required.",
+      "acceptanceCriteriaMissing": "Add concrete and verifiable acceptance criteria to the configured Jira field.",
+      "acceptedStatusIncomplete": "Complete the issue and move it to an accepted status.",
+      "approvalMarkerMissing": "Obtain the required approval and then apply the configured label.",
+      "correctFixVersionVersionOnly": "Enable the “Explicit JQL scope” mode if missing or incorrect version assignments need to remain visible.",
+      "correctFixVersionAssign": "Assign the analyzed version in the Jira “Fix Version/s” field.",
+      "noBlockerLabelBlocked": "Resolve the blocker and then remove the label.",
+      "noBlockingLinksBlocked": "Resolve linked blockers or correct the Jira link if it is inaccurate.",
+      "noOpenSubtasksBlocked": "Complete open subtasks or remove them from the release scope with appropriate justification."
+    }
+  },
+  "emptyState": {
+    "administrationRequiredEyebrow": "Project administration required",
+    "adminInitial": {
+      "title": "ReleaseProof must first be configured by a project administrator.",
+      "descriptionPrefix": "No readiness configuration has been saved for",
+      "descriptionSuffix": ". Ask a Jira project administrator to configure ReleaseProof once."
+    },
+    "adminRecovery": {
+      "title": "The project configuration must be repaired by an administrator.",
+      "description": "The saved project configuration is corrupted or no longer compatible. A Jira project administrator must save a new valid configuration."
+    },
+    "recovery": {
+      "eyebrow": "Repair project configuration",
+      "title": "Replace the project configuration safely.",
+      "description": "The saved project configuration is corrupted or no longer compatible. Save a new valid configuration to use ReleaseProof again.",
+      "action": "Open project configuration"
+    },
+    "welcome": {
+      "eyebrow": "Welcome to ReleaseProof",
+      "title": "Make release evidence visible before the customer asks.",
+      "descriptionPrefix": "No readiness configuration has been saved for",
+      "descriptionSuffix": ". Define the criteria once for this project; Jira content is not stored permanently.",
+      "configureAction": "Configure project now"
+    }
+  },
+  "reportView": {
+    "backToOverview": "Back to overview",
+    "handoffEyebrow": "Handoff report",
+    "copy": {
+      "idle": "Copy Markdown",
+      "copied": "Copied",
+      "failed": "Copy failed",
+      "statusCopied": "Markdown report copied to the clipboard.",
+      "statusFailed": "Markdown report could not be copied."
+    },
+    "print": "Print",
+    "sheetAriaLabel": "Release readiness report",
+    "reportEyebrow": "Release readiness report",
+    "scopeLabel": "Scope",
+    "readinessLabel": "Readiness",
+    "summary": {
+      "total": "Total"
+    },
+    "matrix": {
+      "heading": "Evidence matrix",
+      "caption": "Release readiness summary for each Jira issue",
+      "table": {
+        "issue": "Issue",
+        "status": "Status",
+        "score": "Score",
+        "blockers": "Blockers",
+        "missing": "Missing"
+      }
+    },
+    "sharing": {
+      "eyebrow": "Sharing"
+    },
+    "markdownPreview": {
+      "heading": "Markdown preview",
+      "ariaLabel": "Markdown report"
+    }
+  },
+  "report": {
+    "findings": {
+      "heading": "Blockers and missing evidence",
+      "empty": "No open evidence findings.",
+      "remediationLead": "Remediation:"
+    },
+    "markdown": {
+      "status": "Status",
+      "readinessScore": "Readiness score",
+      "scopeMode": "Scope mode",
+      "scopeDefinition": "Scope definition",
+      "issues": "Issues",
+      "evidenceMatrix": "Evidence matrix",
+      "table": {
+        "issue": "Issue",
+        "status": "Status",
+        "score": "Score",
+        "blockers": "Blockers",
+        "missingEvidence": "Missing evidence"
+      },
+      "openFindings": "Open findings",
+      "noOpenFindings": "No blocking or missing evidence was found.",
+      "remediationLead": "Remediation:",
+      "generatedAtLead": "Generated at",
+      "dateUnavailable": "Timestamp unavailable"
+    }
+  },
+  "releaseScope": {
+    "mode": {
+      "versionOnly": "Jira version only",
+      "jqlScope": "Explicit JQL scope"
+    },
+    "explanation": {
+      "explicitProject": "Explicit project scope",
+      "versionOnly": "fixVersion of the selected version in project {projectKey}"
+    }
+  },
+  "format": {
+    "dateUnavailable": "Timestamp unavailable"
+  },
+  "issueEvidenceDetail": {
+    "backToOverview": "Back to overview",
+    "eyebrow": "Evidence details",
+    "statusUnavailable": "Status unavailable",
+    "updatedLead": "Updated",
+    "scopeLabel": "Scope",
+    "ruleEyebrow": "Assessment rule",
+    "resultLabel": "Result",
+    "remediationLabel": "Remediation",
+    "jiraSourceLabel": "Jira source",
+    "openInJira": "Open issue in Jira"
+  },
+  "releaseSelection": {
+    "eyebrow": "New analysis",
+    "title": "Is this release ready for customer acceptance?",
+    "description": "ReleaseProof checks documentation, completion status, subtasks, dependencies, labels, and approvals without storing Jira content.",
+    "validation": {
+      "versionRequired": "Select a Jira version."
+    },
+    "version": {
+      "label": "Jira version",
+      "releasedSuffix": "released",
+      "emptyTitle": "No version available",
+      "emptyDescription": "Create a version in the Jira project first or check your permissions."
+    },
+    "actions": {
+      "analyzing": "Analyzing release…",
+      "analyze": "Analyze readiness",
+      "editConfiguration": "Edit project configuration",
+      "viewConfiguration": "View project configuration"
+    },
+    "trust": {
+      "eyebrow": "Assessment scope",
+      "deterministic": {
+        "title": "Deterministic rules",
+        "description": "Every result can be traced to a specific rule and Jira source."
+      },
+      "forge": {
+        "title": "No external transfer",
+        "description": "Processing and configuration remain within Atlassian Forge."
+      },
+      "remediation": {
+        "title": "Actionable remediation",
+        "description": "Missing evidence is flagged with a concrete remediation action."
+      }
+    },
+    "scopeLabel": "Scope",
+    "versionOnlyWarning": "Missing version assignments cannot be detected with this scope."
+  }
+}

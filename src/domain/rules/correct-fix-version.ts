@@ -1,3 +1,4 @@
+import { evidenceOutcome } from "../models/evidence-outcome";
 import { evidence, type ReadinessRule } from "./types";
 
 export const correctFixVersionRule: ReadinessRule = {
@@ -8,11 +9,7 @@ export const correctFixVersionRule: ReadinessRule = {
         ruleId: this.ruleId,
         category: "RELEASE",
         status: "NOT_APPLICABLE",
-        title: "Korrekte Release-Version",
-        explanation:
-          "Die Versionszuordnung wurde bereits durch den Modus „Nur Jira-Version“ vorgefiltert und kann deshalb nicht unabhängig geprüft werden.",
-        remediation:
-          "Den Modus „Expliziter JQL-Umfang“ aktivieren, wenn fehlende oder falsche Versionszuordnungen sichtbar werden sollen.",
+        outcome: evidenceOutcome("correct-fix-version/version-only", {}),
         sourceField: "releaseScopeMode",
       });
     }
@@ -21,22 +18,28 @@ export const correctFixVersionRule: ReadinessRule = {
       (version) => version.id === context.release.versionId,
     );
     const hasAnyVersion = context.issue.fixVersions.length > 0;
-    const assignedVersionNames = context.issue.fixVersions
-      .map((version) => `„${version.name}“`)
-      .join(", ");
+    const assignedVersionNames = context.issue.fixVersions.map(
+      (version) => version.name,
+    );
+
+    const outcome = assigned
+      ? evidenceOutcome("correct-fix-version/assigned", {
+          versionName: context.release.versionName,
+        })
+      : hasAnyVersion
+        ? evidenceOutcome("correct-fix-version/wrong-version", {
+            assignedVersionNames: [...assignedVersionNames],
+            expectedVersionName: context.release.versionName,
+          })
+        : evidenceOutcome("correct-fix-version/missing-version", {
+            expectedVersionName: context.release.versionName,
+          });
+
     return evidence(context, {
       ruleId: this.ruleId,
       category: "RELEASE",
       status: assigned ? "READY" : "INCOMPLETE",
-      title: "Korrekte Release-Version",
-      explanation: assigned
-        ? `Der Vorgang ist der Version „${context.release.versionName}“ zugeordnet.`
-        : hasAnyVersion
-          ? `Der Vorgang ist ${assignedVersionNames} statt der erwarteten Version „${context.release.versionName}“ zugeordnet.`
-          : `Am Vorgang ist keine Jira-Version zugeordnet; erwartet wird „${context.release.versionName}“.`,
-      remediation: assigned
-        ? "Keine Maßnahme erforderlich."
-        : "Die analysierte Version im Jira-Feld „Fix Version/s“ zuordnen.",
+      outcome,
       sourceField: "fixVersions",
     });
   },

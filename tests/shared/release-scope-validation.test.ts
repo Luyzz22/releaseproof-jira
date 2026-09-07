@@ -9,30 +9,16 @@ import {
 import { projectConfig } from "../fixtures/release";
 
 describe("Release-Scope-JQL-Validierung", () => {
-  it("liefert deutsche benutzerseitige Fehlermeldungen ohne technische Moduswerte", () => {
+  it("liefert stabile semantische Gründe statt sprachabhängiger Auswertung", () => {
     const unsafe = validateReleaseScopeJql(
       "project = SCRUM AND status = foo;bar",
       "SCRUM",
     );
-    expect(unsafe.valid).toBe(false);
-    if (!unsafe.valid) {
-      expect(unsafe.message).toContain("ungequoteten");
-      expect(unsafe.message).not.toContain("unquoted");
-      expect(unsafe.message).not.toContain("Release-Scope");
-    }
-
-    const invalidMode = projectConfigInputSchema.safeParse({
-      ...projectConfig,
-      releaseScopeMode: "VERSION_ONLY",
-      releaseScopeJql: "project = SCRUM",
+    expect(unsafe).toMatchObject({
+      valid: false,
+      code: "SYNTAX_INVALID",
+      reason: "INVALID_BARE_TOKEN",
     });
-    expect(invalidMode.success).toBe(false);
-    if (!invalidMode.success) {
-      const message = invalidMode.error.issues[0]?.message ?? "";
-      expect(message).toContain("Expliziter JQL-Umfang");
-      expect(message).not.toContain("JQL_SCOPE");
-      expect(message).not.toContain("Release-Scope");
-    }
   });
   it.each([
     "project = SCRUM",
@@ -154,9 +140,11 @@ describe("Release-Scope-JQL-Validierung", () => {
     const validation = validateReleaseScopeJql(invalid.releaseScopeJql, "DEMO");
     expect(parsed.success).toBe(false);
     expect(validation.valid).toBe(false);
-    if (!parsed.success && !validation.valid) {
-      expect(parsed.error.issues[0]?.message).toBe(validation.message);
-    }
+    expect(validation).toMatchObject({
+      valid: false,
+      code: "SYNTAX_INVALID",
+      reason: "UNSUPPORTED_SYNTAX",
+    });
   });
 
   it("lehnt reservierte Bare-Value-Zeichen im gemeinsamen Eingabeschema ab", () => {

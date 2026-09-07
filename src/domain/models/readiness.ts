@@ -1,3 +1,5 @@
+import type { EvidenceOutcome } from "./evidence-outcome";
+
 export const READINESS_STATUSES = [
   "READY",
   "INCOMPLETE",
@@ -98,9 +100,7 @@ export interface EvidenceItem {
   issueKey: string;
   category: EvidenceCategory;
   status: ReadinessStatus;
-  title: string;
-  explanation: string;
-  remediation: string;
+  outcome: EvidenceOutcome;
   sourceField: string;
 }
 

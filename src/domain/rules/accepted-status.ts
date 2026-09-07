@@ -1,3 +1,4 @@
+import { evidenceOutcome } from "../models/evidence-outcome";
 import { evidence, type ReadinessRule } from "./types";
 
 export const acceptedStatusRule: ReadinessRule = {
@@ -6,19 +7,22 @@ export const acceptedStatusRule: ReadinessRule = {
     const accepted =
       context.issue.status !== null &&
       context.config.acceptedStatusIds.includes(context.issue.status.id);
+
+    const outcome = accepted
+      ? evidenceOutcome("accepted-status/accepted", {
+          statusName: context.issue.status?.name ?? "",
+        })
+      : context.issue.status
+        ? evidenceOutcome("accepted-status/not-accepted", {
+            statusName: context.issue.status.name,
+          })
+        : evidenceOutcome("accepted-status/missing", {});
+
     return evidence(context, {
       ruleId: this.ruleId,
       category: "WORKFLOW",
       status: accepted ? "READY" : "INCOMPLETE",
-      title: "Abschlussstatus erreicht",
-      explanation: accepted
-        ? `Der Status „${context.issue.status?.name ?? ""}“ ist als abgeschlossen konfiguriert.`
-        : context.issue.status
-          ? `Der Status „${context.issue.status.name}“ ist nicht als abgeschlossen konfiguriert.`
-          : "Der Jira-Status fehlt oder konnte nicht gelesen werden.",
-      remediation: accepted
-        ? "Keine Maßnahme erforderlich."
-        : "Vorgang fachlich abschließen und in einen akzeptierten Status überführen.",
+      outcome,
       sourceField: "status",
     });
   },

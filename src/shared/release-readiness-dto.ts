@@ -1,3 +1,4 @@
+import type { EvidenceOutcome } from "../domain/models/evidence-outcome";
 import type {
   EvidenceCategory,
   ReadinessStatus,
@@ -25,9 +26,7 @@ export interface EvidenceItemDto {
   issueKey: string;
   category: EvidenceCategory;
   status: ReadinessStatus;
-  title: string;
-  explanation: string;
-  remediation: string;
+  outcome: EvidenceOutcome;
   sourceField: string;
 }
 

@@ -1,11 +1,14 @@
 import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
 import { Panel } from "../components/panel";
 import { StatusBadge } from "../components/status-badge";
-import { formatDateTime } from "../utils/format";
+import { useI18n } from "../i18n/context";
+import { localizeEvidenceOutcome } from "../i18n/evidence-presentation";
+import { I18N_KEYS } from "../i18n/keys";
+import { formatDateTimeForLocale } from "../utils/format";
 import { buildJiraIssueUrl } from "../utils/jira-url";
 import {
-  releaseScopeExplanation,
-  releaseScopeModeLabel,
+  releaseScopeExplanationForLocale,
+  releaseScopeModeLabelForLocale,
 } from "../utils/release-scope";
 
 export function IssueEvidenceDetail({
@@ -19,6 +22,7 @@ export function IssueEvidenceDetail({
   siteUrl: string;
   onBack: () => void;
 }) {
+  const { locale, t } = useI18n();
   const issue = result.release.issues.find((item) => item.key === issueKey);
   const readiness = result.results.find((item) => item.issueKey === issueKey);
   if (!issue || !readiness) return null;
@@ -26,24 +30,30 @@ export function IssueEvidenceDetail({
   return (
     <div className="detail-stack">
       <button className="back-button" type="button" onClick={onBack}>
-        ← Zurück zur Übersicht
+        ← {t(I18N_KEYS.issueEvidenceDetailBackToOverview)}
       </button>
       <header className="page-heading">
         <div>
-          <p className="eyebrow">Nachweisdetails</p>
+          <p className="eyebrow">{t(I18N_KEYS.issueEvidenceDetailEyebrow)}</p>
           <h1>
             {issue.key}: {issue.summary}
           </h1>
           <p>
             {issue.issueTypeName} ·{" "}
-            {issue.statusName ?? "Status nicht verfügbar"} · Aktualisiert{" "}
-            {formatDateTime(issue.updatedAt)}
+            {issue.statusName ??
+              t(I18N_KEYS.issueEvidenceDetailStatusUnavailable)}{" "}
+            · {t(I18N_KEYS.issueEvidenceDetailUpdatedLead)}{" "}
+            {formatDateTimeForLocale(issue.updatedAt, locale, t)}
           </p>
           <p className="scope-context">
             <strong>
-              Umfang: {releaseScopeModeLabel(result.release.releaseScopeMode)}
+              {t(I18N_KEYS.issueEvidenceDetailScopeLabel)}:{" "}
+              {releaseScopeModeLabelForLocale(
+                result.release.releaseScopeMode,
+                t,
+              )}
             </strong>
-            <code>{releaseScopeExplanation(result.release)}</code>
+            <code>{releaseScopeExplanationForLocale(result.release, t)}</code>
           </p>
         </div>
         <div className="detail-score">
@@ -52,36 +62,50 @@ export function IssueEvidenceDetail({
         </div>
       </header>
       <div className="evidence-list">
-        {readiness.evidence.map((item, index) => (
-          <Panel key={item.ruleId} className="evidence-card">
-            <div className="evidence-index">
-              {String(index + 1).padStart(2, "0")}
-            </div>
-            <div className="evidence-main">
-              <div className="evidence-heading">
-                <div>
-                  <p className="eyebrow">Prüfregel</p>
-                  <h2>{item.title}</h2>
-                </div>
-                <StatusBadge status={item.status} />
+        {readiness.evidence.map((item, index) => {
+          const localizedEvidence = localizeEvidenceOutcome(
+            item.outcome,
+            locale,
+            t,
+          );
+
+          return (
+            <Panel key={item.ruleId} className="evidence-card">
+              <div className="evidence-index">
+                {String(index + 1).padStart(2, "0")}
               </div>
-              <div className="evidence-grid">
-                <div>
-                  <span>Ergebnis</span>
-                  <p>{item.explanation}</p>
+              <div className="evidence-main">
+                <div className="evidence-heading">
+                  <div>
+                    <p className="eyebrow">
+                      {t(I18N_KEYS.issueEvidenceDetailRuleEyebrow)}
+                    </p>
+                    <h2>{localizedEvidence.title}</h2>
+                  </div>
+                  <StatusBadge status={item.status} />
                 </div>
-                <div>
-                  <span>Konkrete Behebung</span>
-                  <p>{item.remediation}</p>
-                </div>
-                <div>
-                  <span>Jira-Quelle</span>
-                  <code>{item.sourceField}</code>
+                <div className="evidence-grid">
+                  <div>
+                    <span>{t(I18N_KEYS.issueEvidenceDetailResultLabel)}</span>
+                    <p>{localizedEvidence.explanation}</p>
+                  </div>
+                  <div>
+                    <span>
+                      {t(I18N_KEYS.issueEvidenceDetailRemediationLabel)}
+                    </span>
+                    <p>{localizedEvidence.remediation}</p>
+                  </div>
+                  <div>
+                    <span>
+                      {t(I18N_KEYS.issueEvidenceDetailJiraSourceLabel)}
+                    </span>
+                    <code>{item.sourceField}</code>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Panel>
-        ))}
+            </Panel>
+          );
+        })}
       </div>
       {jiraIssueUrl ? (
         <a
@@ -90,7 +114,7 @@ export function IssueEvidenceDetail({
           target="_blank"
           rel="noopener noreferrer"
         >
-          Vorgang in Jira öffnen
+          {t(I18N_KEYS.issueEvidenceDetailOpenInJira)}
           <span aria-hidden="true"> ↗</span>
         </a>
       ) : null}

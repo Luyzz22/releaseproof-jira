@@ -1,9 +1,48 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ReportView } from "../../src/frontend/pages/report-view";
+import {
+  I18nProvider,
+  type TranslationFunction,
+} from "../../src/frontend/i18n/context";
 import { issue, projectConfig, release } from "../fixtures/release";
 import { readinessDto } from "../fixtures/readiness-dto";
+
+function flattenTranslations(
+  value: unknown,
+  prefix = "",
+): Record<string, string> {
+  if (typeof value === "string") {
+    return { [prefix]: value };
+  }
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce<Record<string, string>>(
+    (result, [key, child]) => ({
+      ...result,
+      ...flattenTranslations(
+        child,
+        prefix.length > 0 ? `${prefix}.${key}` : key,
+      ),
+    }),
+    {},
+  );
+}
+
+const germanMessages = flattenTranslations(
+  JSON.parse(
+    readFileSync(resolve(process.cwd(), "locales/de-DE.json"), "utf8"),
+  ) as unknown,
+);
+
+const germanTranslation: TranslationFunction = (key, defaultValue) =>
+  germanMessages[key] ?? defaultValue ?? key;
 
 describe("Berichtsansicht", () => {
   it("zeigt Status-Zusammenfassung und Überschriften vollständig deutsch", () => {
@@ -17,7 +56,14 @@ describe("Berichtsansicht", () => {
       "2026-08-05T09:00:00.000Z",
     );
     const markup = renderToStaticMarkup(
-      createElement(ReportView, { result, onBack: () => undefined }),
+      createElement(I18nProvider, {
+        locale: "de-DE",
+        t: germanTranslation,
+        children: createElement(ReportView, {
+          result,
+          onBack: () => undefined,
+        }),
+      }),
     );
 
     expect(markup).toContain("Bericht zur Release-Bereitschaft");

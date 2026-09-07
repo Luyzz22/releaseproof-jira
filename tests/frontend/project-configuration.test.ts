@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -7,8 +9,49 @@ import {
   filterAvailableMetadataIds,
   ProjectConfiguration,
 } from "../../src/frontend/pages/project-configuration";
+import {
+  I18nProvider,
+  type TranslationFunction,
+} from "../../src/frontend/i18n/context";
 import type { BootstrapData } from "../../src/shared/resolver-contract";
 import { config } from "../fixtures/release";
+
+function flattenTranslations(
+  value: unknown,
+  prefix = "",
+): Record<string, string> {
+  if (typeof value === "string") {
+    return { [prefix]: value };
+  }
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce<Record<string, string>>(
+    (result, [key, child]) => ({
+      ...result,
+      ...flattenTranslations(
+        child,
+        prefix.length > 0 ? `${prefix}.${key}` : key,
+      ),
+    }),
+    {},
+  );
+}
+
+function translator(locale: "en-US" | "de-DE"): TranslationFunction {
+  const messages = flattenTranslations(
+    JSON.parse(
+      readFileSync(resolve(process.cwd(), "locales", `${locale}.json`), "utf8"),
+    ) as unknown,
+  );
+
+  return (key, defaultValue) => messages[key] ?? defaultValue ?? key;
+}
+
+const germanTranslation = translator("de-DE");
+const englishTranslation = translator("en-US");
 
 const supportedDescriptionField: JiraField = {
   id: "description",
@@ -76,6 +119,8 @@ function renderConfiguration(
   fields: JiraField[],
   existingConfig: ProjectConfig | null = null,
   canConfigure = true,
+  locale: "en-US" | "de-DE" = "de-DE",
+  t: TranslationFunction = germanTranslation,
 ): string {
   const data: BootstrapData = {
     siteUrl: "https://demo.atlassian.net",
@@ -90,10 +135,14 @@ function renderConfiguration(
   };
 
   return renderToStaticMarkup(
-    createElement(ProjectConfiguration, {
-      data,
-      saving: false,
-      onSave: () => Promise.resolve(),
+    createElement(I18nProvider, {
+      locale,
+      t,
+      children: createElement(ProjectConfiguration, {
+        data,
+        saving: false,
+        onSave: () => Promise.resolve(),
+      }),
     }),
   );
 }
@@ -112,6 +161,23 @@ describe("Projektkonfiguration – Metadaten-Recovery", () => {
         [{ id: "10001" }, { id: "10003" }],
       ),
     ).toEqual(["10001", "10003"]);
+  });
+});
+
+describe("Projektkonfiguration – Statushinweis i18n", () => {
+  it("lokalisiert den Hinweis zu offenen Unteraufgaben in en-US", () => {
+    const markup = renderConfiguration(
+      [supportedDescriptionField],
+      config({ acceptanceCriteriaFieldId: "description" }),
+      true,
+      "en-US",
+      englishTranslation,
+    );
+
+    expect(markup).toContain("Unresolved subtasks set the issue to “Blocked”.");
+    expect(markup).not.toContain(
+      "Ungelöste Unteraufgaben setzen den Vorgang auf",
+    );
   });
 });
 

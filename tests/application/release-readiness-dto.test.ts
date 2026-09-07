@@ -89,13 +89,11 @@ describe("Release-Readiness-DTO-Mapper", () => {
     expect(Object.keys(dto.results[0]?.evidence[0] ?? {}).sort()).toEqual(
       [
         "category",
-        "explanation",
         "issueKey",
-        "remediation",
+        "outcome",
         "ruleId",
         "sourceField",
         "status",
-        "title",
       ].sort(),
     );
     expectNoInternalKeys(dto);
@@ -131,10 +129,45 @@ describe("Release-Readiness-DTO-Mapper", () => {
     internalIssue.issueType.name = "Geänderter Typ";
     if (internalIssue.status) internalIssue.status.name = "Geänderter Status";
     internalIssue.labels.push("later-label");
-    internalEvidence.title = "INTERNAL_EVIDENCE_MUTATION";
     internal.results[0]!.evidence.push(structuredClone(internalEvidence));
     internal.release.issues.push(issue({ key: "DEMO-99" }));
 
     expect(dto).toEqual(snapshot);
+  });
+
+  it("kopiert verschachtelte Outcome-Parameter ohne Referenzweitergabe", () => {
+    const internal = analyzeRelease(
+      release([
+        issue({
+          labels: ["release-blocker"],
+        }),
+      ]),
+      projectConfig,
+      "2026-08-06T09:00:00.000Z",
+    );
+    const dto = toReleaseReadinessDto(internal);
+
+    const internalEvidence = internal.results[0]?.evidence.find(
+      (evidence) => evidence.ruleId === "no-blocker-label",
+    );
+    const dtoEvidence = dto.results[0]?.evidence.find(
+      (evidence) => evidence.ruleId === "no-blocker-label",
+    );
+
+    if (internalEvidence?.outcome.outcomeId !== "no-blocker-label/blocked") {
+      throw new Error("Internal blocker outcome fixture is invalid.");
+    }
+
+    if (dtoEvidence?.outcome.outcomeId !== "no-blocker-label/blocked") {
+      throw new Error("DTO blocker outcome fixture is invalid.");
+    }
+
+    (internalEvidence.outcome.params.blockerLabels as string[]).push(
+      "later-blocker",
+    );
+
+    expect(dtoEvidence.outcome.params.blockerLabels).toEqual([
+      "release-blocker",
+    ]);
   });
 });

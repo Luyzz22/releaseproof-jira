@@ -467,11 +467,7 @@ function requireNullableResolution(
 }
 
 function normalized(value: string): string {
-  return value
-    .toLocaleLowerCase("de-DE")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return value.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function blockingRelationship(
@@ -1050,7 +1046,10 @@ export class ForgeJiraGateway
       input.projectKey,
     );
     if (!validation.valid) {
-      throw new AppError("INVALID_INPUT", validation.message);
+      throw new AppError(
+        "INVALID_INPUT",
+        "Release scope JQL failed shared validation.",
+      );
     }
     return this.listIssuesByJql(
       input.releaseScopeJql,

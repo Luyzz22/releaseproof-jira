@@ -1,3 +1,4 @@
+import { evidenceOutcome } from "../models/evidence-outcome";
 import { evidence, type ReadinessRule } from "./types";
 
 export const acceptanceCriteriaPresentRule: ReadinessRule = {
@@ -8,13 +9,9 @@ export const acceptanceCriteriaPresentRule: ReadinessRule = {
       ruleId: this.ruleId,
       category: "DOCUMENTATION",
       status: present ? "READY" : "INCOMPLETE",
-      title: "Akzeptanzkriterien vorhanden",
-      explanation: present
-        ? "Das konfigurierte Feld enthält Akzeptanzkriterien."
-        : "Im konfigurierten Feld wurden keine verwertbaren Akzeptanzkriterien gefunden.",
-      remediation: present
-        ? "Keine Maßnahme erforderlich."
-        : "Konkrete und prüfbare Akzeptanzkriterien im konfigurierten Jira-Feld ergänzen.",
+      outcome: present
+        ? evidenceOutcome("acceptance-criteria-present/present", {})
+        : evidenceOutcome("acceptance-criteria-present/missing", {}),
       sourceField: context.config.acceptanceCriteriaFieldId,
     });
   },

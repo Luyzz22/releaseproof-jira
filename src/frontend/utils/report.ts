@@ -2,11 +2,15 @@ import type {
   EvidenceItemDto,
   ReleaseReadinessResultDto,
 } from "../../shared/release-readiness-dto";
-import { formatDateTime } from "./format";
-import { readinessStatusLabel } from "./readiness-status";
+import type { TranslationFunction } from "../i18n/context";
+import { localizeEvidenceOutcome } from "../i18n/evidence-presentation";
+import { I18N_KEYS } from "../i18n/keys";
+import type { SupportedLocale } from "../i18n/locale";
+import { readinessStatusKey } from "../i18n/readiness-status-keys";
+import { formatDateTimeForLocale } from "./format";
 import {
-  releaseScopeExplanation,
-  releaseScopeModeLabel,
+  releaseScopeExplanationForLocale,
+  releaseScopeModeLabelForLocale,
 } from "./release-scope";
 
 export interface OpenFinding {
@@ -27,41 +31,88 @@ export function getOpenFindings(
   );
 }
 
-export function buildMarkdownReport(result: ReleaseReadinessResultDto): string {
+export function buildMarkdownReport(
+  result: ReleaseReadinessResultDto,
+  locale: SupportedLocale,
+  t: TranslationFunction,
+): string {
+  const releaseScopeModeLabel = releaseScopeModeLabelForLocale(
+    result.release.releaseScopeMode,
+    t,
+  );
+  const releaseScopeExplanation = releaseScopeExplanationForLocale(
+    result.release,
+    t,
+  );
+
   const lines = [
     `# ReleaseProof: ${result.release.versionName}`,
     "",
-    `- Status: ${readinessStatusLabel(result.status)}`,
-    `- Bereitschaftswert: ${result.score}%`,
-    `- Umfangsmodus: ${releaseScopeModeLabel(result.release.releaseScopeMode)}`,
-    `- Umfangsdefinition: ${JSON.stringify(releaseScopeExplanation(result.release))}`,
-    `- Vorgänge: ${result.totalIssues}`,
-    `- ${readinessStatusLabel("READY")}: ${result.readyIssues}`,
-    `- ${readinessStatusLabel("INCOMPLETE")}: ${result.incompleteIssues}`,
-    `- ${readinessStatusLabel("BLOCKED")}: ${result.blockedIssues}`,
+    `- ${t(I18N_KEYS.reportMarkdownStatus)}: ${t(
+      readinessStatusKey(result.status),
+    )}`,
+    `- ${t(I18N_KEYS.reportMarkdownReadinessScore)}: ${result.score}%`,
+    `- ${t(I18N_KEYS.reportMarkdownScopeMode)}: ${releaseScopeModeLabel}`,
+    `- ${t(I18N_KEYS.reportMarkdownScopeDefinition)}: ${JSON.stringify(
+      releaseScopeExplanation,
+    )}`,
+    `- ${t(I18N_KEYS.reportMarkdownIssues)}: ${result.totalIssues}`,
+    `- ${t(readinessStatusKey("READY"))}: ${result.readyIssues}`,
+    `- ${t(readinessStatusKey("INCOMPLETE"))}: ${result.incompleteIssues}`,
+    `- ${t(readinessStatusKey("BLOCKED"))}: ${result.blockedIssues}`,
     "",
-    "## Nachweismatrix",
+    `## ${t(I18N_KEYS.reportMarkdownEvidenceMatrix)}`,
     "",
-    "| Vorgang | Status | Bewertung | Blockierungen | Fehlende Nachweise |",
+    `| ${t(I18N_KEYS.reportMarkdownTableIssue)} | ${t(
+      I18N_KEYS.reportMarkdownTableStatus,
+    )} | ${t(I18N_KEYS.reportMarkdownTableScore)} | ${t(
+      I18N_KEYS.reportMarkdownTableBlockers,
+    )} | ${t(I18N_KEYS.reportMarkdownTableMissingEvidence)} |`,
     "| --- | --- | ---: | ---: | ---: |",
   ];
+
   result.results.forEach((item) =>
     lines.push(
-      `| ${item.issueKey} | ${readinessStatusLabel(item.status)} | ${item.score}% | ${item.blockerCount} | ${item.missingEvidenceCount} |`,
+      `| ${item.issueKey} | ${t(readinessStatusKey(item.status))} | ${
+        item.score
+      }% | ${item.blockerCount} | ${item.missingEvidenceCount} |`,
     ),
   );
 
   const findings = getOpenFindings(result);
-  lines.push("", "## Offene Punkte", "");
+
+  lines.push("", `## ${t(I18N_KEYS.reportMarkdownOpenFindings)}`, "");
+
   if (findings.length === 0) {
-    lines.push("Keine blockierenden oder fehlenden Nachweise gefunden.");
+    lines.push(t(I18N_KEYS.reportMarkdownNoOpenFindings));
   } else {
-    findings.forEach(({ issueKey, evidence }) =>
+    findings.forEach(({ issueKey, evidence }) => {
+      const localizedEvidence = localizeEvidenceOutcome(
+        evidence.outcome,
+        locale,
+        t,
+      );
+
       lines.push(
-        `- **${issueKey} · ${readinessStatusLabel(evidence.status)} · ${evidence.title}:** ${evidence.explanation} Behebung: ${evidence.remediation}`,
-      ),
-    );
+        `- **${issueKey} · ${t(
+          readinessStatusKey(evidence.status),
+        )} · ${localizedEvidence.title}:** ${
+          localizedEvidence.explanation
+        } ${t(I18N_KEYS.reportMarkdownRemediationLead)} ${
+          localizedEvidence.remediation
+        }`,
+      );
+    });
   }
-  lines.push("", `_Erzeugt am ${formatDateTime(result.generatedAt)}._`);
+
+  lines.push(
+    "",
+    `_${t(I18N_KEYS.reportMarkdownGeneratedAtLead)} ${formatDateTimeForLocale(
+      result.generatedAt,
+      locale,
+      t,
+    )}._`,
+  );
+
   return lines.join("\n");
 }

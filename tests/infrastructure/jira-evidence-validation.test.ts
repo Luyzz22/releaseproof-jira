@@ -48,11 +48,14 @@ function doneSubtask() {
   };
 }
 
-function inwardBlockingLink() {
+function inwardBlockingLink(
+  relationship = "is blocked by",
+  typeName = "Blocks",
+) {
   return {
     type: {
-      name: "Blocks",
-      inward: "is blocked by",
+      name: typeName,
+      inward: relationship,
       outward: "blocks",
     },
     inwardIssue: {
@@ -361,4 +364,20 @@ describe("fail-closed Jira-Evidence", () => {
       },
     ]);
   });
+
+  it.each(["IS BLOCKED BY", "WIRD BLOCKIERT VON", "ABHÄNGIG VON"])(
+    "erkennt die Jira-Beziehung %s unabhängig von Großschreibung und bewahrt den Rohwert",
+    async (relationship) => {
+      const issues = await mapFields({
+        ...baseIssue().fields,
+        issuelinks: [inwardBlockingLink(relationship, "Relates")],
+      });
+
+      expect(issues[0]?.linkedIssues[0]).toMatchObject({
+        relationship,
+        direction: "inward",
+        isBlocking: true,
+      });
+    },
+  );
 });

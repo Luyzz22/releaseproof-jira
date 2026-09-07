@@ -31,7 +31,7 @@ Die UI wird als statische Custom-UI-Ressource von Forge gehostet. Resolver laufe
 - `src/infrastructure/jira`: REST-v3-Adapter, ADF-Textnormalisierung, Pagination und sichere Fehlerabbildung.
 - `src/infrastructure/storage`: KVS-Repository und In-Memory-Testimplementierung.
 - `src/resolvers`: validierte, typisierte Grenze zwischen Custom UI und Application Layer.
-- `src/frontend`: deutsche React-Oberfläche mit Empty State, Konfiguration, Release-Auswahl, Dashboard, Detail und Bericht.
+- `src/frontend`: lokalisierte React-Oberfläche mit `en-US` als Default/Fallback und vollständiger `de-DE`-Unterstützung; Empty State, Konfiguration, Release-Auswahl, Dashboard, Detail und Bericht folgen dem unterstützten Atlassian/Jira-Benutzerkontext.
 - `src/shared`: Resolver-Vertrag, Validierung und sichere Fehlercodes.
 
 ## Datenfluss
