@@ -144,9 +144,9 @@ describe("ReleaseProofErrorBoundary i18n and failure containment", () => {
 
     expect(source).toContain("view.getContext().catch(() => null)");
     expect(source).toContain(
-      "i18n.createTranslationFunction().catch(() => fallbackTranslation)",
+      "resolveTranslationFunction(() => i18n.createTranslationFunction())",
     );
-    expect(source).toContain("defaultValue ?? i18nKey");
+    expect(source).not.toContain("defaultValue ?? i18nKey");
     expect(source).toContain("document.documentElement.lang = locale");
   });
 

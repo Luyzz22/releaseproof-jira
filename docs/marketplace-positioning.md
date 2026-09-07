@@ -33,8 +33,8 @@ Von Jira gelieferte Laufzeitdaten werden nicht übersetzt. Dazu gehören Projekt
 
 - ReleaseProof verwendet ausschließlich eine Forge-Architektur.
 - Jira-Anfragen laufen im Kontext des aktuellen Benutzers.
-- Nur die Projektkonfiguration wird in Forge KVS gespeichert.
-- Vollständige Jira-Vorgänge und Berichte werden nicht persistiert.
+- In Forge KVS werden ausschließlich die Projektkonfiguration und eine nicht-personenbezogene technische Schema-Version gespeichert.
+- Vollständige Jira-Vorgänge, Berichte und Benutzerprofile werden nicht persistiert.
 - Es gibt keine externen Runtime-Hosts oder Remotes und keine Telemetrie.
 - Es gibt keine KI- oder LLM-Aufrufe.
 

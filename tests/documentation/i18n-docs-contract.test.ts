@@ -65,6 +65,11 @@ describe("SCRUM-46 documentation language contract", () => {
     expect(marketplace).toMatch(/keine Jira-(?:Vorgänge|Schreibzugriffe)/i);
     expect(marketplace).toContain("read:jira-work");
     expect(marketplace).toContain("storage:app");
+    expect(marketplace).toMatch(/Schema-?Version/i);
+    expect(marketplace).toMatch(/nicht[- ]personenbezogen/i);
+    expect(marketplace).toMatch(
+      /(?:keine Benutzerprofile|Benutzerprofile[^.\n]*nicht persistiert)/i,
+    );
     expect(marketplace).toMatch(/keine externen Runtime-Hosts oder Remotes/i);
     expect(marketplace).toMatch(/separate(?:s|n)? Listing-Review/i);
     expect(marketplace).not.toContain("https://marketplace.atlassian.com/");

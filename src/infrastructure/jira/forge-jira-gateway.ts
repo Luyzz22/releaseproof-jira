@@ -624,6 +624,7 @@ function mapIssue(
   const issueTypeId = stringValue(issueType.id);
   const issueTypeName = stringValue(issueType.name);
   const status = mapStatus(fields.status);
+  const summary = stringValue(fields.summary);
   if (
     !id ||
     !key ||
@@ -631,7 +632,8 @@ function mapIssue(
     !issueTypeId ||
     !/^\d+$/.test(issueTypeId) ||
     !issueTypeName ||
-    !status
+    !status ||
+    !summary
   ) {
     return null;
   }
@@ -639,7 +641,7 @@ function mapIssue(
   return {
     id,
     key,
-    summary: stringValue(fields.summary) ?? "(Ohne Zusammenfassung)",
+    summary,
     issueType: { id: issueTypeId, name: issueTypeName },
     status,
     hasAcceptanceCriteria: hasAcceptanceCriteriaEvidence(

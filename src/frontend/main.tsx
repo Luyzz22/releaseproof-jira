@@ -3,7 +3,8 @@ import { createRoot } from "react-dom/client";
 import { i18n, view } from "@forge/bridge";
 import { App } from "./App";
 import { ReleaseProofErrorBoundary } from "./components/error-boundary";
-import { I18nProvider, type TranslationFunction } from "./i18n/context";
+import { I18nProvider } from "./i18n/context";
+import { resolveTranslationFunction } from "./i18n/emergency-translation";
 import { normalizeSupportedLocale, readContextLocale } from "./i18n/locale";
 import "./styles.css";
 
@@ -14,13 +15,10 @@ const reactRoot = createRoot(root);
 
 void view.theme.enable().catch(() => undefined);
 
-const fallbackTranslation: TranslationFunction = (i18nKey, defaultValue) =>
-  defaultValue ?? i18nKey;
-
 async function bootstrap(): Promise<void> {
   const [context, translate] = await Promise.all([
     view.getContext().catch(() => null),
-    i18n.createTranslationFunction().catch(() => fallbackTranslation),
+    resolveTranslationFunction(() => i18n.createTranslationFunction()),
   ]);
 
   const locale = normalizeSupportedLocale(readContextLocale(context));
