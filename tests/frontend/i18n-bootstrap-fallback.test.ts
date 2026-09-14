@@ -8,6 +8,7 @@ import { localizeProjectConfigValidationFailure } from "../../src/frontend/i18n/
 import { formatDateTimeForLocale } from "../../src/frontend/utils/format";
 import { releaseScopeExplanationForLocale } from "../../src/frontend/utils/release-scope";
 import { buildMarkdownReport } from "../../src/frontend/utils/report";
+import type { SupportedLocale } from "../../src/frontend/i18n/locale";
 import { readinessDto } from "../fixtures/readiness-dto";
 
 const renderMock = vi.hoisted(() => vi.fn());
@@ -42,6 +43,37 @@ function findTranslationFunction(value: unknown): TranslationFunction | null {
   for (const child of Children.toArray(props.children)) {
     const translation = findTranslationFunction(child);
     if (translation) return translation;
+  }
+
+  return null;
+}
+
+interface TranslationRuntime {
+  locale: SupportedLocale;
+  t: TranslationFunction;
+}
+
+function findTranslationRuntime(value: unknown): TranslationRuntime | null {
+  if (!isValidElement(value)) return null;
+
+  const props = value.props as {
+    children?: ReactNode;
+    locale?: unknown;
+    t?: unknown;
+  };
+  if (
+    typeof props.t === "function" &&
+    (props.locale === "en-US" || props.locale === "de-DE")
+  ) {
+    return {
+      locale: props.locale,
+      t: props.t as TranslationFunction,
+    };
+  }
+
+  for (const child of Children.toArray(props.children)) {
+    const runtime = findTranslationRuntime(child);
+    if (runtime) return runtime;
   }
 
   return null;
@@ -142,4 +174,86 @@ describe("i18n bootstrap emergency fallback", () => {
       translateUnknown("internal.noncanonical.key", "Safe explicit fallback"),
     ).toBe("Safe explicit fallback");
   });
+
+  it("uses a coherent en-US runtime when translation creation fails for a de-DE context", async () => {
+    getContextMock.mockResolvedValue({ locale: "de-DE" });
+
+    await import("../../src/frontend/main");
+
+    await vi.waitFor(() => expect(renderMock).toHaveBeenCalledOnce());
+    const runtime = findTranslationRuntime(renderMock.mock.calls[0]?.[0]);
+    expect(runtime).not.toBeNull();
+    if (!runtime) throw new Error("Bootstrap did not provide an i18n runtime.");
+
+    expect(document.documentElement.lang).toBe("en-US");
+    expect(runtime.locale).toBe("en-US");
+
+    const visibleText = runtime.t(I18N_KEYS.loadingFull);
+    const assistiveText = runtime.t(I18N_KEYS.shellHomeAria);
+    expect(visibleText).toBe("ReleaseProof is loading …");
+    expect(assistiveText).toBe("ReleaseProof home");
+
+    const timestamp = "2026-12-31T23:05:00.000Z";
+    const expectedEnglishDate = new Date(timestamp).toLocaleString("en-US");
+    const germanDate = new Date(timestamp).toLocaleString("de-DE");
+    expect(expectedEnglishDate).not.toBe(germanDate);
+    expect(formatDateTimeForLocale(timestamp, runtime.locale, runtime.t)).toBe(
+      expectedEnglishDate,
+    );
+
+    const jiraRuntimeText = "Freigabe für Kunde";
+    const evidence = localizeEvidenceOutcome(
+      evidenceOutcome("accepted-status/accepted", {
+        statusName: jiraRuntimeText,
+      }),
+      runtime.locale,
+      runtime.t,
+    );
+    expect(evidence.explanation).toBe(
+      `The status “${jiraRuntimeText}” is configured as completed.`,
+    );
+
+    const report = readinessDto();
+    const jiraVersionName = "Release 2.4 — Kund:innenfreigabe";
+    const markdown = buildMarkdownReport(
+      {
+        ...report,
+        release: { ...report.release, versionName: jiraVersionName },
+        generatedAt: timestamp,
+      },
+      runtime.locale,
+      runtime.t,
+    );
+    expect(markdown).toContain(`# ReleaseProof: ${jiraVersionName}`);
+    expect(markdown).toContain(expectedEnglishDate);
+    expect(markdown).not.toContain(germanDate);
+  });
+
+  it.each([
+    ["de-DE context", { locale: "de-DE" }, "de-DE"],
+    ["en-US context", { locale: "en-US" }, "en-US"],
+    ["unsupported context", { locale: "fr-FR" }, "en-US"],
+    ["missing locale", {}, "en-US"],
+  ] satisfies ReadonlyArray<
+    readonly [string, Readonly<Record<string, unknown>>, SupportedLocale]
+  >)(
+    "preserves the normalized effective locale for a successful Forge translator with %s",
+    async (_case, context, expectedLocale) => {
+      const forgeTranslation: TranslationFunction = (key) => `FORGE:${key}`;
+      createTranslationFunctionMock.mockResolvedValue(forgeTranslation);
+      getContextMock.mockResolvedValue(context);
+
+      await import("../../src/frontend/main");
+
+      await vi.waitFor(() => expect(renderMock).toHaveBeenCalledOnce());
+      const runtime = findTranslationRuntime(renderMock.mock.calls[0]?.[0]);
+      expect(runtime).not.toBeNull();
+      if (!runtime)
+        throw new Error("Bootstrap did not provide an i18n runtime.");
+
+      expect(runtime.t).toBe(forgeTranslation);
+      expect(runtime.locale).toBe(expectedLocale);
+      expect(document.documentElement.lang).toBe(expectedLocale);
+    },
+  );
 });

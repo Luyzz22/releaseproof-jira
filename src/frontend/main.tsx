@@ -5,7 +5,11 @@ import { App } from "./App";
 import { ReleaseProofErrorBoundary } from "./components/error-boundary";
 import { I18nProvider } from "./i18n/context";
 import { resolveTranslationFunction } from "./i18n/emergency-translation";
-import { normalizeSupportedLocale, readContextLocale } from "./i18n/locale";
+import {
+  DEFAULT_LOCALE,
+  normalizeSupportedLocale,
+  readContextLocale,
+} from "./i18n/locale";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -16,12 +20,17 @@ const reactRoot = createRoot(root);
 void view.theme.enable().catch(() => undefined);
 
 async function bootstrap(): Promise<void> {
-  const [context, translate] = await Promise.all([
+  const [context, translationResolution] = await Promise.all([
     view.getContext().catch(() => null),
     resolveTranslationFunction(() => i18n.createTranslationFunction()),
   ]);
 
-  const locale = normalizeSupportedLocale(readContextLocale(context));
+  const contextLocale = normalizeSupportedLocale(readContextLocale(context));
+  const locale =
+    translationResolution.source === "emergency"
+      ? DEFAULT_LOCALE
+      : contextLocale;
+  const translate = translationResolution.t;
 
   document.documentElement.lang = locale;
 

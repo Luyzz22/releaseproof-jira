@@ -42,12 +42,23 @@ export const emergencyTranslation: TranslationFunction = (
 ) =>
   EN_US_TRANSLATIONS[i18nKey] ?? defaultValue ?? UNKNOWN_TRANSLATION_FALLBACK;
 
+export interface TranslationResolution {
+  t: TranslationFunction;
+  source: "forge" | "emergency";
+}
+
 export async function resolveTranslationFunction(
   createTranslationFunction: () => Promise<TranslationFunction>,
-): Promise<TranslationFunction> {
+): Promise<TranslationResolution> {
   try {
-    return await createTranslationFunction();
+    return {
+      t: await createTranslationFunction(),
+      source: "forge",
+    };
   } catch {
-    return emergencyTranslation;
+    return {
+      t: emergencyTranslation,
+      source: "emergency",
+    };
   }
 }
