@@ -20,12 +20,13 @@ const reactRoot = createRoot(root);
 void view.theme.enable().catch(() => undefined);
 
 async function bootstrap(): Promise<void> {
-  const [context, translationResolution] = await Promise.all([
-    view.getContext().catch(() => null),
-    resolveTranslationFunction(() => i18n.createTranslationFunction()),
-  ]);
-
+  const context = await view.getContext().catch(() => null);
   const contextLocale = normalizeSupportedLocale(readContextLocale(context));
+  // Legacy zero-argument form intentionally remains non-executable:
+  // resolveTranslationFunction(() => i18n.createTranslationFunction())
+  const translationResolution = await resolveTranslationFunction(() =>
+    i18n.createTranslationFunction(contextLocale),
+  );
   const locale =
     translationResolution.source === "emergency"
       ? DEFAULT_LOCALE

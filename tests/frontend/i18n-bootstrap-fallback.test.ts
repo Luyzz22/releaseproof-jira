@@ -104,6 +104,7 @@ describe("i18n bootstrap emergency fallback", () => {
 
     await vi.waitFor(() => expect(renderMock).toHaveBeenCalledOnce());
     expect(createTranslationFunctionMock).toHaveBeenCalledOnce();
+    expect(createTranslationFunctionMock.mock.calls).toEqual([["en-US"]]);
 
     const t = findTranslationFunction(renderMock.mock.calls[0]?.[0]);
     expect(t).not.toBeNull();
@@ -175,12 +176,33 @@ describe("i18n bootstrap emergency fallback", () => {
     ).toBe("Safe explicit fallback");
   });
 
+  it("binds a successful Forge translator to explicit en-US when the context request fails", async () => {
+    const forgeTranslation: TranslationFunction = (key) => `FORGE_EN:${key}`;
+    getContextMock.mockRejectedValue(new Error("FORGE_CONTEXT_UNAVAILABLE"));
+    createTranslationFunctionMock.mockResolvedValue(forgeTranslation);
+
+    await import("../../src/frontend/main");
+
+    await vi.waitFor(() => expect(renderMock).toHaveBeenCalledOnce());
+    expect(getContextMock).toHaveBeenCalledOnce();
+    expect(createTranslationFunctionMock.mock.calls).toEqual([["en-US"]]);
+
+    const runtime = findTranslationRuntime(renderMock.mock.calls[0]?.[0]);
+    expect(runtime).not.toBeNull();
+    if (!runtime) throw new Error("Bootstrap did not provide an i18n runtime.");
+
+    expect(runtime.t).toBe(forgeTranslation);
+    expect(runtime.locale).toBe("en-US");
+    expect(document.documentElement.lang).toBe("en-US");
+  });
+
   it("uses a coherent en-US runtime when translation creation fails for a de-DE context", async () => {
     getContextMock.mockResolvedValue({ locale: "de-DE" });
 
     await import("../../src/frontend/main");
 
     await vi.waitFor(() => expect(renderMock).toHaveBeenCalledOnce());
+    expect(createTranslationFunctionMock.mock.calls).toEqual([["de-DE"]]);
     const runtime = findTranslationRuntime(renderMock.mock.calls[0]?.[0]);
     expect(runtime).not.toBeNull();
     if (!runtime) throw new Error("Bootstrap did not provide an i18n runtime.");
@@ -246,6 +268,9 @@ describe("i18n bootstrap emergency fallback", () => {
       await import("../../src/frontend/main");
 
       await vi.waitFor(() => expect(renderMock).toHaveBeenCalledOnce());
+      expect(createTranslationFunctionMock.mock.calls).toEqual([
+        [expectedLocale],
+      ]);
       const runtime = findTranslationRuntime(renderMock.mock.calls[0]?.[0]);
       expect(runtime).not.toBeNull();
       if (!runtime)
