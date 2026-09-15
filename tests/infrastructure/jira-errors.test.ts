@@ -1,9 +1,31 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildVersionJql,
   collectIssueSearchPages as collectIssueSearchPagesRaw,
+  ForgeJiraGateway,
   parseResponse,
 } from "../../src/infrastructure/jira/forge-jira-gateway";
+import { AppError } from "../../src/shared/errors";
+import { validateReleaseScopeJql } from "../../src/shared/validation";
+
+const requestJiraMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@forge/api", () => ({
+  default: {
+    asUser: () => ({ requestJira: requestJiraMock }),
+  },
+  authorize: () => ({ onJira: vi.fn() }),
+  route: (strings: TemplateStringsArray, ...values: unknown[]) =>
+    strings.reduce(
+      (result, segment, index) =>
+        `${result}${segment}${index < values.length ? String(values[index]) : ""}`,
+      "",
+    ),
+}));
+
+beforeEach(() => {
+  requestJiraMock.mockReset();
+});
 
 function withDefaultIssueSearchPaginationState(value: unknown): unknown {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -45,6 +67,39 @@ describe("Jira-Fehlerabbildung", () => {
     expect(() =>
       buildVersionJql('DEMO" OR project = SECRET', "30001"),
     ).toThrowError(expect.objectContaining({ code: "INVALID_INPUT" }));
+  });
+
+  it("weist ungültige Scope-JQL vor Jira ohne Shared-Benutzermeldung zurück", async () => {
+    const jql =
+      'project = DEMO OR summary ~ "SENSITIVE_QUERY_CONTENT_DO_NOT_LOG"';
+    const sharedValidation = validateReleaseScopeJql(jql, "DEMO");
+    expect(sharedValidation).toMatchObject({
+      valid: false,
+      code: "OR_FORBIDDEN",
+    });
+    if (sharedValidation.valid) {
+      throw new Error("The invalid JQL fixture must fail shared validation.");
+    }
+
+    const error: unknown = await new ForgeJiraGateway()
+      .listIssuesForJqlScope({
+        projectKey: "DEMO",
+        releaseScopeJql: jql,
+        acceptanceCriteriaFieldId: "customfield_10042",
+      })
+      .then(
+        () => null,
+        (reason: unknown) => reason,
+      );
+
+    expect(error).toBeInstanceOf(AppError);
+    if (!(error instanceof AppError)) {
+      throw new Error("Expected an AppError from gateway validation.");
+    }
+
+    expect(error.code).toBe("INVALID_INPUT");
+    expect(error.message).not.toContain("SENSITIVE_QUERY_CONTENT_DO_NOT_LOG");
+    expect(requestJiraMock).not.toHaveBeenCalled();
   });
 
   it("übersetzt fehlende Berechtigungen ohne Upstream-Details", async () => {

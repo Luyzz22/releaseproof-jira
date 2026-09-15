@@ -1,12 +1,59 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IssueEvidenceDetail } from "../../src/frontend/pages/issue-evidence-detail";
 import { ReleaseDashboard } from "../../src/frontend/pages/release-dashboard";
-import { formatDateTime } from "../../src/frontend/utils/format";
+import {
+  I18nProvider,
+  type TranslationFunction,
+} from "../../src/frontend/i18n/context";
+import { formatDateTimeForLocale } from "../../src/frontend/utils/format";
 import type { BootstrapData } from "../../src/shared/resolver-contract";
 import { config, issue, release } from "../fixtures/release";
 import { readinessDto } from "../fixtures/readiness-dto";
+
+function flattenTranslations(
+  value: unknown,
+  prefix = "",
+): Record<string, string> {
+  if (typeof value === "string") {
+    return { [prefix]: value };
+  }
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce<Record<string, string>>(
+    (result, [key, child]) => ({
+      ...result,
+      ...flattenTranslations(
+        child,
+        prefix.length > 0 ? `${prefix}.${key}` : key,
+      ),
+    }),
+    {},
+  );
+}
+
+const germanMessages = flattenTranslations(
+  JSON.parse(
+    readFileSync(resolve(process.cwd(), "locales/de-DE.json"), "utf8"),
+  ) as unknown,
+);
+
+const germanTranslation: TranslationFunction = (key, defaultValue) =>
+  germanMessages[key] ?? defaultValue ?? key;
+
+function withGermanI18n(element: React.ReactNode) {
+  return createElement(I18nProvider, {
+    locale: "de-DE",
+    t: germanTranslation,
+    children: element,
+  });
+}
 
 const bootstrapData: BootstrapData = {
   siteUrl: "https://demo.atlassian.net",
@@ -27,13 +74,15 @@ function publicResult() {
 describe("Analyseansichten mit öffentlichem DTO", () => {
   it("rendert im Dashboard Key, Summary, Typ, Status, Bewertung und deutsche Überschriften", () => {
     const markup = renderToStaticMarkup(
-      createElement(ReleaseDashboard, {
-        data: bootstrapData,
-        result: publicResult(),
-        onDetail: () => undefined,
-        onReport: () => undefined,
-        onNewAnalysis: () => undefined,
-      }),
+      withGermanI18n(
+        createElement(ReleaseDashboard, {
+          data: bootstrapData,
+          result: publicResult(),
+          onDetail: () => undefined,
+          onReport: () => undefined,
+          onNewAnalysis: () => undefined,
+        }),
+      ),
     );
 
     expect(markup).toContain("DEMO-42");
@@ -56,12 +105,14 @@ describe("Analyseansichten mit öffentlichem DTO", () => {
   it("rendert in den Nachweisdetails öffentliche Issue-Metadaten und Nachweise", () => {
     const result = publicResult();
     const markup = renderToStaticMarkup(
-      createElement(IssueEvidenceDetail, {
-        result,
-        issueKey: "DEMO-42",
-        siteUrl: bootstrapData.siteUrl,
-        onBack: () => undefined,
-      }),
+      withGermanI18n(
+        createElement(IssueEvidenceDetail, {
+          result,
+          issueKey: "DEMO-42",
+          siteUrl: bootstrapData.siteUrl,
+          onBack: () => undefined,
+        }),
+      ),
     );
 
     expect(markup).toContain("Nachweisdetails");
@@ -70,7 +121,11 @@ describe("Analyseansichten mit öffentlichem DTO", () => {
     expect(markup).toContain("Story");
     expect(markup).toContain("Fertig");
     expect(markup).toContain(
-      formatDateTime(result.release.issues[0]?.updatedAt ?? ""),
+      formatDateTimeForLocale(
+        result.release.issues[0]?.updatedAt ?? "",
+        "de-DE",
+        germanTranslation,
+      ),
     );
     expect(markup).toContain("Akzeptanzkriterien vorhanden");
     expect(markup).toContain("Prüfregel");
@@ -90,13 +145,15 @@ describe("Analyseansichten mit öffentlichem DTO", () => {
       config({ releaseScopeMode: "VERSION_ONLY" }),
     );
     const markup = renderToStaticMarkup(
-      createElement(ReleaseDashboard, {
-        data: bootstrapData,
-        result,
-        onDetail: () => undefined,
-        onReport: () => undefined,
-        onNewAnalysis: () => undefined,
-      }),
+      withGermanI18n(
+        createElement(ReleaseDashboard, {
+          data: bootstrapData,
+          result,
+          onDetail: () => undefined,
+          onReport: () => undefined,
+          onNewAnalysis: () => undefined,
+        }),
+      ),
     );
 
     expect(markup).toContain("Nur Jira-Version");

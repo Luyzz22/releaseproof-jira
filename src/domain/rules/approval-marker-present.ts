@@ -1,3 +1,4 @@
+import { evidenceOutcome } from "../models/evidence-outcome";
 import { evidence, type ReadinessRule } from "./types";
 
 export const approvalMarkerPresentRule: ReadinessRule = {
@@ -8,33 +9,29 @@ export const approvalMarkerPresentRule: ReadinessRule = {
         ruleId: this.ruleId,
         category: "APPROVAL",
         status: "NOT_APPLICABLE",
-        title: "Freigabemarkierung vorhanden",
-        explanation:
-          "Die Freigabemarkierung ist in der Projektkonfiguration deaktiviert.",
-        remediation: "Keine Maßnahme erforderlich.",
+        outcome: evidenceOutcome("approval-marker-present/disabled", {}),
         sourceField: "labels",
       });
     }
 
-    const marker = context.config.approvalMarker
-      .trim()
-      .toLocaleLowerCase("de-DE");
+    const marker = context.config.approvalMarker.trim().toLowerCase();
     const present =
       marker.length > 0 &&
       context.issue.labels.some(
-        (label) => label.trim().toLocaleLowerCase("de-DE") === marker,
+        (label) => label.trim().toLowerCase() === marker,
       );
+
     return evidence(context, {
       ruleId: this.ruleId,
       category: "APPROVAL",
       status: present ? "READY" : "INCOMPLETE",
-      title: "Freigabemarkierung vorhanden",
-      explanation: present
-        ? `Das Freigabe-Label „${context.config.approvalMarker}“ ist vorhanden.`
-        : `Das Freigabe-Label „${context.config.approvalMarker}“ fehlt.`,
-      remediation: present
-        ? "Keine Maßnahme erforderlich."
-        : "Fachliche Freigabe einholen und anschließend das konfigurierte Label setzen.",
+      outcome: present
+        ? evidenceOutcome("approval-marker-present/present", {
+            approvalMarker: context.config.approvalMarker,
+          })
+        : evidenceOutcome("approval-marker-present/missing", {
+            approvalMarker: context.config.approvalMarker,
+          }),
       sourceField: "labels",
     });
   },

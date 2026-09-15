@@ -48,11 +48,14 @@ function doneSubtask() {
   };
 }
 
-function inwardBlockingLink() {
+function inwardBlockingLink(
+  relationship = "is blocked by",
+  typeName = "Blocks",
+) {
   return {
     type: {
-      name: "Blocks",
-      inward: "is blocked by",
+      name: typeName,
+      inward: relationship,
       outward: "blocks",
     },
     inwardIssue: {
@@ -95,6 +98,26 @@ async function mapFields(fields: Record<string, unknown>) {
 
 describe("fail-closed Jira-Evidence", () => {
   it.each([
+    ["fehlender Summary", undefined],
+    ["Summary null", null],
+    ["Summary als Zahl", 42],
+    ["Summary als Objekt", { value: "Customer handover" }],
+    ["leerem Summary", ""],
+    ["Whitespace-only Summary", "   "],
+  ] satisfies ReadonlyArray<readonly [string, unknown]>)(
+    "bricht bei %s ab",
+    async (_case, summary) => {
+      const fields: Record<string, unknown> = { ...baseIssue().fields };
+      if (summary === undefined) delete fields.summary;
+      else fields.summary = summary;
+
+      await expect(mapFields(fields)).rejects.toMatchObject({
+        code: "JIRA_UNAVAILABLE",
+      });
+    },
+  );
+
+  it.each([
     ["fehlenden Labels", undefined],
     ["Labels als null", null],
     ["Labels als String", "release-blocker"],
@@ -107,6 +130,13 @@ describe("fail-closed Jira-Evidence", () => {
     await expect(mapFields(fields)).rejects.toMatchObject({
       code: "JIRA_UNAVAILABLE",
     });
+  });
+
+  it("behält eine gültige nicht-englische Jira-Zusammenfassung unverändert bei", async () => {
+    const summary = "Freigabe für Kunde";
+    const issues = await mapFields({ ...baseIssue().fields, summary });
+
+    expect(issues[0]?.summary).toBe(summary);
   });
 
   it.each([
@@ -361,4 +391,20 @@ describe("fail-closed Jira-Evidence", () => {
       },
     ]);
   });
+
+  it.each(["IS BLOCKED BY", "WIRD BLOCKIERT VON", "ABHÄNGIG VON"])(
+    "erkennt die Jira-Beziehung %s unabhängig von Großschreibung und bewahrt den Rohwert",
+    async (relationship) => {
+      const issues = await mapFields({
+        ...baseIssue().fields,
+        issuelinks: [inwardBlockingLink(relationship, "Relates")],
+      });
+
+      expect(issues[0]?.linkedIssues[0]).toMatchObject({
+        relationship,
+        direction: "inward",
+        isBlocking: true,
+      });
+    },
+  );
 });

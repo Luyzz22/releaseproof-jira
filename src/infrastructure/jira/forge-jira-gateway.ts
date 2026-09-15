@@ -467,11 +467,7 @@ function requireNullableResolution(
 }
 
 function normalized(value: string): string {
-  return value
-    .toLocaleLowerCase("de-DE")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return value.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function blockingRelationship(
@@ -628,6 +624,7 @@ function mapIssue(
   const issueTypeId = stringValue(issueType.id);
   const issueTypeName = stringValue(issueType.name);
   const status = mapStatus(fields.status);
+  const summary = stringValue(fields.summary);
   if (
     !id ||
     !key ||
@@ -635,7 +632,8 @@ function mapIssue(
     !issueTypeId ||
     !/^\d+$/.test(issueTypeId) ||
     !issueTypeName ||
-    !status
+    !status ||
+    !summary
   ) {
     return null;
   }
@@ -643,7 +641,7 @@ function mapIssue(
   return {
     id,
     key,
-    summary: stringValue(fields.summary) ?? "(Ohne Zusammenfassung)",
+    summary,
     issueType: { id: issueTypeId, name: issueTypeName },
     status,
     hasAcceptanceCriteria: hasAcceptanceCriteriaEvidence(
@@ -1050,7 +1048,10 @@ export class ForgeJiraGateway
       input.projectKey,
     );
     if (!validation.valid) {
-      throw new AppError("INVALID_INPUT", validation.message);
+      throw new AppError(
+        "INVALID_INPUT",
+        "Release scope JQL failed shared validation.",
+      );
     }
     return this.listIssuesByJql(
       input.releaseScopeJql,

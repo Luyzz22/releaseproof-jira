@@ -28,6 +28,7 @@ Vor einer Abnahme fehlen häufig Akzeptanzkriterien, Abschlussstatus, Release-Zu
 - Empty State, Konfiguration, Release-Auswahl, Dashboard, Issue-Detail und Report View.
 - Kopierbarer Markdown-Bericht und druckoptimierte Browseransicht.
 - Verständliche Fehler- und Leerzustände.
+- Lokalisierte Benutzeroberfläche und Berichte mit `en-US` als Default/Fallback und vollständiger `de-DE`-Unterstützung; die aktive Sprache folgt dem unterstützten Atlassian/Jira-Benutzerkontext.
 
 ## Out of Scope
 
@@ -39,3 +40,4 @@ Vor einer Abnahme fehlen häufig Akzeptanzkriterien, Abschlussstatus, Release-Zu
 - Automatische Änderungen an Jira-Vorgängen.
 - Audit-, Compliance- oder Abnahmegarantien.
 - Allgemeine Projektmanagementfunktionen.
+- Eigene ReleaseProof-Sprachauswahl oder separates Benutzerprofil.

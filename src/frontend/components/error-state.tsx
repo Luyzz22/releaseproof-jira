@@ -1,4 +1,7 @@
 import type { SafeError } from "../../shared/errors";
+import { appErrorDefaultMessage, appErrorMessageKey } from "../i18n/error-keys";
+import { useI18n } from "../i18n/context";
+import { I18N_KEYS } from "../i18n/keys";
 import { Panel } from "./panel";
 
 export function ErrorState({
@@ -8,17 +11,25 @@ export function ErrorState({
   error: SafeError;
   onRetry?: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <Panel className="state-card state-card--error" role="alert">
       <div className="state-icon" aria-hidden="true">
         !
       </div>
       <div>
-        <p className="eyebrow">Analyse nicht verfügbar</p>
-        <h1>{error.message}</h1>
+        <p className="eyebrow">{t(I18N_KEYS.errorAnalysisUnavailable)}</p>
+        <h1>
+          {t(
+            appErrorMessageKey(error.code),
+            appErrorDefaultMessage(error.code),
+          )}
+        </h1>
         {error.retryAfterSeconds ? (
           <p>
-            Frühester neuer Versuch in etwa {error.retryAfterSeconds} Sekunden.
+            {t(I18N_KEYS.errorRetryLead)} {error.retryAfterSeconds}{" "}
+            {t(I18N_KEYS.errorRetrySeconds)}
           </p>
         ) : null}
         {onRetry ? (
@@ -27,7 +38,7 @@ export function ErrorState({
             className="button button--secondary"
             onClick={onRetry}
           >
-            Erneut versuchen
+            {t(I18N_KEYS.errorRetryAction)}
           </button>
         ) : null}
       </div>

@@ -1,3 +1,4 @@
+import { evidenceOutcome } from "../models/evidence-outcome";
 import { evidence, type ReadinessRule } from "./types";
 
 export const noOpenSubtasksRule: ReadinessRule = {
@@ -8,10 +9,7 @@ export const noOpenSubtasksRule: ReadinessRule = {
         ruleId: this.ruleId,
         category: "DEPENDENCY",
         status: "NOT_APPLICABLE",
-        title: "Keine offenen Unteraufgaben",
-        explanation:
-          "Die Prüfung offener Unteraufgaben ist in der Projektkonfiguration deaktiviert.",
-        remediation: "Keine Maßnahme erforderlich.",
+        outcome: evidenceOutcome("no-open-subtasks/disabled", {}),
         sourceField: "subtasks",
       });
     }
@@ -22,19 +20,18 @@ export const noOpenSubtasksRule: ReadinessRule = {
         (subtask.status === null ||
           !context.config.acceptedStatusIds.includes(subtask.status.id)),
     );
+
     return evidence(context, {
       ruleId: this.ruleId,
       category: "DEPENDENCY",
       status: open.length > 0 ? "BLOCKED" : "READY",
-      title: "Keine offenen Unteraufgaben",
-      explanation:
+      outcome:
         open.length > 0
-          ? `${open.length} offene Unteraufgabe(n): ${open.map((item) => item.key).join(", ")}.`
-          : "Es wurden keine offenen Unteraufgaben gefunden.",
-      remediation:
-        open.length > 0
-          ? "Offene Unteraufgaben abschließen oder begründet aus dem Release-Umfang entfernen."
-          : "Keine Maßnahme erforderlich.",
+          ? evidenceOutcome("no-open-subtasks/blocked", {
+              count: open.length,
+              issueKeys: open.map((item) => item.key),
+            })
+          : evidenceOutcome("no-open-subtasks/clear", {}),
       sourceField: "subtasks",
     });
   },

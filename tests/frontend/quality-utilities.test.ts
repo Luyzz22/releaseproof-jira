@@ -1,13 +1,59 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AppError, toSafeError } from "../../src/shared/errors";
-import { formatDateTime } from "../../src/frontend/utils/format";
+import { formatDateTimeForLocale } from "../../src/frontend/utils/format";
 import { buildJiraIssueUrl } from "../../src/frontend/utils/jira-url";
 import {
   buildMarkdownReport,
   getOpenFindings,
 } from "../../src/frontend/utils/report";
+import type { TranslationFunction } from "../../src/frontend/i18n/context";
+import { localizeEvidenceOutcome } from "../../src/frontend/i18n/evidence-presentation";
+import type { I18nKey } from "../../src/frontend/i18n/keys";
 import { issue, projectConfig, release } from "../fixtures/release";
 import { readinessDto } from "../fixtures/readiness-dto";
+
+function flattenTranslations(
+  value: unknown,
+  prefix = "",
+): Record<string, string> {
+  if (typeof value === "string") {
+    return { [prefix]: value };
+  }
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce<Record<string, string>>(
+    (result, [key, child]) => ({
+      ...result,
+      ...flattenTranslations(
+        child,
+        prefix.length > 0 ? `${prefix}.${key}` : key,
+      ),
+    }),
+    {},
+  );
+}
+
+const germanMessages = flattenTranslations(
+  JSON.parse(
+    readFileSync(resolve(process.cwd(), "locales/de-DE.json"), "utf8"),
+  ) as unknown,
+);
+
+const germanTranslation: TranslationFunction = (
+  key: I18nKey,
+  defaultValue?: string,
+) => germanMessages[key] ?? defaultValue ?? key;
+
+function buildGermanMarkdown(
+  result: Parameters<typeof buildMarkdownReport>[0],
+): string {
+  return buildMarkdownReport(result, "de-DE", germanTranslation);
+}
 
 function expectNoRawReadinessStatusAtStatusPositions(markdown: string): void {
   expect(markdown).not.toMatch(
@@ -36,7 +82,9 @@ describe("sichere Frontend-Grenzen", () => {
   });
 
   it("zeigt bei ungültigen Zeitstempeln einen stabilen Fallback", () => {
-    expect(formatDateTime("ungültig")).toBe("Zeitpunkt nicht verfügbar");
+    expect(
+      formatDateTimeForLocale("ungültig", "de-DE", germanTranslation),
+    ).toBe("Zeitpunkt nicht verfügbar");
   });
 
   it("erzeugt Findings und Markdown aus derselben kanonischen Ableitung", () => {
@@ -53,7 +101,7 @@ describe("sichere Frontend-Grenzen", () => {
       "2026-07-11T09:00:00.000Z",
     );
     const findings = getOpenFindings(result);
-    const markdown = buildMarkdownReport(result);
+    const markdown = buildGermanMarkdown(result);
 
     expect(findings).toHaveLength(4);
     expect(markdown).toContain("- Status: Blockiert");
@@ -78,7 +126,12 @@ describe("sichere Frontend-Grenzen", () => {
     expect(markdown).toContain("Korrekte Release-Version");
     expect(markdown).toContain("keine Jira-Version");
     for (const finding of findings) {
-      expect(markdown).toContain(finding.evidence.title);
+      const localizedEvidence = localizeEvidenceOutcome(
+        finding.evidence.outcome,
+        "de-DE",
+        germanTranslation,
+      );
+      expect(markdown).toContain(localizedEvidence.title);
     }
   });
 
@@ -99,7 +152,7 @@ describe("sichere Frontend-Grenzen", () => {
       projectConfig,
       "2026-08-05T09:00:00.000Z",
     );
-    const markdown = buildMarkdownReport(result);
+    const markdown = buildGermanMarkdown(result);
 
     expect(markdown).toContain("- Status: Blockiert");
     expect(markdown).toContain("- Bereit: 1");
@@ -112,7 +165,7 @@ describe("sichere Frontend-Grenzen", () => {
     expect(markdown).toContain("· Blockiert ·");
     expectNoRawReadinessStatusAtStatusPositions(markdown);
 
-    const emptyMarkdown = buildMarkdownReport(
+    const emptyMarkdown = buildGermanMarkdown(
       readinessDto(
         { ...release([]), releaseScopeJql: "project = DEMO" },
         projectConfig,
@@ -123,15 +176,15 @@ describe("sichere Frontend-Grenzen", () => {
     expectNoRawReadinessStatusAtStatusPositions(emptyMarkdown);
   });
 
-  it("übersetzt überschrittene Synchronlimits in eine sichere Nutzerantwort", () => {
-    expect(
-      toSafeError(
-        new AppError("RESULT_LIMIT_EXCEEDED", "Internal pagination detail"),
-      ),
-    ).toEqual({
+  it("redigiert interne Details bei überschrittenen Synchronlimits", () => {
+    const safe = toSafeError(
+      new AppError("RESULT_LIMIT_EXCEEDED", "Internal pagination detail"),
+    );
+
+    expect(safe).toEqual({
       code: "RESULT_LIMIT_EXCEEDED",
-      message:
-        "Die Datenmenge ist für eine synchrone Analyse zu groß. Bitte verkleinern Sie den Release-Umfang.",
+      message: "RESULT_LIMIT_EXCEEDED",
     });
+    expect(safe.message).not.toContain("Internal pagination detail");
   });
 });

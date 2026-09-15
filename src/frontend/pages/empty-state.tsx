@@ -1,5 +1,7 @@
 import type { BootstrapData } from "../../shared/resolver-contract";
 import { Panel } from "../components/panel";
+import { useI18n } from "../i18n/context";
+import { I18N_KEYS } from "../i18n/keys";
 
 export function EmptyState({
   data,
@@ -10,6 +12,7 @@ export function EmptyState({
 }) {
   const recoveryRequired = data.configRecoveryRequired;
   const administrationRequired = !data.canConfigure;
+  const { t } = useI18n();
 
   return (
     <div className="empty-layout">
@@ -22,56 +25,46 @@ export function EmptyState({
         <div>
           <p className="eyebrow">
             {administrationRequired
-              ? "Projektadministration erforderlich"
+              ? t(I18N_KEYS.emptyStateAdministrationRequiredEyebrow)
               : recoveryRequired
-                ? "Projektkonfiguration reparieren"
-                : "Willkommen bei ReleaseProof"}
+                ? t(I18N_KEYS.emptyStateRecoveryEyebrow)
+                : t(I18N_KEYS.emptyStateWelcomeEyebrow)}
           </p>
           <h1>
             {administrationRequired
               ? recoveryRequired
-                ? "Die Projektkonfiguration muss durch einen Administrator repariert werden."
-                : "ReleaseProof muss zuerst durch einen Projektadministrator konfiguriert werden."
+                ? t(I18N_KEYS.emptyStateAdminRecoveryTitle)
+                : t(I18N_KEYS.emptyStateAdminInitialTitle)
               : recoveryRequired
-                ? "Projektkonfiguration sicher ersetzen."
-                : "Release-Nachweise sichtbar machen, bevor der Kunde fragt."}
+                ? t(I18N_KEYS.emptyStateRecoveryTitle)
+                : t(I18N_KEYS.emptyStateWelcomeTitle)}
           </h1>
           <p className="lead">
             {administrationRequired ? (
               recoveryRequired ? (
-                <>
-                  Die gespeicherte Projektkonfiguration ist beschädigt oder
-                  nicht mehr kompatibel. Ein Jira-Projektadministrator muss eine
-                  neue gültige Konfiguration speichern.
-                </>
+                t(I18N_KEYS.emptyStateAdminRecoveryDescription)
               ) : (
                 <>
-                  Für <strong>{data.project.name}</strong> ist noch keine
-                  Bereitschaftskonfiguration hinterlegt. Bitten Sie einen
-                  Jira-Projektadministrator, ReleaseProof einmalig zu
-                  konfigurieren.
+                  {t(I18N_KEYS.emptyStateAdminInitialDescriptionPrefix)}{" "}
+                  <strong>{data.project.name}</strong>
+                  {t(I18N_KEYS.emptyStateAdminInitialDescriptionSuffix)}
                 </>
               )
             ) : recoveryRequired ? (
-              <>
-                Die gespeicherte Projektkonfiguration ist beschädigt oder nicht
-                mehr kompatibel. Speichern Sie eine neue gültige Konfiguration,
-                um ReleaseProof wieder zu verwenden.
-              </>
+              t(I18N_KEYS.emptyStateRecoveryDescription)
             ) : (
               <>
-                Für <strong>{data.project.name}</strong> ist noch keine
-                Bereitschaftskonfiguration hinterlegt. Definieren Sie die
-                Kriterien einmal projektbezogen; Jira-Inhalte werden nicht
-                dauerhaft gespeichert.
+                {t(I18N_KEYS.emptyStateWelcomeDescriptionPrefix)}{" "}
+                <strong>{data.project.name}</strong>
+                {t(I18N_KEYS.emptyStateWelcomeDescriptionSuffix)}
               </>
             )}
           </p>
           {data.canConfigure ? (
             <button className="button" type="button" onClick={onConfigure}>
               {recoveryRequired
-                ? "Projektkonfiguration öffnen"
-                : "Projekt jetzt konfigurieren"}
+                ? t(I18N_KEYS.emptyStateRecoveryAction)
+                : t(I18N_KEYS.emptyStateConfigureAction)}
             </button>
           ) : null}
         </div>

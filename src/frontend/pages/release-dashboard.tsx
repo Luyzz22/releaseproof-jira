@@ -4,11 +4,14 @@ import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-d
 import { Metric } from "../components/metric";
 import { Panel } from "../components/panel";
 import { StatusBadge } from "../components/status-badge";
-import { formatDateTime } from "../utils/format";
-import { readinessStatusLabel } from "../utils/readiness-status";
+import { formatDateTimeForLocale } from "../utils/format";
+import { useI18n } from "../i18n/context";
+import { localizeEvidenceOutcome } from "../i18n/evidence-presentation";
+import { I18N_KEYS } from "../i18n/keys";
+import { readinessStatusKey } from "../i18n/readiness-status-keys";
 import {
-  releaseScopeExplanation,
-  releaseScopeModeLabel,
+  releaseScopeExplanationForLocale,
+  releaseScopeModeLabelForLocale,
 } from "../utils/release-scope";
 
 export function ReleaseDashboard({
@@ -24,6 +27,7 @@ export function ReleaseDashboard({
   onReport: () => void;
   onNewAnalysis: () => void;
 }) {
+  const { locale, t } = useI18n();
   const issueByKey = useMemo(
     () => new Map(result.release.issues.map((item) => [item.key, item])),
     [result.release.issues],
@@ -46,16 +50,21 @@ export function ReleaseDashboard({
           <p className="eyebrow">
             {data.project.key} · {result.release.versionName}
           </p>
-          <h1>Release-Bereitschaft</h1>
+          <h1>{t(I18N_KEYS.releaseDashboardTitle)}</h1>
           <p>
-            Analysiert am {formatDateTime(result.generatedAt)} ·{" "}
-            {result.totalIssues} Vorgänge
+            {t(I18N_KEYS.releaseDashboardAnalyzedAtLead)}{" "}
+            {formatDateTimeForLocale(result.generatedAt, locale, t)} ·{" "}
+            {result.totalIssues} {t(I18N_KEYS.releaseDashboardIssuesLabel)}
           </p>
           <p className="scope-context">
             <strong>
-              Umfang: {releaseScopeModeLabel(result.release.releaseScopeMode)}
+              {t(I18N_KEYS.releaseDashboardScopeLabel)}:{" "}
+              {releaseScopeModeLabelForLocale(
+                result.release.releaseScopeMode,
+                t,
+              )}
             </strong>
-            <code>{releaseScopeExplanation(result.release)}</code>
+            <code>{releaseScopeExplanationForLocale(result.release, t)}</code>
           </p>
         </div>
         <div className="heading-actions">
@@ -64,10 +73,10 @@ export function ReleaseDashboard({
             type="button"
             onClick={onNewAnalysis}
           >
-            Neue Analyse
+            {t(I18N_KEYS.releaseDashboardNewAnalysis)}
           </button>
           <button className="button" type="button" onClick={onReport}>
-            Bericht öffnen
+            {t(I18N_KEYS.releaseDashboardOpenReport)}
           </button>
         </div>
       </header>
@@ -75,35 +84,33 @@ export function ReleaseDashboard({
         <Panel className="state-card">
           <div className="state-icon">0</div>
           <div>
-            <p className="eyebrow">Leeres Release</p>
-            <h2>Keine passenden Vorgänge gefunden</h2>
-            <p>
-              Der konfigurierte Umfang enthält keine Vorgänge der ausgewählten
-              Vorgangstypen. Bewertung und Status werden deshalb nicht als
-              Aussage zur Release-Bereitschaft interpretiert.
+            <p className="eyebrow">
+              {t(I18N_KEYS.releaseDashboardEmptyEyebrow)}
             </p>
+            <h2>{t(I18N_KEYS.releaseDashboardEmptyTitle)}</h2>
+            <p>{t(I18N_KEYS.releaseDashboardEmptyDescription)}</p>
           </div>
         </Panel>
       ) : (
         <>
           <div className="metric-grid">
             <Metric
-              label="Bereitschaftswert"
+              label={t(I18N_KEYS.releaseDashboardReadinessScore)}
               value={`${result.score}%`}
               tone="score"
             />
             <Metric
-              label={readinessStatusLabel("READY")}
+              label={t(readinessStatusKey("READY"))}
               value={result.readyIssues}
               tone="ready"
             />
             <Metric
-              label={readinessStatusLabel("INCOMPLETE")}
+              label={t(readinessStatusKey("INCOMPLETE"))}
               value={result.incompleteIssues}
               tone="incomplete"
             />
             <Metric
-              label={readinessStatusLabel("BLOCKED")}
+              label={t(readinessStatusKey("BLOCKED"))}
               value={result.blockedIssues}
               tone="blocked"
             />
@@ -112,8 +119,10 @@ export function ReleaseDashboard({
             <Panel>
               <div className="panel-heading">
                 <div>
-                  <p className="eyebrow">Prioritäten</p>
-                  <h2>Wichtigste Probleme</h2>
+                  <p className="eyebrow">
+                    {t(I18N_KEYS.releaseDashboardPrioritiesEyebrow)}
+                  </p>
+                  <h2>{t(I18N_KEYS.releaseDashboardPrioritiesTitle)}</h2>
                 </div>
                 <StatusBadge status={result.status} />
               </div>
@@ -126,6 +135,11 @@ export function ReleaseDashboard({
                     item.evidence.find(
                       (evidence) => evidence.status === "INCOMPLETE",
                     );
+
+                  const localizedFirst = first
+                    ? localizeEvidenceOutcome(first.outcome, locale, t)
+                    : null;
+
                   return (
                     <button
                       type="button"
@@ -134,7 +148,7 @@ export function ReleaseDashboard({
                     >
                       <StatusBadge status={item.status} />
                       <strong>{item.issueKey}</strong>
-                      <span>{first?.title}</span>
+                      <span>{localizedFirst?.title}</span>
                       <b>{item.score}%</b>
                     </button>
                   );
@@ -145,24 +159,41 @@ export function ReleaseDashboard({
           <Panel className="table-panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Nachweismatrix</p>
-                <h2>Vorgänge im Release</h2>
+                <p className="eyebrow">
+                  {t(I18N_KEYS.releaseDashboardMatrixEyebrow)}
+                </p>
+                <h2>{t(I18N_KEYS.releaseDashboardMatrixTitle)}</h2>
               </div>
             </div>
             <div className="table-wrap">
               <table>
                 <caption className="visually-hidden">
-                  Nachweismatrix aller analysierten Vorgänge
+                  {t(I18N_KEYS.releaseDashboardMatrixCaption)}
                 </caption>
                 <thead>
                   <tr>
-                    <th scope="col">Vorgang</th>
-                    <th scope="col">Typ</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Blockierungen</th>
-                    <th scope="col">Fehlend</th>
-                    <th scope="col">Bewertung</th>
-                    <th scope="col" aria-label="Aktionen" />
+                    <th scope="col">
+                      {t(I18N_KEYS.releaseDashboardTableIssue)}
+                    </th>
+                    <th scope="col">
+                      {t(I18N_KEYS.releaseDashboardTableType)}
+                    </th>
+                    <th scope="col">
+                      {t(I18N_KEYS.releaseDashboardTableStatus)}
+                    </th>
+                    <th scope="col">
+                      {t(I18N_KEYS.releaseDashboardTableBlockers)}
+                    </th>
+                    <th scope="col">
+                      {t(I18N_KEYS.releaseDashboardTableMissingEvidence)}
+                    </th>
+                    <th scope="col">
+                      {t(I18N_KEYS.releaseDashboardTableScore)}
+                    </th>
+                    <th
+                      scope="col"
+                      aria-label={t(I18N_KEYS.releaseDashboardTableActions)}
+                    />
                   </tr>
                 </thead>
                 <tbody>
@@ -191,7 +222,7 @@ export function ReleaseDashboard({
                             type="button"
                             onClick={() => onDetail(item.issueKey)}
                           >
-                            Details →
+                            {t(I18N_KEYS.releaseDashboardTableDetails)} →
                           </button>
                         </td>
                       </tr>

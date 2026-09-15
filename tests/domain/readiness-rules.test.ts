@@ -21,21 +21,11 @@ function context(overrides: Parameters<typeof issue>[0] = {}) {
 
 describe("acceptance-criteria-present", () => {
   it.each([
-    [
-      true,
-      "READY",
-      "Das konfigurierte Feld enthält Akzeptanzkriterien.",
-      "Keine Maßnahme erforderlich.",
-    ],
-    [
-      false,
-      "INCOMPLETE",
-      "Im konfigurierten Feld wurden keine verwertbaren Akzeptanzkriterien gefunden.",
-      "Konkrete und prüfbare Akzeptanzkriterien im konfigurierten Jira-Feld ergänzen.",
-    ],
+    [true, "READY", "acceptance-criteria-present/present"],
+    [false, "INCOMPLETE", "acceptance-criteria-present/missing"],
   ] as const)(
-    "bewertet hasAcceptanceCriteria=%s als %s mit unveränderter Evidence",
-    (hasAcceptanceCriteria, status, explanation, remediation) => {
+    "bewertet hasAcceptanceCriteria=%s als %s mit semantischer Evidence",
+    (hasAcceptanceCriteria, status, outcomeId) => {
       expect(
         acceptanceCriteriaPresentRule.evaluate(
           context({ hasAcceptanceCriteria }),
@@ -44,9 +34,7 @@ describe("acceptance-criteria-present", () => {
         ruleId: "acceptance-criteria-present",
         category: "DOCUMENTATION",
         status,
-        title: "Akzeptanzkriterien vorhanden",
-        explanation,
-        remediation,
+        outcome: { outcomeId, params: {} },
         sourceField: projectConfig.acceptanceCriteriaFieldId,
       });
     },
@@ -85,7 +73,10 @@ describe("no-open-subtasks", () => {
       }),
     );
     expect(result.status).toBe("BLOCKED");
-    expect(result.explanation).toContain("DEMO-43");
+    expect(result.outcome).toEqual({
+      outcomeId: "no-open-subtasks/blocked",
+      params: { count: 1, issueKeys: ["DEMO-43"] },
+    });
   });
 
   it("ist bei deaktivierter Prüfung nicht anwendbar", () => {
@@ -117,7 +108,10 @@ describe("no-blocking-links", () => {
       }),
     );
     expect(result.status).toBe("BLOCKED");
-    expect(result.remediation).toContain("Blocker");
+    expect(result.outcome).toEqual({
+      outcomeId: "no-blocking-links/blocked",
+      params: { issueKeys: ["DEMO-7"] },
+    });
   });
 
   it("ignoriert gelöste Blocker-Verknüpfungen", () => {
@@ -148,11 +142,10 @@ describe("correct-fix-version", () => {
       config: config({ releaseScopeMode: "VERSION_ONLY" }),
     });
     expect(result.status).toBe("NOT_APPLICABLE");
-    expect(result.explanation).toContain("vorgefiltert");
-    expect(result.explanation).toContain("Nur Jira-Version");
-    expect(result.explanation).not.toContain("VERSION_ONLY");
-    expect(result.remediation).toContain("Expliziter JQL-Umfang");
-    expect(result.remediation).not.toContain("JQL_SCOPE");
+    expect(result.outcome).toEqual({
+      outcomeId: "correct-fix-version/version-only",
+      params: {},
+    });
   });
 
   it("akzeptiert im JQL_SCOPE exakt die analysierte Versions-ID", () => {
@@ -169,18 +162,32 @@ describe("correct-fix-version", () => {
       }),
     );
     expect(missing.status).toBe("INCOMPLETE");
-    expect(missing.explanation).toContain("keine Jira-Version");
+    expect(missing.outcome).toEqual({
+      outcomeId: "correct-fix-version/missing-version",
+      params: { expectedVersionName: "Kundenrelease 2.4" },
+    });
     expect(wrong.status).toBe("INCOMPLETE");
-    expect(wrong.explanation).toContain("Anderes Release");
+    expect(wrong.outcome).toEqual({
+      outcomeId: "correct-fix-version/wrong-version",
+      params: {
+        assignedVersionNames: ["Anderes Release"],
+        expectedVersionName: "Kundenrelease 2.4",
+      },
+    });
   });
 });
 
 describe("no-blocker-label", () => {
   it("vergleicht Blocker-Labels ohne Beachtung der Großschreibung", () => {
-    expect(
-      noBlockerLabelRule.evaluate(context({ labels: ["Release-Blocker"] }))
-        .status,
-    ).toBe("BLOCKED");
+    const result = noBlockerLabelRule.evaluate(
+      context({ labels: ["Release-Blocker"] }),
+    );
+
+    expect(result.status).toBe("BLOCKED");
+    expect(result.outcome).toEqual({
+      outcomeId: "no-blocker-label/blocked",
+      params: { blockerLabels: ["Release-Blocker"] },
+    });
   });
 
   it("akzeptiert nicht blockierende Labels", () => {
@@ -189,6 +196,20 @@ describe("no-blocker-label", () => {
 });
 
 describe("approval-marker-present", () => {
+  it("vergleicht den Marker unabhängig von Großschreibung und bewahrt den Rohwert", () => {
+    const candidate = context({ labels: ["customer-approved"] });
+    const result = approvalMarkerPresentRule.evaluate({
+      ...candidate,
+      config: { ...projectConfig, approvalMarker: " Customer-Approved " },
+    });
+
+    expect(result.status).toBe("READY");
+    expect(result.outcome).toEqual({
+      outcomeId: "approval-marker-present/present",
+      params: { approvalMarker: " Customer-Approved " },
+    });
+  });
+
   it("meldet das konfigurierte Freigabe-Label als fehlend", () => {
     expect(
       approvalMarkerPresentRule.evaluate(context({ labels: [] })).status,

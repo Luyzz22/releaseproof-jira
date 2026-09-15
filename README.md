@@ -27,6 +27,14 @@ Feldunterstützung; nicht-textuelle Werte werden nicht als Nachweis interpretier
 
 Die Architektur ist in [docs/architecture.md](docs/architecture.md) beschrieben. Produktgrenzen stehen in [docs/product-scope.md](docs/product-scope.md).
 
+## Sprache und Lokalisierung
+
+`en-US` ist die Standard- und Fallback-Sprache von ReleaseProof; `de-DE` wird vollständig unterstützt. Für unterstützte Sprachen folgt die aktive Oberfläche dem Atlassian/Jira-Benutzerkontext. Fehlende oder nicht unterstützte Locale-Werte fallen auf `en-US` zurück.
+
+Der Sprachvertrag gilt für sichtbare Oberflächentexte, assistive Beschriftungen, Fehler und Validierung, Readiness- und Evidence-Darstellung, Datumsangaben sowie erzeugte Markdown-Berichte. Jira-Projektnamen, Vorgangsschlüssel, Vorgangstypen und Statusnamen, Versionsnamen, Labels, JQL und andere von Jira gelieferte Laufzeitdaten werden nicht übersetzt.
+
+ReleaseProof hat keine eigene Sprachauswahl und kein separates Benutzerkonto. Die Implementierungsquellen sind `manifest.yml`, `locales/en-US.json` und `locales/de-DE.json`.
+
 ## Voraussetzungen
 
 - Node.js 20.19 oder neuer; für Forge Deployment wird Node.js 22 oder 24 empfohlen.

@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReleaseReadinessResultDto } from "../../shared/release-readiness-dto";
 import { Panel } from "../components/panel";
 import { StatusBadge } from "../components/status-badge";
-import { formatDateTime } from "../utils/format";
-import { readinessStatusLabel } from "../utils/readiness-status";
+import { formatDateTimeForLocale } from "../utils/format";
+import { useI18n } from "../i18n/context";
+import { localizeEvidenceOutcome } from "../i18n/evidence-presentation";
+import { I18N_KEYS } from "../i18n/keys";
+import { readinessStatusKey } from "../i18n/readiness-status-keys";
 import {
-  releaseScopeExplanation,
-  releaseScopeModeLabel,
+  releaseScopeExplanationForLocale,
+  releaseScopeModeLabelForLocale,
 } from "../utils/release-scope";
 import { buildMarkdownReport, getOpenFindings } from "../utils/report";
 
@@ -19,7 +22,11 @@ export function ReportView({
   result: ReleaseReadinessResultDto;
   onBack: () => void;
 }) {
-  const report = useMemo(() => buildMarkdownReport(result), [result]);
+  const { locale, t } = useI18n();
+  const report = useMemo(
+    () => buildMarkdownReport(result, locale, t),
+    [locale, result, t],
+  );
   const findings = useMemo(() => getOpenFindings(result), [result]);
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const resetTimer = useRef<number | null>(null);
@@ -44,19 +51,19 @@ export function ReportView({
 
   const copyLabel =
     copyState === "copied"
-      ? "Kopiert"
+      ? t(I18N_KEYS.reportViewCopyCopied)
       : copyState === "failed"
-        ? "Kopieren fehlgeschlagen"
-        : "Markdown kopieren";
+        ? t(I18N_KEYS.reportViewCopyFailed)
+        : t(I18N_KEYS.reportViewCopyIdle);
 
   return (
     <div className="report-stack">
       <header className="page-heading no-print">
         <div>
           <button className="back-button" type="button" onClick={onBack}>
-            ← Zurück zur Übersicht
+            ← {t(I18N_KEYS.reportViewBackToOverview)}
           </button>
-          <p className="eyebrow">Übergabebericht</p>
+          <p className="eyebrow">{t(I18N_KEYS.reportViewHandoffEyebrow)}</p>
           <h1>{result.release.versionName}</h1>
         </div>
         <div className="heading-actions">
@@ -72,74 +79,81 @@ export function ReportView({
             type="button"
             onClick={() => window.print()}
           >
-            Drucken
+            {t(I18N_KEYS.reportViewPrint)}
           </button>
           <span className="visually-hidden" role="status" aria-live="polite">
             {copyState === "copied"
-              ? "Markdown-Bericht wurde in die Zwischenablage kopiert."
+              ? t(I18N_KEYS.reportViewCopyStatusCopied)
               : copyState === "failed"
-                ? "Markdown-Bericht konnte nicht kopiert werden."
+                ? t(I18N_KEYS.reportViewCopyStatusFailed)
                 : ""}
           </span>
         </div>
       </header>
       <Panel
         className="report-sheet"
-        aria-label="Bericht zur Release-Bereitschaft"
+        aria-label={t(I18N_KEYS.reportViewSheetAriaLabel)}
       >
         <div className="report-title">
           <div>
-            <p className="eyebrow">Bericht zur Release-Bereitschaft</p>
+            <p className="eyebrow">{t(I18N_KEYS.reportViewReportEyebrow)}</p>
             <h2 className="report-release-name">
               {result.release.versionName}
             </h2>
             <p>
-              {result.release.projectKey} · {formatDateTime(result.generatedAt)}
+              {result.release.projectKey} ·{" "}
+              {formatDateTimeForLocale(result.generatedAt, locale, t)}
             </p>
             <p className="scope-context">
               <strong>
-                Umfang: {releaseScopeModeLabel(result.release.releaseScopeMode)}
+                {t(I18N_KEYS.reportViewScopeLabel)}:{" "}
+                {releaseScopeModeLabelForLocale(
+                  result.release.releaseScopeMode,
+                  t,
+                )}
               </strong>
-              <code>{releaseScopeExplanation(result.release)}</code>
+              <code>{releaseScopeExplanationForLocale(result.release, t)}</code>
             </p>
           </div>
           <div className="report-score">
             <StatusBadge status={result.status} />
             <strong>{result.score}%</strong>
-            <span>Bereitschaft</span>
+            <span>{t(I18N_KEYS.reportViewReadinessLabel)}</span>
           </div>
         </div>
         <div className="report-summary">
           <div>
-            <span>Gesamt</span>
+            <span>{t(I18N_KEYS.reportViewSummaryTotal)}</span>
             <strong>{result.totalIssues}</strong>
           </div>
           <div>
-            <span>{readinessStatusLabel("READY")}</span>
+            <span>{t(readinessStatusKey("READY"))}</span>
             <strong>{result.readyIssues}</strong>
           </div>
           <div>
-            <span>{readinessStatusLabel("INCOMPLETE")}</span>
+            <span>{t(readinessStatusKey("INCOMPLETE"))}</span>
             <strong>{result.incompleteIssues}</strong>
           </div>
           <div>
-            <span>{readinessStatusLabel("BLOCKED")}</span>
+            <span>{t(readinessStatusKey("BLOCKED"))}</span>
             <strong>{result.blockedIssues}</strong>
           </div>
         </div>
-        <h2>Nachweismatrix</h2>
+        <h2>{t(I18N_KEYS.reportViewMatrixHeading)}</h2>
         <div className="table-wrap">
           <table>
             <caption className="visually-hidden">
-              Zusammenfassung der Release-Bereitschaft je Jira-Vorgang
+              {t(I18N_KEYS.reportViewMatrixCaption)}
             </caption>
             <thead>
               <tr>
-                <th scope="col">Vorgang</th>
-                <th scope="col">Status</th>
-                <th scope="col">Bewertung</th>
-                <th scope="col">Blockierungen</th>
-                <th scope="col">Fehlend</th>
+                <th scope="col">{t(I18N_KEYS.reportViewMatrixTableIssue)}</th>
+                <th scope="col">{t(I18N_KEYS.reportViewMatrixTableStatus)}</th>
+                <th scope="col">{t(I18N_KEYS.reportViewMatrixTableScore)}</th>
+                <th scope="col">
+                  {t(I18N_KEYS.reportViewMatrixTableBlockers)}
+                </th>
+                <th scope="col">{t(I18N_KEYS.reportViewMatrixTableMissing)}</th>
               </tr>
             </thead>
             <tbody>
@@ -159,32 +173,46 @@ export function ReportView({
             </tbody>
           </table>
         </div>
-        <h2>Blockierungen und fehlende Nachweise</h2>
+        <h2>{t(I18N_KEYS.reportFindingsHeading)}</h2>
         <div className="report-findings">
           {findings.length === 0 ? (
-            <p>Keine offenen Nachweise gefunden.</p>
+            <p>{t(I18N_KEYS.reportFindingsEmpty)}</p>
           ) : (
-            findings.map(({ issueKey, evidence }) => (
-              <div key={`${issueKey}-${evidence.ruleId}`}>
-                <StatusBadge status={evidence.status} />
-                <strong>
-                  {issueKey} · {evidence.title}
-                </strong>
-                <p>{evidence.explanation}</p>
-                <small>Behebung: {evidence.remediation}</small>
-              </div>
-            ))
+            findings.map(({ issueKey, evidence }) => {
+              const localizedEvidence = localizeEvidenceOutcome(
+                evidence.outcome,
+                locale,
+                t,
+              );
+
+              return (
+                <div key={`${issueKey}-${evidence.ruleId}`}>
+                  <StatusBadge status={evidence.status} />
+                  <strong>
+                    {issueKey} · {localizedEvidence.title}
+                  </strong>
+                  <p>{localizedEvidence.explanation}</p>
+                  <small>
+                    {t(I18N_KEYS.reportFindingsRemediationLead)}{" "}
+                    {localizedEvidence.remediation}
+                  </small>
+                </div>
+              );
+            })
           )}
         </div>
       </Panel>
       <Panel className="markdown-panel no-print">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Weitergabe</p>
-            <h2>Markdown-Vorschau</h2>
+            <p className="eyebrow">{t(I18N_KEYS.reportViewSharingEyebrow)}</p>
+            <h2>{t(I18N_KEYS.reportViewMarkdownPreviewHeading)}</h2>
           </div>
         </div>
-        <pre tabIndex={0} aria-label="Markdown-Bericht">
+        <pre
+          tabIndex={0}
+          aria-label={t(I18N_KEYS.reportViewMarkdownPreviewAriaLabel)}
+        >
           {report}
         </pre>
       </Panel>

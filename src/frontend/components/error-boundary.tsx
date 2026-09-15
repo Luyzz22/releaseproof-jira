@@ -1,11 +1,18 @@
 import { Component, type ReactNode } from "react";
+import type { TranslationFunction } from "../i18n/context";
+import { I18N_KEYS } from "../i18n/keys";
+
+interface ReleaseProofErrorBoundaryProps {
+  children: ReactNode;
+  t: TranslationFunction;
+}
 
 interface ErrorBoundaryState {
   failed: boolean;
 }
 
 export class ReleaseProofErrorBoundary extends Component<
-  { children: ReactNode },
+  ReleaseProofErrorBoundaryProps,
   ErrorBoundaryState
 > {
   override state: ErrorBoundaryState = { failed: false };
@@ -19,6 +26,8 @@ export class ReleaseProofErrorBoundary extends Component<
   }
 
   override render() {
+    const { t } = this.props;
+
     if (this.state.failed) {
       return (
         <main className="shell shell--center">
@@ -27,18 +36,27 @@ export class ReleaseProofErrorBoundary extends Component<
               !
             </div>
             <div>
-              <p className="eyebrow">Sicherer Wiederherstellungsmodus</p>
-              <h1>Diese Ansicht konnte nicht dargestellt werden.</h1>
+              <p className="eyebrow">
+                {t(I18N_KEYS.errorBoundaryEyebrow, "Safe recovery mode")}
+              </p>
+              <h1>
+                {t(
+                  I18N_KEYS.errorBoundaryTitle,
+                  "This view could not be displayed.",
+                )}
+              </h1>
               <p>
-                Es wurden keine Jira-Inhalte protokolliert. Laden Sie die App
-                neu, um fortzufahren.
+                {t(
+                  I18N_KEYS.errorBoundaryDescription,
+                  "No Jira content was logged. Reload the app to continue.",
+                )}
               </p>
               <button
                 type="button"
                 className="button"
                 onClick={() => window.location.reload()}
               >
-                ReleaseProof neu laden
+                {t(I18N_KEYS.errorBoundaryReload, "Reload ReleaseProof")}
               </button>
             </div>
           </section>

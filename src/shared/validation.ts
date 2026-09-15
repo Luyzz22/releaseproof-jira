@@ -5,16 +5,18 @@ import {
   type ReleaseScopeMode,
 } from "../domain/models/readiness";
 
-const jiraId = z.string().regex(/^\d+$/, "Jira-ID muss numerisch sein.");
-const projectKey = z
-  .string()
-  .regex(/^[A-Z][A-Z0-9_]{0,19}$/, "Ungültiger Projektschlüssel.");
-const fieldId = z
-  .string()
-  .regex(/^(customfield_\d+|[a-z][a-zA-Z0-9_-]*)$/, "Ungültige Jira-Feld-ID.");
-const label = z.string().trim().min(1).max(255);
-
 export const RELEASE_SCOPE_JQL_MAX_LENGTH = 2_000;
+
+const ACCEPTED_STATUSES_MAX_ITEMS = 100;
+const INCLUDED_ISSUE_TYPES_MAX_ITEMS = 100;
+const BLOCKER_LABELS_MAX_ITEMS = 50;
+const LABEL_MAX_LENGTH = 255;
+const FIELD_ID_PATTERN = /^(customfield_\d+|[a-z][a-zA-Z0-9_-]*)$/;
+
+const jiraId = z.string().regex(/^\d+$/);
+const projectKey = z.string().regex(/^[A-Z][A-Z0-9_]{0,19}$/);
+const fieldId = z.string().regex(FIELD_ID_PATTERN);
+const label = z.string().trim().min(1).max(LABEL_MAX_LENGTH);
 
 type JqlTokenKind =
   "WORD" | "STRING" | "OPERATOR" | "LPAREN" | "RPAREN" | "COMMA";
@@ -41,20 +43,44 @@ interface ParsedJqlClause {
 
 type ParseJqlResult = { ok: true; clauses: ParsedJqlClause[] } | { ok: false };
 
-export type ReleaseScopeJqlValidation =
-  | { valid: true }
+export type ReleaseScopeJqlSyntaxReason =
+  "UNCLOSED_STRING" | "INVALID_BARE_TOKEN" | "UNSUPPORTED_SYNTAX";
+
+export type ReleaseScopeJqlProjectRequiredReason =
+  "PROJECT_PREFIX_REQUIRED" | "ADDITIONAL_PROJECT_REFERENCE";
+
+export type ReleaseScopeJqlValidationFailure =
+  | { valid: false; code: "EMPTY" }
   | {
       valid: false;
-      code:
-        | "EMPTY"
-        | "TOO_LONG"
-        | "FIX_VERSION_FORBIDDEN"
-        | "PROJECT_REQUIRED"
-        | "PROJECT_MISMATCH"
-        | "OR_FORBIDDEN"
-        | "SYNTAX_INVALID";
-      message: string;
+      code: "TOO_LONG";
+      maxLength: number;
+    }
+  | {
+      valid: false;
+      code: "FIX_VERSION_FORBIDDEN" | "OR_FORBIDDEN";
+    }
+  | {
+      valid: false;
+      code: "PROJECT_REQUIRED";
+      reason: ReleaseScopeJqlProjectRequiredReason;
+    }
+  | {
+      valid: false;
+      code: "PROJECT_MISMATCH";
+      expectedProjectKey: string;
+    }
+  | {
+      valid: false;
+      code: "SYNTAX_INVALID";
+      reason: ReleaseScopeJqlSyntaxReason;
     };
+
+export type ReleaseScopeJqlValidationCode =
+  ReleaseScopeJqlValidationFailure["code"];
+
+export type ReleaseScopeJqlValidation =
+  { valid: true } | ReleaseScopeJqlValidationFailure;
 
 const COMPARISON_OPERATORS: ReadonlySet<string> = new Set([
   "=",
@@ -426,14 +452,13 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "EMPTY",
-      message: "Der explizite Release-Umfang darf nicht leer sein.",
     };
   }
   if (value.length > RELEASE_SCOPE_JQL_MAX_LENGTH) {
     return {
       valid: false,
       code: "TOO_LONG",
-      message: `Der Release-Umfang darf höchstens ${RELEASE_SCOPE_JQL_MAX_LENGTH} Zeichen enthalten.`,
+      maxLength: RELEASE_SCOPE_JQL_MAX_LENGTH,
     };
   }
 
@@ -442,10 +467,7 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "SYNTAX_INVALID",
-      message:
-        tokenized.error === "UNCLOSED_STRING"
-          ? "Der Release-Umfang enthält eine nicht geschlossene Zeichenfolge."
-          : "Der Release-Umfang enthält einen nicht unterstützten ungequoteten JQL-Wert. Werte mit Sonderzeichen müssen in Anführungszeichen stehen.",
+      reason: tokenized.error,
     };
   }
   const { tokens } = tokenized;
@@ -454,8 +476,6 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "OR_FORBIDDEN",
-      message:
-        "OR ist im Release-Umfang nicht zulässig, weil die Projektbegrenzung für jeden Treffer gelten muss.",
     };
   }
 
@@ -464,8 +484,7 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "SYNTAX_INVALID",
-      message:
-        "Der Release-Umfang ist syntaktisch unvollständig oder verwendet eine nicht unterstützte JQL-Form.",
+      reason: "UNSUPPORTED_SYNTAX",
     };
   }
 
@@ -478,7 +497,6 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "FIX_VERSION_FORBIDDEN",
-      message: "Der Release-Umfang darf keine fixVersion-Bedingung enthalten.",
     };
   }
 
@@ -493,14 +511,14 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "PROJECT_REQUIRED",
-      message: "Der Release-Umfang muss mit „project = PROJEKTKEY“ beginnen.",
+      reason: "PROJECT_PREFIX_REQUIRED",
     };
   }
   if (projectClause.values[0]!.value.toUpperCase() !== expectedProjectKey) {
     return {
       valid: false,
       code: "PROJECT_MISMATCH",
-      message: `Der Release-Umfang muss auf das aktuelle Projekt ${expectedProjectKey} begrenzt sein.`,
+      expectedProjectKey,
     };
   }
 
@@ -511,8 +529,7 @@ export function validateReleaseScopeJql(
     return {
       valid: false,
       code: "PROJECT_REQUIRED",
-      message:
-        "Der Release-Umfang darf die Projektbegrenzung nicht erneut verändern.",
+      reason: "ADDITIONAL_PROJECT_REFERENCE",
     };
   }
 
@@ -528,12 +545,15 @@ export const projectContextSchema = z.object({
 const legacyProjectConfigInputShape = {
   projectId: jiraId,
   projectKey,
-  acceptedStatusIds: z.array(jiraId).min(1).max(100),
+  acceptedStatusIds: z.array(jiraId).min(1).max(ACCEPTED_STATUSES_MAX_ITEMS),
   acceptanceCriteriaFieldId: fieldId,
-  blockerLabels: z.array(label).max(50),
-  includedIssueTypes: z.array(jiraId).min(1).max(100),
+  blockerLabels: z.array(label).max(BLOCKER_LABELS_MAX_ITEMS),
+  includedIssueTypes: z
+    .array(jiraId)
+    .min(1)
+    .max(INCLUDED_ISSUE_TYPES_MAX_ITEMS),
   requireApprovalMarker: z.boolean(),
-  approvalMarker: z.string().trim().max(255),
+  approvalMarker: z.string().trim().max(LABEL_MAX_LENGTH),
   blockOnOpenSubtasks: z.boolean(),
 } as const;
 
@@ -550,9 +570,40 @@ interface ScopeConfigValue {
   approvalMarker: string;
 }
 
+export type ProjectConfigValidationFailure =
+  | {
+      code:
+        | "INVALID_CONFIGURATION"
+        | "ACCEPTED_STATUSES_REQUIRED"
+        | "INCLUDED_ISSUE_TYPES_REQUIRED"
+        | "ACCEPTANCE_CRITERIA_FIELD_INVALID"
+        | "BLOCKER_LABEL_INVALID"
+        | "APPROVAL_MARKER_REQUIRED"
+        | "RELEASE_SCOPE_JQL_FORBIDDEN"
+        | "RELEASE_SCOPE_JQL_REQUIRED";
+    }
+  | {
+      code:
+        | "ACCEPTED_STATUSES_LIMIT_EXCEEDED"
+        | "INCLUDED_ISSUE_TYPES_LIMIT_EXCEEDED"
+        | "BLOCKER_LABELS_LIMIT_EXCEEDED";
+      maxItems: number;
+    }
+  | {
+      code: "BLOCKER_LABEL_TOO_LONG" | "APPROVAL_MARKER_TOO_LONG";
+      maxLength: number;
+    }
+  | {
+      code: "RELEASE_SCOPE_JQL_INVALID";
+      validation: ReleaseScopeJqlValidationFailure;
+    };
+
+export type ProjectConfigValidationCode =
+  ProjectConfigValidationFailure["code"];
+
 interface ConfigValidationIssue {
   path: string[];
-  message: string;
+  failure: ProjectConfigValidationFailure;
 }
 
 function configValidationIssues(
@@ -562,7 +613,7 @@ function configValidationIssues(
   if (value.requireApprovalMarker && value.approvalMarker.length === 0) {
     issues.push({
       path: ["approvalMarker"],
-      message: "Bei aktivierter Freigabeprüfung ist ein Label erforderlich.",
+      failure: { code: "APPROVAL_MARKER_REQUIRED" },
     });
   }
 
@@ -570,8 +621,7 @@ function configValidationIssues(
     if (value.releaseScopeJql !== undefined) {
       issues.push({
         path: ["releaseScopeJql"],
-        message:
-          "Eine JQL für den Release-Umfang ist nur im Modus „Expliziter JQL-Umfang“ zulässig.",
+        failure: { code: "RELEASE_SCOPE_JQL_FORBIDDEN" },
       });
     }
     return issues;
@@ -580,7 +630,7 @@ function configValidationIssues(
   if (value.releaseScopeJql === undefined) {
     issues.push({
       path: ["releaseScopeJql"],
-      message: "Bitte geben Sie einen expliziten Release-Umfang an.",
+      failure: { code: "RELEASE_SCOPE_JQL_REQUIRED" },
     });
     return issues;
   }
@@ -592,7 +642,10 @@ function configValidationIssues(
   if (!validation.valid) {
     issues.push({
       path: ["releaseScopeJql"],
-      message: validation.message,
+      failure: {
+        code: "RELEASE_SCOPE_JQL_INVALID",
+        validation,
+      },
     });
   }
   return issues;
@@ -603,13 +656,76 @@ const projectConfigInputObject = z.object({
   ...releaseScopeShape,
 });
 
+interface StructuralValidationIssue {
+  code: string;
+  path: PropertyKey[];
+}
+
+function projectConfigStructuralFailure(
+  issue: StructuralValidationIssue | undefined,
+): ProjectConfigValidationFailure {
+  if (!issue) {
+    return { code: "INVALID_CONFIGURATION" };
+  }
+
+  const field = issue.path[0];
+
+  if (field === "acceptedStatusIds") {
+    if (issue.code === "too_small") {
+      return { code: "ACCEPTED_STATUSES_REQUIRED" };
+    }
+    if (issue.code === "too_big") {
+      return {
+        code: "ACCEPTED_STATUSES_LIMIT_EXCEEDED",
+        maxItems: ACCEPTED_STATUSES_MAX_ITEMS,
+      };
+    }
+  }
+
+  if (field === "includedIssueTypes") {
+    if (issue.code === "too_small") {
+      return { code: "INCLUDED_ISSUE_TYPES_REQUIRED" };
+    }
+    if (issue.code === "too_big") {
+      return {
+        code: "INCLUDED_ISSUE_TYPES_LIMIT_EXCEEDED",
+        maxItems: INCLUDED_ISSUE_TYPES_MAX_ITEMS,
+      };
+    }
+  }
+
+  if (field === "acceptanceCriteriaFieldId") {
+    return { code: "ACCEPTANCE_CRITERIA_FIELD_INVALID" };
+  }
+
+  if (field === "blockerLabels") {
+    if (issue.path.length === 1 && issue.code === "too_big") {
+      return {
+        code: "BLOCKER_LABELS_LIMIT_EXCEEDED",
+        maxItems: BLOCKER_LABELS_MAX_ITEMS,
+      };
+    }
+    if (issue.code === "too_small") {
+      return { code: "BLOCKER_LABEL_INVALID" };
+    }
+    if (issue.code === "too_big") {
+      return { code: "BLOCKER_LABEL_TOO_LONG", maxLength: LABEL_MAX_LENGTH };
+    }
+  }
+
+  if (field === "approvalMarker" && issue.code === "too_big") {
+    return { code: "APPROVAL_MARKER_TOO_LONG", maxLength: LABEL_MAX_LENGTH };
+  }
+
+  return { code: "INVALID_CONFIGURATION" };
+}
+
 export const projectConfigInputSchema = projectConfigInputObject.superRefine(
   (value, context) => {
     for (const issue of configValidationIssues(value)) {
       context.addIssue({
         code: "custom",
         path: issue.path,
-        message: issue.message,
       });
     }
   },
@@ -627,7 +743,6 @@ export const projectConfigSchema = projectConfigInputObject
       context.addIssue({
         code: "custom",
         path: issue.path,
-        message: issue.message,
       });
     }
   });
@@ -670,3 +785,31 @@ export const versionInputSchema = z.object({
 });
 
 export type ProjectConfigInput = z.infer<typeof projectConfigInputSchema>;
+
+export type ProjectConfigInputValidation =
+  | { valid: true; data: ProjectConfigInput }
+  | { valid: false; failure: ProjectConfigValidationFailure };
+
+export function validateProjectConfigInput(
+  value: unknown,
+): ProjectConfigInputValidation {
+  const parsed = projectConfigInputSchema.safeParse(value);
+  if (parsed.success) {
+    return { valid: true, data: parsed.data };
+  }
+
+  const structural = projectConfigInputObject.safeParse(value);
+  if (!structural.success) {
+    return {
+      valid: false,
+      failure: projectConfigStructuralFailure(structural.error.issues[0]),
+    };
+  }
+
+  return {
+    valid: false,
+    failure:
+      configValidationIssues(structural.data)[0]?.failure ??
+      projectConfigStructuralFailure(parsed.error.issues[0]),
+  };
+}

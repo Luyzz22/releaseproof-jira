@@ -24,7 +24,7 @@ ReleaseProof is a Jira Cloud release-readiness assistant for software agencies. 
 - TypeScript strict mode is mandatory. Avoid `any`; narrow `unknown` at boundaries.
 - Domain rules are deterministic pure functions with stable `ruleId` values.
 - Prefer small modules, explicit return types at public boundaries and immutable inputs.
-- All user-facing strings are German.
+- English (`en-US`) is the default/fallback locale and German (`de-DE`) is fully supported. ReleaseProof-owned user-facing and assistive presentation must use the centralized i18n contract and follow the supported Atlassian/Jira user locale. Jira/customer runtime data must not be translated; internal IDs, codes and contracts remain language-neutral.
 - Do not log Jira descriptions, comments, acceptance criteria or complete issue payloads.
 - Format with Prettier and lint with ESLint. Do not leave critical TODOs in production paths.
 

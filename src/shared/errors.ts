@@ -31,38 +31,15 @@ export interface SafeError {
   retryAfterSeconds?: number;
 }
 
-const PUBLIC_MESSAGES: Record<AppErrorCode, string> = {
-  INVALID_INPUT:
-    "Die Eingabe ist ungültig. Bitte prüfen Sie die Konfiguration.",
-  PROJECT_CONTEXT_MISSING: "Der Jira-Projektkontext ist nicht verfügbar.",
-  CONFIG_REQUIRED:
-    "Bitte konfigurieren Sie das Projekt, bevor Sie eine Analyse starten.",
-  VERSION_NOT_FOUND:
-    "Die ausgewählte Jira-Version existiert nicht mehr oder ist nicht zugänglich.",
-  PERMISSION_DENIED:
-    "Für diese Aktion fehlen die erforderlichen Jira-Berechtigungen.",
-  RATE_LIMITED:
-    "Jira begrenzt die Anfragen vorübergehend. Bitte versuchen Sie es später erneut.",
-  RESULT_LIMIT_EXCEEDED:
-    "Die Datenmenge ist für eine synchrone Analyse zu groß. Bitte verkleinern Sie den Release-Umfang.",
-  JIRA_UNAVAILABLE: "Jira konnte vorübergehend nicht erreicht werden.",
-  STORAGE_UNAVAILABLE:
-    "Die Projektkonfiguration konnte vorübergehend nicht gespeichert oder geladen werden.",
-  STORAGE_CORRUPT:
-    "Die gespeicherte Projektkonfiguration ist ungültig und muss neu gespeichert werden.",
-  UNKNOWN_ERROR:
-    "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
-};
-
 export function toSafeError(error: unknown): SafeError {
   if (error instanceof AppError) {
     return {
       code: error.code,
-      message: PUBLIC_MESSAGES[error.code],
+      message: error.code,
       ...(error.retryAfterSeconds === undefined
         ? {}
         : { retryAfterSeconds: error.retryAfterSeconds }),
     };
   }
-  return { code: "UNKNOWN_ERROR", message: PUBLIC_MESSAGES.UNKNOWN_ERROR };
+  return { code: "UNKNOWN_ERROR", message: "UNKNOWN_ERROR" };
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { evidenceOutcome } from "../../src/domain/models/evidence-outcome";
 import type { EvidenceItem } from "../../src/domain/models/readiness";
 import {
   calculateIssueScore,
@@ -6,16 +7,54 @@ import {
 } from "../../src/domain/services/scoring";
 
 function evidence(status: EvidenceItem["status"]): EvidenceItem {
-  return {
-    ruleId: "test",
-    issueKey: "DEMO-1",
-    category: "DOCUMENTATION",
-    status,
-    title: "Test",
-    explanation: "Synthetischer Test.",
-    remediation: "Keine.",
-    sourceField: "test",
-  };
+  switch (status) {
+    case "READY":
+      return {
+        ruleId: "acceptance-criteria-present",
+        issueKey: "DEMO-1",
+        category: "DOCUMENTATION",
+        status,
+        outcome: evidenceOutcome("acceptance-criteria-present/present", {}),
+        sourceField: "test",
+      };
+
+    case "INCOMPLETE":
+      return {
+        ruleId: "acceptance-criteria-present",
+        issueKey: "DEMO-1",
+        category: "DOCUMENTATION",
+        status,
+        outcome: evidenceOutcome("acceptance-criteria-present/missing", {}),
+        sourceField: "test",
+      };
+
+    case "BLOCKED":
+      return {
+        ruleId: "no-blocker-label",
+        issueKey: "DEMO-1",
+        category: "BLOCKER",
+        status,
+        outcome: evidenceOutcome("no-blocker-label/blocked", {
+          blockerLabels: ["test-blocker"],
+        }),
+        sourceField: "test",
+      };
+
+    case "NOT_APPLICABLE":
+      return {
+        ruleId: "no-open-subtasks",
+        issueKey: "DEMO-1",
+        category: "DEPENDENCY",
+        status,
+        outcome: evidenceOutcome("no-open-subtasks/disabled", {}),
+        sourceField: "test",
+      };
+
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
+  }
 }
 
 describe("Score-Berechnung", () => {

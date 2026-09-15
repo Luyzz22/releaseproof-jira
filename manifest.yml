@@ -4,7 +4,8 @@ modules:
       resource: releaseproof-ui
       resolver:
         function: releaseproof-resolver
-      title: ReleaseProof
+      title:
+        i18n: app.title
       layout: blank
   function:
     - key: releaseproof-resolver
@@ -14,6 +15,14 @@ resources:
     path: dist/frontend
     tunnel:
       port: 5173
+translations:
+  resources:
+    - key: en-US
+      path: locales/en-US.json
+    - key: de-DE
+      path: locales/de-DE.json
+  fallback:
+    default: en-US
 permissions:
   scopes:
     - read:jira-work

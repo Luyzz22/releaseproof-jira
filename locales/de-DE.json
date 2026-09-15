@@ -1,0 +1,357 @@
+{
+  "app": {
+    "title": "ReleaseProof"
+  },
+  "shell": {
+    "homeAria": "ReleaseProof Startseite",
+    "projectContextAria": "Aktuelles Jira-Projekt",
+    "primaryNavigationAria": "Hauptnavigation",
+    "skipToMain": "Zum Hauptinhalt springen"
+  },
+  "navigation": {
+    "analysis": "Analyse",
+    "overview": "Übersicht",
+    "configuration": "Konfiguration"
+  },
+  "states": {
+    "loadingFull": "ReleaseProof wird geladen …",
+    "loadingCompact": "Ansicht wird vorbereitet …"
+  },
+  "errors": {
+    "analysisUnavailable": "Analyse nicht verfügbar",
+    "retryLead": "Frühester neuer Versuch in etwa",
+    "retrySeconds": "Sekunden.",
+    "retryAction": "Erneut versuchen",
+    "dismissAria": "Fehlermeldung schließen",
+    "message": {
+      "invalidInput": "Die Eingabe ist ungültig. Bitte prüfen Sie die Konfiguration.",
+      "projectContextMissing": "Der Jira-Projektkontext ist nicht verfügbar.",
+      "configRequired": "Bitte konfigurieren Sie das Projekt, bevor Sie eine Analyse starten.",
+      "versionNotFound": "Die ausgewählte Jira-Version existiert nicht mehr oder ist nicht zugänglich.",
+      "permissionDenied": "Für diese Aktion fehlen die erforderlichen Jira-Berechtigungen.",
+      "rateLimited": "Jira begrenzt die Anfragen vorübergehend. Bitte versuchen Sie es später erneut.",
+      "resultLimitExceeded": "Die Datenmenge ist für eine synchrone Analyse zu groß. Bitte verkleinern Sie den Release-Umfang.",
+      "jiraUnavailable": "Jira konnte vorübergehend nicht erreicht werden.",
+      "storageUnavailable": "Die Projektkonfiguration konnte vorübergehend nicht gespeichert oder geladen werden.",
+      "storageCorrupt": "Die gespeicherte Projektkonfiguration ist ungültig und muss neu gespeichert werden.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+    }
+  },
+  "errorBoundary": {
+    "eyebrow": "Sicherer Wiederherstellungsmodus",
+    "title": "Diese Ansicht konnte nicht dargestellt werden.",
+    "description": "Es wurden keine Jira-Inhalte protokolliert. Laden Sie die App neu, um fortzufahren.",
+    "reload": "ReleaseProof neu laden"
+  },
+  "readinessStatus": {
+    "ready": "Bereit",
+    "incomplete": "Unvollständig",
+    "blocked": "Blockiert",
+    "notApplicable": "Nicht anwendbar",
+    "ariaLabel": "Bereitschaftsstatus"
+  },
+  "releaseDashboard": {
+    "title": "Release-Bereitschaft",
+    "analyzedAtLead": "Analysiert am",
+    "issuesLabel": "Vorgänge",
+    "scopeLabel": "Umfang",
+    "newAnalysis": "Neue Analyse",
+    "openReport": "Bericht öffnen",
+    "empty": {
+      "eyebrow": "Leeres Release",
+      "title": "Keine passenden Vorgänge gefunden",
+      "description": "Der konfigurierte Umfang enthält keine Vorgänge der ausgewählten Vorgangstypen. Bewertung und Status werden deshalb nicht als Aussage zur Release-Bereitschaft interpretiert."
+    },
+    "metric": {
+      "readinessScore": "Bereitschaftswert"
+    },
+    "priorities": {
+      "eyebrow": "Prioritäten",
+      "title": "Wichtigste Probleme"
+    },
+    "matrix": {
+      "eyebrow": "Nachweismatrix",
+      "title": "Vorgänge im Release",
+      "caption": "Nachweismatrix aller analysierten Vorgänge",
+      "table": {
+        "issue": "Vorgang",
+        "type": "Typ",
+        "status": "Status",
+        "blockers": "Blockierungen",
+        "missingEvidence": "Fehlend",
+        "score": "Bewertung",
+        "actions": "Aktionen",
+        "details": "Details"
+      }
+    }
+  },
+  "projectConfiguration": {
+    "eyebrow": "Projektkonfiguration",
+    "titleLead": "Bereitschaftskriterien für",
+    "description": "Legen Sie einmal fest, welche Jira-Nachweise für eine Kundenabnahme erforderlich sind.",
+    "readOnly": {
+      "title": "Nur Jira-Projektadministratoren können diese Konfiguration ändern.",
+      "description": "Sie können die aktuell gespeicherten Kriterien ansehen und Release-Analysen ausführen. Änderungen müssen von einem Projektadministrator gespeichert werden."
+    },
+    "workflowScope": {
+      "heading": "Arbeitsablauf und Umfang",
+      "description": "Welche Vorgänge gelten als abgeschlossen und werden ausgewertet?",
+      "releaseScopeLegend": "Release-Umfang",
+      "versionOnlyDescription": "Rückwärtskompatibel: lädt ausschließlich Vorgänge der ausgewählten fixVersion.",
+      "jqlScopeDescription": "Trennt fachlichen Umfang und erwartete Jira-Version.",
+      "versionOnlyWarning": {
+        "title": "Versionslücken bleiben in diesem Modus unsichtbar.",
+        "description": "Vorgänge ohne oder mit anderer fixVersion werden bereits vor der Prüfung ausgeschlossen. Die Versionsregel wird deshalb ehrlich als nicht anwendbar ausgewiesen."
+      },
+      "jqlLabel": "Projektgebundene JQL-Abfrage",
+      "jqlHelpPrefix": "Muss mit project =",
+      "jqlHelpSuffix": "beginnen; fixVersion und OR sind nicht zulässig.",
+      "charactersLabel": "Zeichen.",
+      "acceptedStatusesLegend": "Abgeschlossene Status",
+      "relevantIssueTypesLegend": "Relevante Vorgangstypen"
+    },
+    "evidenceBlockers": {
+      "heading": "Nachweise und Blockierungen",
+      "description": "ReleaseProof liest nur die hier benötigten Felder.",
+      "acceptanceCriteriaFieldLabel": "Feld für Akzeptanzkriterien",
+      "acceptanceCriteriaFieldPlaceholder": "Feld auswählen",
+      "acceptanceCriteriaRecovery": {
+        "title": "Das bisher konfigurierte Feld für Akzeptanzkriterien wird nicht unterstützt.",
+        "description": "Bitte wählen Sie ein unterstütztes Textfeld aus und speichern Sie die Projektkonfiguration erneut."
+      },
+      "blockingLabelsLabel": "Blockierungs-Labels",
+      "commaSeparated": "durch Komma getrennt",
+      "blockOpenSubtasksLabel": "Offene Unteraufgaben blockieren",
+      "requireApprovalMarkerLabel": "Freigabemarkierung verlangen",
+      "requireApprovalMarkerDescription": "Ein Jira-Label dient als expliziter Freigabenachweis.",
+      "approvalLabel": "Freigabe-Label"
+    },
+    "actions": {
+      "storageDescription": "Konfiguration wird projektbezogen in Forge KVS gespeichert.",
+      "saving": "Wird gespeichert …",
+      "save": "Konfiguration speichern"
+    },
+    "validation": {
+      "unsupportedField": "Bitte wählen Sie ein unterstütztes Textfeld für Akzeptanzkriterien aus.",
+      "fallback": "Bitte prüfen Sie die Projektkonfiguration.",
+      "acceptedStatusesRequired": "Bitte wählen Sie mindestens einen abgeschlossenen Status aus.",
+      "acceptedStatusesLimitExceeded": "Es dürfen höchstens {maxItems} abgeschlossene Status ausgewählt werden.",
+      "includedIssueTypesRequired": "Bitte wählen Sie mindestens einen relevanten Vorgangstyp aus.",
+      "includedIssueTypesLimitExceeded": "Es dürfen höchstens {maxItems} relevante Vorgangstypen ausgewählt werden.",
+      "blockerLabelInvalid": "Blockierungs-Labels dürfen nicht leer sein.",
+      "blockerLabelTooLong": "Ein Blockierungs-Label darf höchstens {maxLength} Zeichen enthalten.",
+      "blockerLabelsLimitExceeded": "Es dürfen höchstens {maxItems} Blockierungs-Labels angegeben werden.",
+      "approvalMarkerRequired": "Bei aktivierter Freigabeprüfung ist ein Label erforderlich.",
+      "approvalMarkerTooLong": "Das Freigabe-Label darf höchstens {maxLength} Zeichen enthalten.",
+      "releaseScopeJqlForbidden": "Eine JQL für den Release-Umfang ist nur im Modus „Expliziter JQL-Umfang“ zulässig.",
+      "releaseScopeJqlRequired": "Bitte geben Sie einen expliziten Release-Umfang an.",
+      "releaseScopeEmpty": "Der explizite Release-Umfang darf nicht leer sein.",
+      "releaseScopeTooLong": "Der Release-Umfang darf höchstens {maxLength} Zeichen enthalten.",
+      "releaseScopeUnclosedString": "Der Release-Umfang enthält eine nicht geschlossene Zeichenfolge.",
+      "releaseScopeInvalidBareToken": "Der Release-Umfang enthält einen nicht unterstützten ungequoteten JQL-Wert. Werte mit Sonderzeichen müssen in Anführungszeichen stehen.",
+      "releaseScopeSyntaxInvalid": "Der Release-Umfang ist syntaktisch unvollständig oder verwendet eine nicht unterstützte JQL-Form.",
+      "releaseScopeOrForbidden": "OR ist im Release-Umfang nicht zulässig, weil die Projektbegrenzung für jeden Treffer gelten muss.",
+      "releaseScopeFixVersionForbidden": "Der Release-Umfang darf keine fixVersion-Bedingung enthalten.",
+      "releaseScopeProjectRequired": "Der Release-Umfang muss mit „project = PROJEKTKEY“ beginnen.",
+      "releaseScopeAdditionalProjectReference": "Der Release-Umfang darf die Projektbegrenzung nicht erneut verändern.",
+      "releaseScopeProjectMismatch": "Der Release-Umfang muss auf das aktuelle Projekt {expectedProjectKey} begrenzt sein."
+    }
+  },
+  "configuration": {
+    "openSubtasksBlockedExplanation": "Ungelöste Unteraufgaben setzen den Vorgang auf „Blockiert“."
+  },
+  "evidence": {
+    "title": {
+      "acceptanceCriteriaPresent": "Akzeptanzkriterien vorhanden",
+      "acceptedStatus": "Abschlussstatus erreicht",
+      "approvalMarkerPresent": "Freigabemarkierung vorhanden",
+      "correctFixVersion": "Korrekte Release-Version",
+      "noBlockerLabel": "Kein Blocker-Label",
+      "noBlockingLinks": "Keine ungelösten Blocker-Verknüpfungen",
+      "noOpenSubtasks": "Keine offenen Unteraufgaben"
+    },
+    "explanation": {
+      "acceptanceCriteriaPresent": "Das konfigurierte Feld enthält Akzeptanzkriterien.",
+      "acceptanceCriteriaMissing": "Im konfigurierten Feld wurden keine verwertbaren Akzeptanzkriterien gefunden.",
+      "acceptedStatusAccepted": "Der Status „{statusName}“ ist als abgeschlossen konfiguriert.",
+      "acceptedStatusNotAccepted": "Der Status „{statusName}“ ist nicht als abgeschlossen konfiguriert.",
+      "acceptedStatusMissing": "Der Jira-Status fehlt oder konnte nicht gelesen werden.",
+      "approvalMarkerDisabled": "Die Freigabemarkierung ist in der Projektkonfiguration deaktiviert.",
+      "approvalMarkerPresent": "Das Freigabe-Label „{approvalMarker}“ ist vorhanden.",
+      "approvalMarkerMissing": "Das Freigabe-Label „{approvalMarker}“ fehlt.",
+      "correctFixVersionVersionOnly": "Die Versionszuordnung wurde bereits durch den Modus „Nur Jira-Version“ vorgefiltert und kann deshalb nicht unabhängig geprüft werden.",
+      "correctFixVersionAssigned": "Der Vorgang ist der Version „{versionName}“ zugeordnet.",
+      "correctFixVersionWrong": "Der Vorgang ist {assignedVersionNames} statt der erwarteten Version „{expectedVersionName}“ zugeordnet.",
+      "correctFixVersionMissing": "Am Vorgang ist keine Jira-Version zugeordnet; erwartet wird „{expectedVersionName}“.",
+      "noBlockerLabelClear": "Es wurde kein konfiguriertes Blocker-Label gefunden.",
+      "noBlockerLabelBlocked": "Blockierendes Label vorhanden: {blockerLabels}.",
+      "noBlockingLinksClear": "Es wurden keine ungelösten blockierenden Verknüpfungen gefunden.",
+      "noBlockingLinksBlocked": "Ungelöste blockierende Verknüpfung(en): {issueKeys}.",
+      "noOpenSubtasksDisabled": "Die Prüfung offener Unteraufgaben ist in der Projektkonfiguration deaktiviert.",
+      "noOpenSubtasksClear": "Es wurden keine offenen Unteraufgaben gefunden.",
+      "noOpenSubtasksBlocked": "{count} offene Unteraufgabe(n): {issueKeys}."
+    },
+    "remediation": {
+      "none": "Keine Maßnahme erforderlich.",
+      "acceptanceCriteriaMissing": "Konkrete und prüfbare Akzeptanzkriterien im konfigurierten Jira-Feld ergänzen.",
+      "acceptedStatusIncomplete": "Vorgang fachlich abschließen und in einen akzeptierten Status überführen.",
+      "approvalMarkerMissing": "Fachliche Freigabe einholen und anschließend das konfigurierte Label setzen.",
+      "correctFixVersionVersionOnly": "Den Modus „Expliziter JQL-Umfang“ aktivieren, wenn fehlende oder falsche Versionszuordnungen sichtbar werden sollen.",
+      "correctFixVersionAssign": "Die analysierte Version im Jira-Feld „Fix Version/s“ zuordnen.",
+      "noBlockerLabelBlocked": "Blocker fachlich auflösen und das Label anschließend entfernen.",
+      "noBlockingLinksBlocked": "Verknüpfte Blocker lösen oder die Jira-Verknüpfung fachlich korrigieren.",
+      "noOpenSubtasksBlocked": "Offene Unteraufgaben abschließen oder begründet aus dem Release-Umfang entfernen."
+    }
+  },
+  "emptyState": {
+    "administrationRequiredEyebrow": "Projektadministration erforderlich",
+    "adminInitial": {
+      "title": "ReleaseProof muss zuerst durch einen Projektadministrator konfiguriert werden.",
+      "descriptionPrefix": "Für",
+      "descriptionSuffix": " ist noch keine Bereitschaftskonfiguration hinterlegt. Bitten Sie einen Jira-Projektadministrator, ReleaseProof einmalig zu konfigurieren."
+    },
+    "adminRecovery": {
+      "title": "Die Projektkonfiguration muss durch einen Administrator repariert werden.",
+      "description": "Die gespeicherte Projektkonfiguration ist beschädigt oder nicht mehr kompatibel. Ein Jira-Projektadministrator muss eine neue gültige Konfiguration speichern."
+    },
+    "recovery": {
+      "eyebrow": "Projektkonfiguration reparieren",
+      "title": "Projektkonfiguration sicher ersetzen.",
+      "description": "Die gespeicherte Projektkonfiguration ist beschädigt oder nicht mehr kompatibel. Speichern Sie eine neue gültige Konfiguration, um ReleaseProof wieder zu verwenden.",
+      "action": "Projektkonfiguration öffnen"
+    },
+    "welcome": {
+      "eyebrow": "Willkommen bei ReleaseProof",
+      "title": "Release-Nachweise sichtbar machen, bevor der Kunde fragt.",
+      "descriptionPrefix": "Für",
+      "descriptionSuffix": " ist noch keine Bereitschaftskonfiguration hinterlegt. Definieren Sie die Kriterien einmal projektbezogen; Jira-Inhalte werden nicht dauerhaft gespeichert.",
+      "configureAction": "Projekt jetzt konfigurieren"
+    }
+  },
+  "reportView": {
+    "backToOverview": "Zurück zur Übersicht",
+    "handoffEyebrow": "Übergabebericht",
+    "copy": {
+      "idle": "Markdown kopieren",
+      "copied": "Kopiert",
+      "failed": "Kopieren fehlgeschlagen",
+      "statusCopied": "Markdown-Bericht wurde in die Zwischenablage kopiert.",
+      "statusFailed": "Markdown-Bericht konnte nicht kopiert werden."
+    },
+    "print": "Drucken",
+    "sheetAriaLabel": "Bericht zur Release-Bereitschaft",
+    "reportEyebrow": "Bericht zur Release-Bereitschaft",
+    "scopeLabel": "Umfang",
+    "readinessLabel": "Bereitschaft",
+    "summary": {
+      "total": "Gesamt"
+    },
+    "matrix": {
+      "heading": "Nachweismatrix",
+      "caption": "Zusammenfassung der Release-Bereitschaft je Jira-Vorgang",
+      "table": {
+        "issue": "Vorgang",
+        "status": "Status",
+        "score": "Bewertung",
+        "blockers": "Blockierungen",
+        "missing": "Fehlend"
+      }
+    },
+    "sharing": {
+      "eyebrow": "Weitergabe"
+    },
+    "markdownPreview": {
+      "heading": "Markdown-Vorschau",
+      "ariaLabel": "Markdown-Bericht"
+    }
+  },
+  "report": {
+    "findings": {
+      "heading": "Blockierungen und fehlende Nachweise",
+      "empty": "Keine offenen Nachweise gefunden.",
+      "remediationLead": "Behebung:"
+    },
+    "markdown": {
+      "status": "Status",
+      "readinessScore": "Bereitschaftswert",
+      "scopeMode": "Umfangsmodus",
+      "scopeDefinition": "Umfangsdefinition",
+      "issues": "Vorgänge",
+      "evidenceMatrix": "Nachweismatrix",
+      "table": {
+        "issue": "Vorgang",
+        "status": "Status",
+        "score": "Bewertung",
+        "blockers": "Blockierungen",
+        "missingEvidence": "Fehlende Nachweise"
+      },
+      "openFindings": "Offene Punkte",
+      "noOpenFindings": "Keine blockierenden oder fehlenden Nachweise gefunden.",
+      "remediationLead": "Behebung:",
+      "generatedAtLead": "Erzeugt am",
+      "dateUnavailable": "Zeitpunkt nicht verfügbar"
+    }
+  },
+  "releaseScope": {
+    "mode": {
+      "versionOnly": "Nur Jira-Version",
+      "jqlScope": "Expliziter JQL-Umfang"
+    },
+    "explanation": {
+      "explicitProject": "Expliziter Projektumfang",
+      "versionOnly": "fixVersion der ausgewählten Version im Projekt {projectKey}"
+    }
+  },
+  "format": {
+    "dateUnavailable": "Zeitpunkt nicht verfügbar"
+  },
+  "issueEvidenceDetail": {
+    "backToOverview": "Zurück zur Übersicht",
+    "eyebrow": "Nachweisdetails",
+    "statusUnavailable": "Status nicht verfügbar",
+    "updatedLead": "Aktualisiert",
+    "scopeLabel": "Umfang",
+    "ruleEyebrow": "Prüfregel",
+    "resultLabel": "Ergebnis",
+    "remediationLabel": "Konkrete Behebung",
+    "jiraSourceLabel": "Jira-Quelle",
+    "openInJira": "Vorgang in Jira öffnen"
+  },
+  "releaseSelection": {
+    "eyebrow": "Neue Analyse",
+    "title": "Ist das Release bereit für die Kundenabnahme?",
+    "description": "ReleaseProof prüft Dokumentation, Abschlussstatus, Unteraufgaben, Abhängigkeiten, Labels und Freigaben – ohne Jira-Inhalte zu speichern.",
+    "validation": {
+      "versionRequired": "Bitte wählen Sie eine Jira-Version."
+    },
+    "version": {
+      "label": "Jira-Version",
+      "releasedSuffix": "veröffentlicht",
+      "emptyTitle": "Keine Version verfügbar",
+      "emptyDescription": "Legen Sie im Jira-Projekt zuerst eine Version an oder prüfen Sie Ihre Berechtigung."
+    },
+    "actions": {
+      "analyzing": "Release wird analysiert …",
+      "analyze": "Bereitschaft analysieren",
+      "editConfiguration": "Projektkonfiguration bearbeiten",
+      "viewConfiguration": "Projektkonfiguration ansehen"
+    },
+    "trust": {
+      "eyebrow": "Prüfumfang",
+      "deterministic": {
+        "title": "Deterministische Regeln",
+        "description": "Jedes Ergebnis ist auf eine konkrete Regel und Jira-Quelle zurückführbar."
+      },
+      "forge": {
+        "title": "Keine externe Übertragung",
+        "description": "Verarbeitung und Konfiguration bleiben in Atlassian Forge."
+      },
+      "remediation": {
+        "title": "Konkrete Behebung",
+        "description": "Fehlende Nachweise werden mit einer umsetzbaren Maßnahme markiert."
+      }
+    },
+    "scopeLabel": "Umfang",
+    "versionOnlyWarning": "Fehlende Versionszuordnungen können mit diesem Umfang nicht erkannt werden."
+  }
+}
