@@ -9,13 +9,32 @@ const ANALYSIS_STAGES = [
   "load_version",
   "load_version_issues",
   "load_jql_issues",
+  "request_issue_page",
   "evaluate_release",
 ] as const;
 
 type AnalysisStage = (typeof ANALYSIS_STAGES)[number];
+const FAILURE_CHECKS = [
+  "search_page",
+  "search_issues",
+  "issue_core",
+  "acceptance_criteria",
+  "acceptance_adf",
+  "issue_labels",
+  "issue_versions",
+  "issue_subtasks",
+  "issue_links",
+  "pagination_is_last",
+  "pagination_token",
+  "pagination_last_with_token",
+  "pagination_missing_token",
+  "pagination_repeated_token",
+] as const;
+type FailureCheck = (typeof FAILURE_CHECKS)[number];
 interface FailureContext {
   stage?: AnalysisStage;
   httpStatus?: number;
+  check?: FailureCheck;
 }
 
 // Keep diagnostics out of error serialization and resolver response payloads.
@@ -26,6 +45,23 @@ function errorObject(error: unknown): Error {
   return error instanceof Error
     ? error
     : new AppError("UNKNOWN_ERROR", "Unexpected operation failure.");
+}
+
+export function failureAtCheck(error: Error, check: FailureCheck): Error {
+  const context = contexts.get(error);
+  contexts.set(error, { ...context, check: context?.check ?? check });
+  return error;
+}
+
+export function withFailureCheck<T>(
+  check: FailureCheck,
+  operation: () => T,
+): T {
+  try {
+    return operation();
+  } catch (error) {
+    throw failureAtCheck(errorObject(error), check);
+  }
 }
 
 export async function withAnalysisStage<T>(
@@ -62,6 +98,7 @@ export function analysisFailureDiagnostic(error: unknown) {
       : undefined;
   const stage = context?.stage;
   const httpStatus = context?.httpStatus;
+  const check = context?.check;
   // Project fields, exception text, URLs, JQL, headers, bodies and stacks are
   // deliberately excluded. Rebuild the event from runtime-checked primitives.
   return {
@@ -80,5 +117,6 @@ export function analysisFailureDiagnostic(error: unknown) {
     httpStatus <= 599
       ? { httpStatus }
       : {}),
+    ...(check !== undefined && FAILURE_CHECKS.includes(check) ? { check } : {}),
   };
 }

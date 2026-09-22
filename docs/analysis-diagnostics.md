@@ -10,6 +10,23 @@ The deployed production revision has not been verified against the repository.
 
 ## Event contract
 
+The initial Development test on version 2.15.0 reached `load_jql_issues` and
+returned `JIRA_UNAVAILABLE` without a captured HTTP status. The selected acceptance
+criteria field was confirmed as Description. This still did not identify the
+failing response check. The refinement adds an optional allowlisted `check` token
+and the `request_issue_page` stage for failures while fetching/parsing a page.
+It does not change which Jira responses are accepted or rejected.
+
+`check` distinguishes page shape (`search_page`, `search_issues`), required issue
+fields (`issue_core`), acceptance evidence shape (`acceptance_criteria`) or invalid
+ADF (`acceptance_adf`), labels (`issue_labels`), versions (`issue_versions`),
+subtasks (`issue_subtasks`) and links (`issue_links`). Pagination checks distinguish
+missing/invalid `isLast` (`pagination_is_last`), malformed tokens
+(`pagination_token`), a token on a final page (`pagination_last_with_token`), a
+missing token on a non-final page (`pagination_missing_token`) and repeated tokens
+(`pagination_repeated_token`). No field values, document fragments, issue IDs,
+exception messages or pagination tokens are included.
+
 Only failed `analyzeRelease` resolver calls emit one JSON console error:
 
 ```json
@@ -38,6 +55,7 @@ network failure, successful HTTP response, or particular upstream error.
 | `load_version`          | Read the selected version                                                   |
 | `load_version_issues`   | Search and normalize issues for VERSION_ONLY                                |
 | `load_jql_issues`       | Validate scope locally, search and normalize issues for JQL_SCOPE           |
+| `request_issue_page`    | Execute an issue search request and parse its HTTP response                 |
 | `evaluate_release`      | Evaluate readiness and construct the response DTO                           |
 
 An outer stage retains a more specific inner stage. Parallel operations associate

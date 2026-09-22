@@ -15,7 +15,12 @@ import type {
   StatusRef,
 } from "../../domain/models/readiness";
 import { AppError } from "../../shared/errors";
-import { withHttpStatus } from "../../shared/failure-diagnostics";
+import {
+  failureAtCheck,
+  withFailureCheck,
+  withAnalysisStage,
+  withHttpStatus,
+} from "../../shared/failure-diagnostics";
 import { validateReleaseScopeJql } from "../../shared/validation";
 import { isStructurallyValidAdfDocument, jiraValueToText } from "./adf-to-text";
 
@@ -591,11 +596,14 @@ function hasAcceptanceCriteriaEvidence(
 
   if (isRecord(value) && value.type === "doc") {
     if (!isStructurallyValidAdfDocument(value)) {
-      throw new AppError(
-        "JIRA_UNAVAILABLE",
-        fieldId === "description"
-          ? "Issue search description returned an unexpected response."
-          : "Issue search acceptance criteria returned an unexpected response.",
+      throw failureAtCheck(
+        new AppError(
+          "JIRA_UNAVAILABLE",
+          fieldId === "description"
+            ? "Issue search description returned an unexpected response."
+            : "Issue search acceptance criteria returned an unexpected response.",
+        ),
+        "acceptance_adf",
       );
     }
     return jiraValueToText(value) !== null;
@@ -647,20 +655,29 @@ function mapIssue(
     summary,
     issueType: { id: issueTypeId, name: issueTypeName },
     status,
-    hasAcceptanceCriteria: hasAcceptanceCriteriaEvidence(
-      fields[acceptanceCriteriaFieldId],
-      acceptanceCriteriaFieldId,
+    hasAcceptanceCriteria: withFailureCheck("acceptance_criteria", () =>
+      hasAcceptanceCriteriaEvidence(
+        fields[acceptanceCriteriaFieldId],
+        acceptanceCriteriaFieldId,
+      ),
     ),
-    labels: requireStringArray(fields.labels, "Issue search labels"),
-    fixVersions: requireArray(
-      fields.fixVersions,
-      "Issue search fixVersions",
-    ).map(requireMappedFixVersion),
-    subtasks: requireArray(fields.subtasks, "Issue search subtasks").map(
-      requireMappedSubtask,
+    labels: withFailureCheck("issue_labels", () =>
+      requireStringArray(fields.labels, "Issue search labels"),
     ),
-    linkedIssues: requireArray(fields.issuelinks, "Issue search").map(
-      requireMappedLinkedIssue,
+    fixVersions: withFailureCheck("issue_versions", () =>
+      requireArray(fields.fixVersions, "Issue search fixVersions").map(
+        requireMappedFixVersion,
+      ),
+    ),
+    subtasks: withFailureCheck("issue_subtasks", () =>
+      requireArray(fields.subtasks, "Issue search subtasks").map(
+        requireMappedSubtask,
+      ),
+    ),
+    linkedIssues: withFailureCheck("issue_links", () =>
+      requireArray(fields.issuelinks, "Issue search").map(
+        requireMappedLinkedIssue,
+      ),
     ),
     resolution: mapResolution(fields.resolution),
     updatedAt: stringValue(fields.updated) ?? new Date(0).toISOString(),
@@ -717,35 +734,50 @@ export async function collectIssueSearchPages(
   );
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
-    const data = await loadPage({
-      jql: input.jql,
-      fields,
-      maxResults: PAGE_SIZE,
-      ...(nextPageToken ? { nextPageToken } : {}),
-    });
-    const pageData = requireRecord(data, "Issue search");
-    const pageIssues = requireArray(pageData.issues, "Issue search").map(
-      (item) =>
+    const data = await withAnalysisStage("request_issue_page", () =>
+      loadPage({
+        jql: input.jql,
+        fields,
+        maxResults: PAGE_SIZE,
+        ...(nextPageToken ? { nextPageToken } : {}),
+      }),
+    );
+    const pageData = withFailureCheck("search_page", () =>
+      requireRecord(data, "Issue search"),
+    );
+    const pageIssues = withFailureCheck("search_issues", () =>
+      requireArray(pageData.issues, "Issue search"),
+    ).map((item) =>
+      withFailureCheck("issue_core", () =>
         requireMappedIssue(
           item,
           input.acceptanceCriteriaFieldId,
           input.projectKey,
         ),
+      ),
     );
     if (typeof pageData.isLast !== "boolean") {
-      throw new AppError(
-        "JIRA_UNAVAILABLE",
-        "Issue search returned an unexpected response.",
+      throw failureAtCheck(
+        new AppError(
+          "JIRA_UNAVAILABLE",
+          "Issue search returned an unexpected response.",
+        ),
+        "pagination_is_last",
       );
     }
 
-    const pageToken = optionalPageToken(pageData.nextPageToken, "Issue search");
+    const pageToken = withFailureCheck("pagination_token", () =>
+      optionalPageToken(pageData.nextPageToken, "Issue search"),
+    );
 
     if (pageData.isLast) {
       if (pageToken !== undefined) {
-        throw new AppError(
-          "JIRA_UNAVAILABLE",
-          "Issue search returned an unexpected response.",
+        throw failureAtCheck(
+          new AppError(
+            "JIRA_UNAVAILABLE",
+            "Issue search returned an unexpected response.",
+          ),
+          "pagination_last_with_token",
         );
       }
       issues.push(...pageIssues);
@@ -753,16 +785,22 @@ export async function collectIssueSearchPages(
     }
 
     if (pageToken === undefined) {
-      throw new AppError(
-        "JIRA_UNAVAILABLE",
-        "Issue search returned an unexpected response.",
+      throw failureAtCheck(
+        new AppError(
+          "JIRA_UNAVAILABLE",
+          "Issue search returned an unexpected response.",
+        ),
+        "pagination_missing_token",
       );
     }
 
     if (seenPageTokens.has(pageToken)) {
-      throw new AppError(
-        "JIRA_UNAVAILABLE",
-        "Issue search returned a non-advancing pagination token.",
+      throw failureAtCheck(
+        new AppError(
+          "JIRA_UNAVAILABLE",
+          "Issue search returned a non-advancing pagination token.",
+        ),
+        "pagination_repeated_token",
       );
     }
     seenPageTokens.add(pageToken);
