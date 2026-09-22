@@ -15,6 +15,7 @@ import type {
   StatusRef,
 } from "../../domain/models/readiness";
 import { AppError } from "../../shared/errors";
+import { withHttpStatus } from "../../shared/failure-diagnostics";
 import { validateReleaseScopeJql } from "../../shared/validation";
 import { isStructurallyValidAdfDocument, jiraValueToText } from "./adf-to-text";
 
@@ -103,26 +104,28 @@ export async function parseResponse(
   response: JiraResponse,
   notFoundCode?: "VERSION_NOT_FOUND",
 ) {
-  if (response.ok) return response.json();
-  if (response.status === 401 || response.status === 403) {
-    throw new AppError("PERMISSION_DENIED", "Jira permission denied.");
-  }
-  if (response.status === 404 && notFoundCode) {
-    throw new AppError(notFoundCode, "Jira entity not found.");
-  }
-  if (response.status === 429) {
-    const raw = response.headers.get("retry-after");
-    const retryAfter = raw === null ? undefined : Number.parseInt(raw, 10);
+  return withHttpStatus(response.status, async () => {
+    if (response.ok) return response.json();
+    if (response.status === 401 || response.status === 403) {
+      throw new AppError("PERMISSION_DENIED", "Jira permission denied.");
+    }
+    if (response.status === 404 && notFoundCode) {
+      throw new AppError(notFoundCode, "Jira entity not found.");
+    }
+    if (response.status === 429) {
+      const raw = response.headers.get("retry-after");
+      const retryAfter = raw === null ? undefined : Number.parseInt(raw, 10);
+      throw new AppError(
+        "RATE_LIMITED",
+        "Jira rate limit reached.",
+        Number.isFinite(retryAfter) ? retryAfter : undefined,
+      );
+    }
     throw new AppError(
-      "RATE_LIMITED",
-      "Jira rate limit reached.",
-      Number.isFinite(retryAfter) ? retryAfter : undefined,
+      "JIRA_UNAVAILABLE",
+      `Jira request failed with ${response.status}.`,
     );
-  }
-  throw new AppError(
-    "JIRA_UNAVAILABLE",
-    `Jira request failed with ${response.status}.`,
-  );
+  });
 }
 
 function pageValues(value: unknown, resource: string): unknown[] {

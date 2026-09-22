@@ -1,4 +1,5 @@
 import { makeResolver } from "@forge/resolver";
+import { analyzeSafely } from "./analyze-safely";
 import { analyzeRelease } from "../application/analyze-release/analyze-release";
 import { loadProjectData } from "../application/load-project-data/load-project-data";
 import { saveProjectConfig } from "../application/save-project-config/save-project-config";
@@ -87,7 +88,7 @@ export const handler = makeResolver<ResolverDefinitions>({
       return saveProjectConfig(jira, repository, systemClock, parsed.data);
     }),
   analyzeRelease: ({ payload, context }) =>
-    safely(async () => {
+    analyzeSafely(async () => {
       const projectContext = readProjectContext(context);
       const parsed = versionInputSchema.safeParse(payload);
       if (!parsed.success) {
