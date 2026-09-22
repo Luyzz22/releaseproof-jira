@@ -16,13 +16,14 @@ import type {
 } from "../../domain/models/readiness";
 import { AppError } from "../../shared/errors";
 import {
+  failureAtAdfCheck,
   failureAtCheck,
   withFailureCheck,
   withAnalysisStage,
   withHttpStatus,
 } from "../../shared/failure-diagnostics";
 import { validateReleaseScopeJql } from "../../shared/validation";
-import { isStructurallyValidAdfDocument, jiraValueToText } from "./adf-to-text";
+import { inspectAdfDocument, jiraValueToText } from "./adf-to-text";
 
 const PAGE_SIZE = 100;
 const MAX_PAGES = 100;
@@ -595,15 +596,17 @@ function hasAcceptanceCriteriaEvidence(
   }
 
   if (isRecord(value) && value.type === "doc") {
-    if (!isStructurallyValidAdfDocument(value)) {
-      throw failureAtCheck(
+    const validation = inspectAdfDocument(value);
+    if (!validation.valid) {
+      throw failureAtAdfCheck(
         new AppError(
           "JIRA_UNAVAILABLE",
           fieldId === "description"
             ? "Issue search description returned an unexpected response."
             : "Issue search acceptance criteria returned an unexpected response.",
         ),
-        "acceptance_adf",
+        validation.reason,
+        validation.probe,
       );
     }
     return jiraValueToText(value) !== null;

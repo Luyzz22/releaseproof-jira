@@ -31,10 +31,24 @@ const FAILURE_CHECKS = [
   "pagination_repeated_token",
 ] as const;
 type FailureCheck = (typeof FAILURE_CHECKS)[number];
+const ADF_REASONS = [
+  "invalid_envelope",
+  "structure_limit",
+  "schema_rejected",
+  "validator_type_error",
+  "validator_range_error",
+  "validator_schema_error",
+  "validator_exception",
+] as const;
+export type AdfFailureReason = (typeof ADF_REASONS)[number];
+const ADF_PROBES = ["valid", "rejected", "exception"] as const;
+export type AdfValidatorProbe = (typeof ADF_PROBES)[number];
 interface FailureContext {
   stage?: AnalysisStage;
   httpStatus?: number;
   check?: FailureCheck;
+  adfReason?: AdfFailureReason;
+  adfProbe?: AdfValidatorProbe;
 }
 
 // Keep diagnostics out of error serialization and resolver response payloads.
@@ -50,6 +64,20 @@ function errorObject(error: unknown): Error {
 export function failureAtCheck(error: Error, check: FailureCheck): Error {
   const context = contexts.get(error);
   contexts.set(error, { ...context, check: context?.check ?? check });
+  return error;
+}
+
+export function failureAtAdfCheck(
+  error: Error,
+  reason: AdfFailureReason,
+  probe?: AdfValidatorProbe,
+): Error {
+  failureAtCheck(error, "acceptance_adf");
+  contexts.set(error, {
+    ...contexts.get(error),
+    adfReason: reason,
+    ...(probe !== undefined ? { adfProbe: probe } : {}),
+  });
   return error;
 }
 
@@ -99,6 +127,8 @@ export function analysisFailureDiagnostic(error: unknown) {
   const stage = context?.stage;
   const httpStatus = context?.httpStatus;
   const check = context?.check;
+  const adfReason = context?.adfReason;
+  const adfProbe = context?.adfProbe;
   // Project fields, exception text, URLs, JQL, headers, bodies and stacks are
   // deliberately excluded. Rebuild the event from runtime-checked primitives.
   return {
@@ -118,5 +148,11 @@ export function analysisFailureDiagnostic(error: unknown) {
       ? { httpStatus }
       : {}),
     ...(check !== undefined && FAILURE_CHECKS.includes(check) ? { check } : {}),
+    ...(adfReason !== undefined && ADF_REASONS.includes(adfReason)
+      ? { adfReason }
+      : {}),
+    ...(adfProbe !== undefined && ADF_PROBES.includes(adfProbe)
+      ? { adfProbe }
+      : {}),
   };
 }

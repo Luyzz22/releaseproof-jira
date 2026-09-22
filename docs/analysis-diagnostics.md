@@ -17,6 +17,25 @@ failing response check. The refinement adds an optional allowlisted `check` toke
 and the `request_issue_page` stage for failures while fetching/parsing a page.
 It does not change which Jira responses are accepted or rejected.
 
+Development 2.16.0 subsequently failed at `acceptance_adf` (2026-09-22,
+18:02 UTC). That checkpoint includes both invalid documents and caught validator
+exceptions; it does not prove that Jira returned invalid ADF or was unreachable.
+The next refinement adds allowlisted `adfReason` and optional `adfProbe` values:
+
+- `invalid_envelope`: invalid document root, version or content array.
+- `structure_limit`: the existing 10,000-entry traversal limit was exceeded.
+- `schema_rejected`: the validator completed and rejected the document.
+- `validator_type_error`, `validator_range_error`, `validator_schema_error`:
+  the validator threw an exception of the corresponding known class.
+- `validator_exception`: another exception or thrown value; names and messages
+  are never copied from the exception.
+
+Only after schema rejection or an exception, the same validator checks one tiny
+synthetic document. `adfProbe` is `valid`, `rejected` or `exception`. This helps
+distinguish a document-specific failure from a validator/runtime problem. It does
+not log the probe document or any Jira data. A passing probe never overrides the
+original failure. Successful document validation incurs no extra probe.
+
 `check` distinguishes page shape (`search_page`, `search_issues`), required issue
 fields (`issue_core`), acceptance evidence shape (`acceptance_criteria`) or invalid
 ADF (`acceptance_adf`), labels (`issue_labels`), versions (`issue_versions`),
@@ -77,8 +96,11 @@ unreadable JSON, unknown thrown values, concurrent failures, logging failure,
 redaction and public-response compatibility. Run the AGENTS.md checks before
 handoff, including Forge lint in an authenticated Forge development environment.
 
-This task authorizes branch preparation and tests only. No merge, deployment,
-installation upgrade or production mutation is part of this change.
+The user authorized diagnostic branch preparation and subsequent Development
+deployments. The user ran authenticated Forge lint successfully and deployed
+2.15.0 and 2.16.0. The ADF-specific refinement still needs authenticated Forge lint,
+a Development deployment and a fresh runtime event. No merge or Production
+deployment is authorized by this diagnostic workflow.
 
 After separate rollout approval:
 

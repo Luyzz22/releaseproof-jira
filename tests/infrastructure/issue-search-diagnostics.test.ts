@@ -1,3 +1,4 @@
+import { Validator } from "jsonschema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   collectIssueSearchPages,
@@ -50,6 +51,42 @@ async function diagnose(loadPage: () => Promise<unknown>) {
 }
 
 describe("issue search failure checkpoints", () => {
+  it("logs the ADF failure reason without changing the resolver error", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(Validator.prototype, "validate").mockImplementation(() => {
+      throw new TypeError("SECRET_VALIDATOR_EXCEPTION");
+    });
+    expect(
+      await diagnose(async () =>
+        page({
+          description: {
+            type: "doc",
+            version: 1,
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "SECRET_CRITERIA" }],
+              },
+            ],
+          },
+        }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: { code: "JIRA_UNAVAILABLE", message: "JIRA_UNAVAILABLE" },
+    });
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      JSON.stringify({
+        event: "releaseproof.analysis_failed",
+        code: "JIRA_UNAVAILABLE",
+        stage: "load_jql_issues",
+        check: "acceptance_adf",
+        adfReason: "validator_type_error",
+        adfProbe: "exception",
+      }),
+    );
+  });
+
   it.each([
     ["issue_core", { summary: null }],
     ["issue_core", { status: { id: "broken", name: "SECRET_STATUS" } }],
@@ -91,6 +128,9 @@ describe("issue search failure checkpoints", () => {
           code: "JIRA_UNAVAILABLE",
           stage: "load_jql_issues",
           check,
+          ...(check === "acceptance_adf"
+            ? { adfReason: "schema_rejected", adfProbe: "valid" }
+            : {}),
         }),
       );
     },
