@@ -15,6 +15,12 @@ const MAX_TEXT_LENGTH = 50_000;
 const FORMAT_OR_CONTROL = /[\p{Cc}\p{Cf}]/gu;
 
 const adfValidator = new Validator();
+// Resolve local schema fragments against an absolute identifier. jsonschema
+// 1.5.0's anonymous base fails with Node 24.20's stricter URL parser (#423).
+// This is an in-memory schema identifier, never a network request or egress host.
+const ADF_VALIDATION_OPTIONS = {
+  base: "https://releaseproof.invalid/adf-schema.json",
+} as const;
 
 function hasSafeAdfStructureSize(value: unknown): boolean {
   const stack: unknown[] = [value];
@@ -61,6 +67,7 @@ function probeAdfValidator(): AdfValidatorProbe {
         ],
       },
       adfSchema,
+      ADF_VALIDATION_OPTIONS,
     ).valid
       ? "valid"
       : "rejected";
@@ -84,7 +91,7 @@ export function inspectAdfDocument(value: unknown): AdfValidationResult {
   }
 
   try {
-    return adfValidator.validate(value, adfSchema).valid
+    return adfValidator.validate(value, adfSchema, ADF_VALIDATION_OPTIONS).valid
       ? { valid: true }
       : { valid: false, reason: "schema_rejected", probe: probeAdfValidator() };
   } catch (error) {

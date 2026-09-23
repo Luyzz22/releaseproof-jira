@@ -4,9 +4,11 @@
 
 A repeated production analysis failure displayed `JIRA_UNAVAILABLE`, while the
 Developer Console showed no logs in the selected time window. The inspected
-resolver caught errors and returned a safe code without logging them. This change
-adds diagnostic evidence; it does not establish or fix the production root cause.
-The deployed production revision has not been verified against the repository.
+resolver caught errors and returned a safe code without logging them. The initial
+changes added diagnostic evidence. The subsequent absolute-base correction below
+addresses a reproduced validator/runtime incompatibility; its effect on the
+hosted app still requires Development verification. The deployed production
+revision has not been verified against the repository.
 
 ## Event contract
 
@@ -35,6 +37,21 @@ synthetic document. `adfProbe` is `valid`, `rejected` or `exception`. This helps
 distinguish a document-specific failure from a validator/runtime problem. It does
 not log the probe document or any Jira data. A passing probe never overrides the
 original failure. Successful document validation incurs no extra probe.
+
+Development 2.17.0 subsequently reported `validator_type_error` with probe
+`exception`. A standalone reproduction using the unchanged bundled ADF schema
+and `jsonschema@1.5.0` fails on Node 24.20.0 with `ERR_INVALID_URL`, while it passes
+on Node 24.19.0. This matches [upstream issue #423](https://github.com/tdegrunt/jsonschema/issues/423):
+anonymous schema references are parsed against an opaque URL base.
+
+The correction passes an explicit absolute `base` to both validation calls.
+`https://releaseproof.invalid/adf-schema.json` is only an in-memory identifier for
+local references; it is never fetched. The vendored schema, dependency versions,
+traversal limits, validation rules and manifest are unchanged. The same standalone
+reproduction passes on Node 24.20.0 with this option. Regression tests also
+simulate strict URL parsing on older Node releases and verify invalid ADF remains
+rejected. The hosted Forge patch version is not known; a successful Development
+analysis is still needed to establish that this fixes the observed app failure.
 
 `check` distinguishes page shape (`search_page`, `search_issues`), required issue
 fields (`issue_core`), acceptance evidence shape (`acceptance_criteria`) or invalid
@@ -98,9 +115,9 @@ handoff, including Forge lint in an authenticated Forge development environment.
 
 The user authorized diagnostic branch preparation and subsequent Development
 deployments. The user ran authenticated Forge lint successfully and deployed
-2.15.0 and 2.16.0. The ADF-specific refinement still needs authenticated Forge lint,
-a Development deployment and a fresh runtime event. No merge or Production
-deployment is authorized by this diagnostic workflow.
+2.15.0, 2.16.0 and 2.17.0. The absolute-base correction still needs authenticated
+Forge lint, a Development deployment and a successful runtime analysis. No merge
+or Production deployment is authorized by this workflow.
 
 After separate rollout approval:
 
