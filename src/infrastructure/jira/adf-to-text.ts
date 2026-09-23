@@ -1,5 +1,9 @@
-import { Validator } from "jsonschema";
+import { SchemaError, Validator } from "jsonschema";
 import { AppError } from "../../shared/errors";
+import type {
+  AdfFailureReason,
+  AdfValidatorProbe,
+} from "../../shared/failure-diagnostics";
 import adfSchema from "./adf-schema.json";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -11,6 +15,12 @@ const MAX_TEXT_LENGTH = 50_000;
 const FORMAT_OR_CONTROL = /[\p{Cc}\p{Cf}]/gu;
 
 const adfValidator = new Validator();
+// Resolve local schema fragments against an absolute identifier. jsonschema
+// 1.5.0's anonymous base fails with Node 24.20's stricter URL parser (#423).
+// This is an in-memory schema identifier, never a network request or egress host.
+const ADF_VALIDATION_OPTIONS = {
+  base: "https://releaseproof.invalid/adf-schema.json",
+} as const;
 
 function hasSafeAdfStructureSize(value: unknown): boolean {
   const stack: unknown[] = [value];
@@ -37,22 +47,68 @@ function hasSafeAdfStructureSize(value: unknown): boolean {
   return true;
 }
 
-export function isStructurallyValidAdfDocument(value: unknown): boolean {
+type AdfValidationResult =
+  | { valid: true }
+  | { valid: false; reason: AdfFailureReason; probe?: AdfValidatorProbe };
+
+// A synthetic probe distinguishes a document-specific rejection from a
+// validator failure in the deployed runtime. Run only after schema failure.
+function probeAdfValidator(): AdfValidatorProbe {
+  try {
+    return adfValidator.validate(
+      {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Synthetic validator probe" }],
+          },
+        ],
+      },
+      adfSchema,
+      ADF_VALIDATION_OPTIONS,
+    ).valid
+      ? "valid"
+      : "rejected";
+  } catch {
+    return "exception";
+  }
+}
+
+export function inspectAdfDocument(value: unknown): AdfValidationResult {
   if (
     !isRecord(value) ||
     value.type !== "doc" ||
     value.version !== 1 ||
-    !Array.isArray(value.content) ||
-    !hasSafeAdfStructureSize(value)
+    !Array.isArray(value.content)
   ) {
-    return false;
+    return { valid: false, reason: "invalid_envelope" };
+  }
+
+  if (!hasSafeAdfStructureSize(value)) {
+    return { valid: false, reason: "structure_limit" };
   }
 
   try {
-    return adfValidator.validate(value, adfSchema).valid;
-  } catch {
-    return false;
+    return adfValidator.validate(value, adfSchema, ADF_VALIDATION_OPTIONS).valid
+      ? { valid: true }
+      : { valid: false, reason: "schema_rejected", probe: probeAdfValidator() };
+  } catch (error) {
+    const reason =
+      error instanceof TypeError
+        ? "validator_type_error"
+        : error instanceof RangeError
+          ? "validator_range_error"
+          : error instanceof SchemaError
+            ? "validator_schema_error"
+            : "validator_exception";
+    return { valid: false, reason, probe: probeAdfValidator() };
   }
+}
+
+export function isStructurallyValidAdfDocument(value: unknown): boolean {
+  return inspectAdfDocument(value).valid;
 }
 
 interface CollectionState {
