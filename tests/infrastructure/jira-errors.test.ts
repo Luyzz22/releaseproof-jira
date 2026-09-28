@@ -6,6 +6,7 @@ import {
   parseResponse,
 } from "../../src/infrastructure/jira/forge-jira-gateway";
 import { AppError } from "../../src/shared/errors";
+import { analyzeSafely } from "../../src/resolvers/analyze-safely";
 import { validateReleaseScopeJql } from "../../src/shared/validation";
 
 const requestJiraMock = vi.hoisted(() => vi.fn());
@@ -60,6 +61,58 @@ function response(status: number, retryAfter: string | null = null) {
 }
 
 describe("Jira-Fehlerabbildung", () => {
+  it.each([400, 401, 403, 404, 429, 500, 503])(
+    "retains HTTP %s for diagnostics without reading its body",
+    async (status) => {
+      const log = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      try {
+        const upstream = {
+          ...response(status),
+          json: vi.fn(async () => ({ message: "SECRET_BODY" })),
+        };
+        await analyzeSafely(() => parseResponse(upstream, "VERSION_NOT_FOUND"));
+        expect(upstream.json).not.toHaveBeenCalled();
+        expect(log).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toMatchObject({
+          httpStatus: status,
+        });
+        expect(JSON.stringify(log.mock.calls)).not.toContain("SECRET");
+      } finally {
+        log.mockRestore();
+      }
+    },
+  );
+
+  it("retains status 200 for unreadable JSON while preserving UNKNOWN_ERROR", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const result = await analyzeSafely(() =>
+        parseResponse({
+          ...response(200),
+          json: async () => {
+            throw new SyntaxError("SECRET_BODY");
+          },
+        }),
+      );
+      expect(result).toEqual({
+        ok: false,
+        error: { code: "UNKNOWN_ERROR", message: "UNKNOWN_ERROR" },
+      });
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        JSON.stringify({
+          event: "releaseproof.analysis_failed",
+          code: "UNKNOWN_ERROR",
+          stage: "analysis",
+          httpStatus: 200,
+        }),
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it("baut JQL ausschließlich aus validierten technischen IDs", () => {
     expect(buildVersionJql("DEMO", "30001")).toBe(
       'project = "DEMO" AND fixVersion = 30001 ORDER BY key ASC',

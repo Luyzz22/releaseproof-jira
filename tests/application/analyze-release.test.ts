@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { analyzeSafely } from "../../src/resolvers/analyze-safely";
+import { AppError } from "../../src/shared/errors";
 import { analyzeRelease } from "../../src/application/analyze-release/analyze-release";
 import type {
   JiraField,
@@ -92,6 +94,75 @@ class FakeJiraGateway implements JiraGateway, JiraJqlValidator {
 }
 
 const clock = { now: () => "2026-07-11T09:00:00.000Z" };
+afterEach(() => vi.restoreAllMocks());
+
+describe("analysis stage diagnostics through the use case", () => {
+  it.each([
+    ["listFields", "list_fields"],
+    ["getProjectMetadata", "load_project_metadata"],
+    ["validateJql", "validate_jql"],
+    ["getVersion", "load_version"],
+    ["listIssuesForJqlScope", "load_jql_issues"],
+    ["listIssuesForVersion", "load_version_issues"],
+  ] as const)("identifies a failure in %s", async (method, stage) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const repository = new InMemoryProjectConfigRepository();
+    await repository.save(
+      config({
+        releaseScopeMode:
+          method === "listIssuesForVersion" ? "VERSION_ONLY" : "JQL_SCOPE",
+      }),
+    );
+    const jira = new FakeJiraGateway();
+    vi.spyOn(jira, method).mockRejectedValue(
+      new AppError("JIRA_UNAVAILABLE", "SECRET_UPSTREAM_BODY"),
+    );
+    const result = await analyzeSafely(() =>
+      analyzeRelease(jira, repository, clock, {
+        projectId: "10000",
+        projectKey: "DEMO",
+        versionId: "30001",
+      }),
+    );
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      JSON.stringify({
+        event: "releaseproof.analysis_failed",
+        code: "JIRA_UNAVAILABLE",
+        stage,
+      }),
+    );
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "JIRA_UNAVAILABLE", message: "JIRA_UNAVAILABLE" },
+    });
+  });
+
+  it("identifies a storage failure before any Jira access", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const repository = new InMemoryProjectConfigRepository();
+    vi.spyOn(repository, "get").mockRejectedValue(
+      new AppError("STORAGE_UNAVAILABLE", "SECRET"),
+    );
+    const jira = new FakeJiraGateway();
+    const fields = vi.spyOn(jira, "listFields");
+    await analyzeSafely(() =>
+      analyzeRelease(jira, repository, clock, {
+        projectId: "10000",
+        projectKey: "DEMO",
+        versionId: "30001",
+      }),
+    );
+    expect(log).toHaveBeenCalledExactlyOnceWith(
+      JSON.stringify({
+        event: "releaseproof.analysis_failed",
+        code: "STORAGE_UNAVAILABLE",
+        stage: "load_configuration",
+      }),
+    );
+    expect(fields).not.toHaveBeenCalled();
+  });
+});
+
 const sensitiveDescription = "SENSITIVE_DESCRIPTION_DO_NOT_EXPOSE";
 const sensitiveAcceptanceCriteria =
   "SENSITIVE_ACCEPTANCE_CRITERIA_DO_NOT_EXPOSE";
