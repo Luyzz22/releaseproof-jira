@@ -142,6 +142,7 @@ function renderConfiguration(
         data,
         saving: false,
         onSave: () => Promise.resolve(),
+        onDelete: () => Promise.resolve(true),
       }),
     }),
   );
@@ -182,6 +183,17 @@ describe("Projektkonfiguration – Statushinweis i18n", () => {
 });
 
 describe("Projektkonfiguration – Berechtigungsgrenze", () => {
+  it("shows deletion only for admins with an existing configuration", () => {
+    expect(
+      renderConfiguration([supportedDescriptionField], config()),
+    ).toContain("ReleaseProof-Konfiguration löschen");
+    expect(renderConfiguration([supportedDescriptionField])).not.toContain(
+      "ReleaseProof-Konfiguration löschen",
+    );
+    expect(
+      renderConfiguration([supportedDescriptionField], config(), false),
+    ).not.toContain("ReleaseProof-Konfiguration löschen");
+  });
   it("rendert Nicht-Administratoren read-only und ohne Save-Pfad", () => {
     const markup = renderConfiguration(
       [supportedDescriptionField],

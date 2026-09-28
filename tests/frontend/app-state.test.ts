@@ -3,6 +3,7 @@ import {
   canAccessAnalysisScreen,
   projectConfigDataSaveTransition,
   projectConfigSaveTransition,
+  projectConfigDeleteTransition,
   type AnalysisScreen,
   type AnalysisViewState,
 } from "../../src/frontend/app-state";
@@ -14,6 +15,43 @@ import { config, projectConfig, release } from "../fixtures/release";
 import { readinessDto } from "../fixtures/readiness-dto";
 
 const analysisScreens: AnalysisScreen[] = ["dashboard", "detail", "report"];
+
+describe("App-state after configuration deletion", () => {
+  it.each([true, false])(
+    "clears config, result and selection after successful deletion (deleted=%s)",
+    (deleted) => {
+      const current = {
+        ...analyzedViewState(),
+        data: { ...recoveryBootstrapData(), config: config() },
+      };
+      const next = projectConfigDeleteTransition(current, {
+        ok: true,
+        data: { deleted },
+      });
+      expect(next).toEqual({
+        data: { ...current.data, config: null, configRecoveryRequired: false },
+        result: null,
+        selectedIssue: null,
+        screen: "empty",
+      });
+      for (const screen of analysisScreens)
+        expect(canAccessAnalysisScreen(next, screen)).toBe(false);
+      expect(current.data.config).not.toBeNull();
+    },
+  );
+
+  it("preserves all current state on failed deletion for retry", () => {
+    const current = {
+      ...analyzedViewState(),
+      data: { ...recoveryBootstrapData(), config: config() },
+    };
+    const next = projectConfigDeleteTransition(current, {
+      ok: false,
+      error: { code: "STORAGE_UNAVAILABLE", message: "STORAGE_UNAVAILABLE" },
+    });
+    expect(next).toBe(current);
+  });
+});
 
 function analyzedViewState(): AnalysisViewState {
   return {

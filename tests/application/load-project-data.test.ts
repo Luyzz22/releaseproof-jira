@@ -95,6 +95,10 @@ class BootstrapJiraGateway implements JiraGateway, JiraProjectPermissionReader {
 }
 
 class BootstrapConfigRepository implements ProjectConfigRepository {
+  async delete(): Promise<boolean> {
+    throw new Error("Not used");
+  }
+
   constructor(private readonly readResult: ProjectConfig | null | Error) {}
 
   async get(): Promise<ProjectConfig | null> {

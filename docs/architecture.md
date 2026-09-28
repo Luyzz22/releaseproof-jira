@@ -67,6 +67,16 @@ Keine Issue-Beschreibungen, Kommentare, Reports, Analyseläufe oder Benutzerkenn
 
 Schema-Version 2 ergänzt `releaseScopeMode` und optional `releaseScopeJql`. Datensätze aus Schema-Version 1 werden beim Lesen ohne Schreibmigration als `VERSION_ONLY` normalisiert. Erst ein späteres bewusstes Speichern schreibt das aktuelle Format.
 
+### Projektkonfiguration während der Nutzung löschen
+
+ReleaseProof bietet einen projektadmin-autorisierten Löschpfad für seine gespeicherte Projektkonfiguration. `deleteProjectConfig` akzeptiert keine Zielparameter vom Client: Der Resolver leitet das Projekt ausschließlich aus dem Forge-Projektkontext ab und verwirft unerwartete Payloads. Der Use Case prüft `canAdministerProject(projectId)` vor jedem Storage-Zugriff. Ohne Berechtigung erfolgt kein KVS-Read oder Delete; Metadaten- und JQL-Validierung sowie Save sind für die Löschung nicht erforderlich.
+
+Der Repository-Port `delete(projectId)` entfernt ausschließlich `project-config:${projectId}`. Andere Projekte und der installationsweite technische Schlüssel `schema-version` bleiben unverändert. Vorhandene Einträge liefern `{ deleted: true }`, fehlende Einträge idempotent `{ deleted: false }`. Die Existenzprüfung und Löschung sind getrennte KVS-Operationen, kein Lock gegen paralleles Speichern durch andere Administratoren. Storage-Fehler liefern ausschließlich den sicheren Fehlercode `STORAGE_UNAVAILABLE`; Konfiguration und rohe Exceptions werden nicht protokolliert.
+
+Die Custom UI zeigt die getrennte Löschaktion nur Projektadministratoren mit bestehender Konfiguration. Nach dem ersten Klick muss der aktuelle Projektschlüssel exakt eingegeben und die endgültige Löschung separat bestätigt werden. Die UI verhindert doppelte laufende Aufrufe. Erst bei Erfolg entfernt sie Konfiguration, Analyseergebnis und Evidence-Auswahl aus ihrem Zustand und zeigt die leere Startansicht; bei Fehler bleiben die Daten für einen erneuten Versuch erhalten.
+
+Dies ist eine Löschung der ReleaseProof-Konfiguration während der Vertrags-/Nutzungsdauer, keine App-Deinstallation und keine Zusage über physische Löschung in Forge-Plattform-Backups oder Aufbewahrung nach einer Deinstallation. Jira-Quelldaten bleiben unberührt. Daraus folgt keine umfassende rechtliche oder DPA-Konformitätszusage.
+
 ## Sicherheitsgrenzen
 
 - Forge übernimmt Authentifizierung und Installationsisolation.

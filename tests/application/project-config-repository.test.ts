@@ -30,6 +30,10 @@ class ControlledProjectConfigRepository implements ProjectConfigRepository {
     this.saved.push(structuredClone(value));
   }
 
+  async delete(): Promise<boolean> {
+    throw new Error("Not used");
+  }
+
   snapshot(): ProjectConfig | null | Error {
     return this.readResult instanceof Error
       ? this.readResult

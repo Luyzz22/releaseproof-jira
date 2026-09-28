@@ -74,6 +74,7 @@ export interface JiraProjectPermissionReader {
 export interface ProjectConfigRepository {
   get(projectId: string): Promise<ProjectConfig | null>;
   save(config: ProjectConfig): Promise<void>;
+  delete(projectId: string): Promise<boolean>;
 }
 
 export interface Clock {

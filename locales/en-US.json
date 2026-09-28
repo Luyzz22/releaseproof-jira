@@ -32,7 +32,7 @@
       "rateLimited": "Jira is temporarily limiting requests. Try again later.",
       "resultLimitExceeded": "The data set is too large for a synchronous analysis. Reduce the release scope.",
       "jiraUnavailable": "Jira is temporarily unavailable.",
-      "storageUnavailable": "The project configuration could not be saved or loaded temporarily.",
+      "storageUnavailable": "The project configuration could not be saved, loaded or deleted temporarily.",
       "storageCorrupt": "The stored project configuration is invalid and must be saved again.",
       "unknown": "An unexpected error occurred. Try again."
     }
@@ -130,6 +130,19 @@
       "storageDescription": "Configuration is stored per project in Forge KVS.",
       "saving": "Saving …",
       "save": "Save configuration"
+    },
+    "delete": {
+      "heading": "Delete ReleaseProof configuration",
+      "description": "Delete the stored ReleaseProof configuration for this Jira project.",
+      "jiraUntouched": "Jira issues, releases and other Jira project data are not deleted.",
+      "analysisWarning": "This cannot be undone. Current analysis results will be cleared. Create a new configuration before running another ReleaseProof analysis.",
+      "action": "Delete configuration",
+      "confirmationTitle": "Confirm configuration deletion",
+      "keyInstruction": "To confirm, type this project key exactly (case-sensitive):",
+      "keyLabel": "Project key confirmation",
+      "permanent": "Permanently delete configuration",
+      "cancel": "Cancel",
+      "deleting": "Deleting …"
     },
     "validation": {
       "unsupportedField": "Select a supported text field for acceptance criteria.",
