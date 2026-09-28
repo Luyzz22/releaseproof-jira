@@ -13,6 +13,7 @@ import {
 import { Panel } from "../components/panel";
 import { ProjectConfigDeleteSection } from "../components/project-config-delete-section";
 import {
+  canDeleteProjectConfig,
   deletionConfirmationReducer,
   initialDeletionConfirmation,
   runConfirmedDeletion,
@@ -48,6 +49,7 @@ export function ProjectConfiguration({
 }) {
   const { t } = useI18n();
   const existing = data.config;
+  const deletionAllowed = canDeleteProjectConfig(data);
   const editingDisabled = !data.canConfigure || saving;
   const fieldOptions = useMemo(
     () => data.fields.filter(isSupportedAcceptanceCriteriaField),
@@ -105,7 +107,7 @@ export function ProjectConfiguration({
   const deletionInFlight = useRef(false);
 
   async function confirmDeletion() {
-    if (!data.canConfigure || !existing) return;
+    if (!deletionAllowed) return;
     if (
       await runConfirmedDeletion(
         deletionConfirmation,
@@ -430,7 +432,7 @@ export function ProjectConfiguration({
             ) : null}
           </div>
         </form>
-        {existing !== null && data.canConfigure ? (
+        {deletionAllowed ? (
           <ProjectConfigDeleteSection
             projectKey={data.project.key}
             state={deletionConfirmation}

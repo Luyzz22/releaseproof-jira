@@ -26,6 +26,7 @@ import { useI18n } from "./i18n/context";
 import { I18N_KEYS } from "./i18n/keys";
 import { EmptyState } from "./pages/empty-state";
 import { ReleaseSelection } from "./pages/release-selection";
+import { canDeleteProjectConfig } from "./project-config-deletion";
 
 const ProjectConfiguration = lazy(() =>
   import("./pages/project-configuration").then((module) => ({
@@ -135,7 +136,12 @@ export function App() {
   }
 
   async function deleteConfig(): Promise<boolean> {
-    if (busy || deletionInFlight.current || !data?.config || !data.canConfigure)
+    if (
+      busy ||
+      deletionInFlight.current ||
+      !data ||
+      !canDeleteProjectConfig(data)
+    )
       return false;
     deletionInFlight.current = true;
     setBusy(true);

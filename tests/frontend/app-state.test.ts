@@ -18,6 +18,47 @@ const analysisScreens: AnalysisScreen[] = ["dashboard", "detail", "report"];
 
 describe("App-state after configuration deletion", () => {
   it.each([true, false])(
+    "clears recovery and stale analysis after deleting corrupt configuration (deleted=%s)",
+    (deleted) => {
+      const current = {
+        ...analyzedViewState(),
+        data: recoveryBootstrapData(),
+      };
+      expect(current.data.config).toBeNull();
+      expect(current.data.configRecoveryRequired).toBe(true);
+
+      const next = projectConfigDeleteTransition(current, {
+        ok: true,
+        data: { deleted },
+      });
+
+      expect(next).toEqual({
+        data: { ...current.data, config: null, configRecoveryRequired: false },
+        result: null,
+        selectedIssue: null,
+        screen: "empty",
+      });
+      for (const screen of analysisScreens)
+        expect(canAccessAnalysisScreen(next, screen)).toBe(false);
+      expect(current.data.configRecoveryRequired).toBe(true);
+    },
+  );
+
+  it("preserves the recovery flag after failed deletion", () => {
+    const current = {
+      ...analyzedViewState(),
+      data: recoveryBootstrapData(),
+    };
+    expect(
+      projectConfigDeleteTransition(current, {
+        ok: false,
+        error: { code: "STORAGE_UNAVAILABLE", message: "STORAGE_UNAVAILABLE" },
+      }),
+    ).toBe(current);
+    expect(current.data.configRecoveryRequired).toBe(true);
+  });
+
+  it.each([true, false])(
     "clears config, result and selection after successful deletion (deleted=%s)",
     (deleted) => {
       const current = {

@@ -10,11 +10,68 @@ import {
 } from "../../src/frontend/i18n/context";
 import { I18N_KEYS } from "../../src/frontend/i18n/keys";
 import {
+  canDeleteProjectConfig,
   deletionConfirmationReducer,
   initialDeletionConfirmation,
   isDeletionConfirmed,
   runConfirmedDeletion,
 } from "../../src/frontend/project-config-deletion";
+import { config } from "../fixtures/release";
+
+describe("Shared App and confirmation deletion eligibility", () => {
+  it.each([
+    { hasConfig: true, recovery: false, admin: true, eligible: true },
+    { hasConfig: true, recovery: true, admin: true, eligible: true },
+    { hasConfig: false, recovery: true, admin: true, eligible: true },
+    { hasConfig: false, recovery: false, admin: true, eligible: false },
+    { hasConfig: true, recovery: false, admin: false, eligible: false },
+    { hasConfig: true, recovery: true, admin: false, eligible: false },
+    { hasConfig: false, recovery: true, admin: false, eligible: false },
+    { hasConfig: false, recovery: false, admin: false, eligible: false },
+  ])(
+    "requires admin and either stored config or recovery: $hasConfig/$recovery/$admin",
+    ({ hasConfig, recovery, admin, eligible }) => {
+      expect(
+        canDeleteProjectConfig({
+          config: hasConfig ? config() : null,
+          configRecoveryRequired: recovery,
+          canConfigure: admin,
+        }),
+      ).toBe(eligible);
+    },
+  );
+
+  it("permits recovery deletion only after exact-key confirmation", async () => {
+    const data = {
+      config: null,
+      configRecoveryRequired: true,
+      canConfigure: true,
+    };
+    expect(canDeleteProjectConfig(data)).toBe(true);
+    const onDelete = vi.fn(async () => true);
+    const lock = { current: false };
+    for (const state of [
+      initialDeletionConfirmation,
+      { open: true, projectKey: "demo" },
+      { open: true, projectKey: "DEMO " },
+    ]) {
+      expect(
+        await runConfirmedDeletion(state, "DEMO", false, lock, onDelete),
+      ).toBe(false);
+    }
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(
+      await runConfirmedDeletion(
+        { open: true, projectKey: "DEMO" },
+        "DEMO",
+        false,
+        lock,
+        onDelete,
+      ),
+    ).toBe(true);
+    expect(onDelete).toHaveBeenCalledOnce();
+  });
+});
 
 describe("Configuration deletion confirmation", () => {
   it("requires an explicit first step, exact key, and a separate final action", async () => {

@@ -121,6 +121,7 @@ function renderConfiguration(
   canConfigure = true,
   locale: "en-US" | "de-DE" = "de-DE",
   t: TranslationFunction = germanTranslation,
+  configRecoveryRequired = false,
 ): string {
   const data: BootstrapData = {
     siteUrl: "https://demo.atlassian.net",
@@ -131,7 +132,7 @@ function renderConfiguration(
     versions: [],
     canConfigure,
     config: existingConfig,
-    configRecoveryRequired: false,
+    configRecoveryRequired,
   };
 
   return renderToStaticMarkup(
@@ -183,6 +184,31 @@ describe("Projektkonfiguration – Statushinweis i18n", () => {
 });
 
 describe("Projektkonfiguration – Berechtigungsgrenze", () => {
+  it.each([true, false])(
+    "shows recovery deletion only to project admins (canConfigure=%s)",
+    (canConfigure) => {
+      const markup = renderConfiguration(
+        [supportedDescriptionField],
+        null,
+        canConfigure,
+        "en-US",
+        englishTranslation,
+        true,
+      );
+
+      if (canConfigure) {
+        expect(markup).toContain("Delete ReleaseProof configuration");
+        expect(markup).toContain(
+          'type="button" aria-expanded="false">Delete configuration</button>',
+        );
+        expect(markup).not.toContain("Permanently delete configuration");
+      } else {
+        expect(markup).not.toContain("Delete ReleaseProof configuration");
+        expect(markup).not.toContain("Delete configuration");
+      }
+    },
+  );
+
   it("shows deletion only for admins with an existing configuration", () => {
     expect(
       renderConfiguration([supportedDescriptionField], config()),

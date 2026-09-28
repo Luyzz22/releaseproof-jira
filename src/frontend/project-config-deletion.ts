@@ -1,3 +1,17 @@
+import type { BootstrapData } from "../shared/resolver-contract";
+
+export function canDeleteProjectConfig(
+  data: Pick<
+    BootstrapData,
+    "config" | "configRecoveryRequired" | "canConfigure"
+  >,
+): boolean {
+  return (
+    data.canConfigure === true &&
+    (data.config !== null || data.configRecoveryRequired === true)
+  );
+}
+
 export interface DeletionConfirmationState {
   open: boolean;
   projectKey: string;
