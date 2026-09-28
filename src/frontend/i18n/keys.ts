@@ -117,6 +117,22 @@ export const I18N_KEYS = {
     "projectConfiguration.actions.storageDescription",
   projectConfigurationSaving: "projectConfiguration.actions.saving",
   projectConfigurationSave: "projectConfiguration.actions.save",
+  projectConfigurationDeleteHeading: "projectConfiguration.delete.heading",
+  projectConfigurationDeleteDescription:
+    "projectConfiguration.delete.description",
+  projectConfigurationDeleteJiraUntouched:
+    "projectConfiguration.delete.jiraUntouched",
+  projectConfigurationDeleteAnalysisWarning:
+    "projectConfiguration.delete.analysisWarning",
+  projectConfigurationDeleteAction: "projectConfiguration.delete.action",
+  projectConfigurationDeleteConfirmationTitle:
+    "projectConfiguration.delete.confirmationTitle",
+  projectConfigurationDeleteKeyInstruction:
+    "projectConfiguration.delete.keyInstruction",
+  projectConfigurationDeleteKeyLabel: "projectConfiguration.delete.keyLabel",
+  projectConfigurationDeletePermanent: "projectConfiguration.delete.permanent",
+  projectConfigurationDeleteCancel: "projectConfiguration.delete.cancel",
+  projectConfigurationDeleting: "projectConfiguration.delete.deleting",
   projectConfigurationValidationUnsupportedField:
     "projectConfiguration.validation.unsupportedField",
   projectConfigurationValidationFallback:

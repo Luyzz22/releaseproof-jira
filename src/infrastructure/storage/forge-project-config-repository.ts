@@ -10,6 +10,18 @@ import {
 const SCHEMA_VERSION = 2;
 
 export class ForgeProjectConfigRepository implements ProjectConfigRepository {
+  async delete(projectId: string): Promise<boolean> {
+    const key = `project-config:${projectId}`;
+    try {
+      // Do not validate configuration content: obsolete/corrupt data is deletable too.
+      if ((await kvs.get(key)) === undefined) return false;
+      await kvs.delete(key);
+      return true;
+    } catch {
+      throw new AppError("STORAGE_UNAVAILABLE", "KVS deletion failed.");
+    }
+  }
+
   async get(projectId: string): Promise<ProjectConfig | null> {
     try {
       const value = await kvs.get(`project-config:${projectId}`);

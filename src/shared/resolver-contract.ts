@@ -6,6 +6,7 @@ import type {
   JiraVersion,
 } from "../application/ports";
 import type { ProjectConfig } from "../domain/models/readiness";
+import type { DeleteProjectConfigResult } from "../application/delete-project-config/delete-project-config";
 import type { SafeError } from "./errors";
 import type { ReleaseReadinessResultDto } from "./release-readiness-dto";
 import type { ProjectConfigInput } from "./validation";
@@ -27,6 +28,7 @@ export interface BootstrapData {
 
 export type ResolverDefinitions = {
   getBootstrap: () => Promise<ApiResult<BootstrapData>>;
+  deleteProjectConfig: () => Promise<ApiResult<DeleteProjectConfigResult>>;
   saveProjectConfig: (
     input: ProjectConfigInput,
   ) => Promise<ApiResult<ProjectConfig>>;

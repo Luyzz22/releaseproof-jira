@@ -15,6 +15,7 @@ import {
   canAccessAnalysisScreen,
   projectConfigDataSaveTransition,
   projectConfigSaveTransition,
+  projectConfigDeleteTransition,
   type AppScreen,
 } from "./app-state";
 import { ErrorState } from "./components/error-state";
@@ -25,6 +26,7 @@ import { useI18n } from "./i18n/context";
 import { I18N_KEYS } from "./i18n/keys";
 import { EmptyState } from "./pages/empty-state";
 import { ReleaseSelection } from "./pages/release-selection";
+import { canDeleteProjectConfig } from "./project-config-deletion";
 
 const ProjectConfiguration = lazy(() =>
   import("./pages/project-configuration").then((module) => ({
@@ -58,6 +60,7 @@ export function App() {
   const [bootstrapError, setBootstrapError] = useState<SafeError | null>(null);
   const [actionError, setActionError] = useState<SafeError | null>(null);
   const requestId = useRef(0);
+  const deletionInFlight = useRef(false);
   const mainRef = useScreenFocus(screen);
 
   const load = useCallback(async () => {
@@ -92,7 +95,7 @@ export function App() {
   }
 
   async function saveConfig(input: ProjectConfigInput) {
-    if (busy || !data) return;
+    if (busy || deletionInFlight.current || !data) return;
     setBusy(true);
     setActionError(null);
     try {
@@ -116,7 +119,7 @@ export function App() {
   }
 
   async function runAnalysis(versionId: string) {
-    if (busy) return;
+    if (busy || deletionInFlight.current) return;
     setBusy(true);
     setActionError(null);
     try {
@@ -128,6 +131,38 @@ export function App() {
         setScreen("dashboard");
       }
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteConfig(): Promise<boolean> {
+    if (
+      busy ||
+      deletionInFlight.current ||
+      !data ||
+      !canDeleteProjectConfig(data)
+    )
+      return false;
+    deletionInFlight.current = true;
+    setBusy(true);
+    setActionError(null);
+    try {
+      const response = await releaseProofApi.deleteProjectConfig();
+      if (!response.ok) {
+        setActionError(response.error);
+        return false;
+      }
+      const next = projectConfigDeleteTransition(
+        { data, result, selectedIssue, screen },
+        response,
+      );
+      setData(next.data);
+      setResult(next.result);
+      setSelectedIssue(next.selectedIssue);
+      setScreen(next.screen);
+      return true;
+    } finally {
+      deletionInFlight.current = false;
       setBusy(false);
     }
   }
@@ -232,6 +267,7 @@ export function App() {
               data={data}
               saving={busy}
               onSave={saveConfig}
+              onDelete={deleteConfig}
             />
           ) : null}
           {screen === "release" ? (

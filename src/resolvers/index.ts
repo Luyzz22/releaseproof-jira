@@ -1,6 +1,7 @@
 import { makeResolver } from "@forge/resolver";
 import { analyzeSafely } from "./analyze-safely";
 import { analyzeRelease } from "../application/analyze-release/analyze-release";
+import { deleteProjectConfig } from "../application/delete-project-config/delete-project-config";
 import { loadProjectData } from "../application/load-project-data/load-project-data";
 import { saveProjectConfig } from "../application/save-project-config/save-project-config";
 import { systemClock } from "../application/ports";
@@ -58,6 +59,20 @@ const jira = new ForgeJiraClient();
 const repository = new ForgeProjectConfigRepository();
 
 export const handler = makeResolver<ResolverDefinitions>({
+  deleteProjectConfig: ({ payload, context }) =>
+    safely(async () => {
+      const projectContext = readProjectContext(context);
+      if (
+        payload !== undefined &&
+        (!isRecord(payload) || Object.keys(payload).length !== 0)
+      ) {
+        throw new AppError(
+          "INVALID_INPUT",
+          "Deletion does not accept parameters.",
+        );
+      }
+      return deleteProjectConfig(jira, repository, projectContext.projectId);
+    }),
   getBootstrap: ({ context }) =>
     safely(async () => {
       const projectContext = readProjectContext(context);

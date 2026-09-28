@@ -28,7 +28,7 @@ const ERROR_DEFAULT_MESSAGES = {
     "The data set is too large for a synchronous analysis. Reduce the release scope.",
   JIRA_UNAVAILABLE: "Jira is temporarily unavailable.",
   STORAGE_UNAVAILABLE:
-    "The project configuration could not be saved or loaded temporarily.",
+    "The project configuration could not be saved, loaded or deleted temporarily.",
   STORAGE_CORRUPT:
     "The stored project configuration is invalid and must be saved again.",
   UNKNOWN_ERROR: "An unexpected error occurred. Try again.",

@@ -101,6 +101,7 @@ function renderConfiguration(
         data,
         saving: options.saving ?? false,
         onSave: () => Promise.resolve(),
+        onDelete: () => Promise.resolve(true),
       }),
     }),
   );

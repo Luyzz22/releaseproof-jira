@@ -1,4 +1,5 @@
 import type { ProjectConfig } from "../domain/models/readiness";
+import type { DeleteProjectConfigResult } from "../application/delete-project-config/delete-project-config";
 import type { ApiResult, BootstrapData } from "../shared/resolver-contract";
 import type { ReleaseReadinessResultDto } from "../shared/release-readiness-dto";
 
@@ -14,6 +15,19 @@ export interface AnalysisViewState {
   result: ReleaseReadinessResultDto | null;
   selectedIssue: string | null;
   screen: AppScreen;
+}
+
+export function projectConfigDeleteTransition(
+  current: AnalysisViewState & { data: BootstrapData },
+  response: ApiResult<DeleteProjectConfigResult>,
+): AnalysisViewState & { data: BootstrapData } {
+  if (!response.ok) return current;
+  return {
+    data: { ...current.data, config: null, configRecoveryRequired: false },
+    result: null,
+    selectedIssue: null,
+    screen: "empty",
+  };
 }
 
 export function projectConfigSaveTransition(

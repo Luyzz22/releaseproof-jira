@@ -1,4 +1,5 @@
 import { makeInvoke } from "@forge/bridge";
+import type { DeleteProjectConfigResult } from "../../application/delete-project-config/delete-project-config";
 import type {
   ApiResult,
   BootstrapData,
@@ -27,6 +28,9 @@ async function transportSafe<T>(
 }
 
 export const releaseProofApi = {
+  deleteProjectConfig(): Promise<ApiResult<DeleteProjectConfigResult>> {
+    return transportSafe(invoke("deleteProjectConfig"));
+  },
   getBootstrap(): Promise<ApiResult<BootstrapData>> {
     return transportSafe(invoke("getBootstrap"));
   },

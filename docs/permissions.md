@@ -31,6 +31,12 @@ Erforderlich für `@forge/kvs`. Gespeichert werden ausschließlich:
 
 Es werden keine vollständigen Issues, Analysen, Reports oder personenbezogenen Benutzerprofile gespeichert.
 
+### Projektadmin-autorisierte Löschung
+
+Zum Löschen der gespeicherten ReleaseProof-Projektkonfiguration prüft der Server dieselbe projektgebundene `ADMINISTER_PROJECTS`-Berechtigung wie beim Speichern, bevor auf KVS zugegriffen wird. Das Ziel stammt ausschließlich aus dem Forge-Projektkontext; der Client kann weder eine fremde Projekt-ID noch einen Storage-Schlüssel auswählen. Nur `project-config:${projectId}` wird gelöscht. Andere Projektkonfigurationen und die globale technische `schema-version` bleiben erhalten. Eine bereits fehlende Konfiguration ist ein erfolgreicher, idempotenter Fall.
+
+Die bestehenden Scopes `read:jira-work` und `storage:app` reichen aus; es gibt keinen neuen Scope und keine Jira-Schreibberechtigung. Jira-Vorgänge, Felder, Releases und andere Jira-Projektdaten werden weder geändert noch gelöscht. Diese während der Nutzung ausführbare Konfigurationslöschung entfernt nicht die App-Installation und trifft keine Aussage über die physische Löschung von Forge-Backups oder Plattform-Aufbewahrung nach einer Deinstallation.
+
 ## Nicht angeforderte Berechtigungen
 
 - Keine Write-, Admin-, User-Profile-, Attachment- oder Comment-Scopes.

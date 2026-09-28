@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useReducer, useRef, useState, type FormEvent } from "react";
 import type { ReleaseScopeMode } from "../../domain/models/readiness";
 import {
   hasSupportedAcceptanceCriteriaField,
@@ -11,6 +11,13 @@ import {
   type ProjectConfigInput,
 } from "../../shared/validation";
 import { Panel } from "../components/panel";
+import { ProjectConfigDeleteSection } from "../components/project-config-delete-section";
+import {
+  canDeleteProjectConfig,
+  deletionConfirmationReducer,
+  initialDeletionConfirmation,
+  runConfirmedDeletion,
+} from "../project-config-deletion";
 import { useI18n } from "../i18n/context";
 import { I18N_KEYS } from "../i18n/keys";
 import { localizeProjectConfigValidationFailure } from "../i18n/project-config-validation";
@@ -33,13 +40,16 @@ export function ProjectConfiguration({
   data,
   saving,
   onSave,
+  onDelete,
 }: {
   data: BootstrapData;
   saving: boolean;
   onSave: (input: ProjectConfigInput) => Promise<void>;
+  onDelete: () => Promise<boolean>;
 }) {
   const { t } = useI18n();
   const existing = data.config;
+  const deletionAllowed = canDeleteProjectConfig(data);
   const editingDisabled = !data.canConfigure || saving;
   const fieldOptions = useMemo(
     () => data.fields.filter(isSupportedAcceptanceCriteriaField),
@@ -90,6 +100,26 @@ export function ProjectConfiguration({
     existing?.approvalMarker ?? "customer-approved",
   );
   const [validation, setValidation] = useState<string | null>(null);
+  const [deletionConfirmation, dispatchDeletion] = useReducer(
+    deletionConfirmationReducer,
+    initialDeletionConfirmation,
+  );
+  const deletionInFlight = useRef(false);
+
+  async function confirmDeletion() {
+    if (!deletionAllowed) return;
+    if (
+      await runConfirmedDeletion(
+        deletionConfirmation,
+        data.project.key,
+        saving,
+        deletionInFlight,
+        onDelete,
+      )
+    ) {
+      dispatchDeletion({ type: "reset" });
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -147,250 +177,271 @@ export function ProjectConfiguration({
           </div>
         ) : null}
       </div>
-      <form onSubmit={(event) => void submit(event)} className="form-stack">
-        <Panel>
-          <div className="section-heading">
-            <span className="step">01</span>
-            <div>
-              <h2>{t(I18N_KEYS.projectConfigurationWorkflowScopeHeading)}</h2>
-              <p>{t(I18N_KEYS.projectConfigurationWorkflowScopeDescription)}</p>
+      <div className="form-stack">
+        <form onSubmit={(event) => void submit(event)} className="form-stack">
+          <Panel>
+            <div className="section-heading">
+              <span className="step">01</span>
+              <div>
+                <h2>{t(I18N_KEYS.projectConfigurationWorkflowScopeHeading)}</h2>
+                <p>
+                  {t(I18N_KEYS.projectConfigurationWorkflowScopeDescription)}
+                </p>
+              </div>
             </div>
-          </div>
-          <fieldset>
-            <legend>
-              {t(I18N_KEYS.projectConfigurationReleaseScopeLegend)}
-            </legend>
-            <div className="scope-mode-grid">
-              <label className="choice choice--stack">
-                <span>
-                  <input
-                    disabled={editingDisabled}
-                    type="radio"
-                    name="release-scope-mode"
-                    value="VERSION_ONLY"
-                    checked={releaseScopeMode === "VERSION_ONLY"}
-                    onChange={() => setReleaseScopeMode("VERSION_ONLY")}
-                  />
-                  <strong>{t(I18N_KEYS.releaseScopeModeVersionOnly)}</strong>
-                </span>
-                <small>
-                  {t(I18N_KEYS.projectConfigurationVersionOnlyDescription)}
+            <fieldset>
+              <legend>
+                {t(I18N_KEYS.projectConfigurationReleaseScopeLegend)}
+              </legend>
+              <div className="scope-mode-grid">
+                <label className="choice choice--stack">
+                  <span>
+                    <input
+                      disabled={editingDisabled}
+                      type="radio"
+                      name="release-scope-mode"
+                      value="VERSION_ONLY"
+                      checked={releaseScopeMode === "VERSION_ONLY"}
+                      onChange={() => setReleaseScopeMode("VERSION_ONLY")}
+                    />
+                    <strong>{t(I18N_KEYS.releaseScopeModeVersionOnly)}</strong>
+                  </span>
+                  <small>
+                    {t(I18N_KEYS.projectConfigurationVersionOnlyDescription)}
+                  </small>
+                </label>
+                <label className="choice choice--stack">
+                  <span>
+                    <input
+                      disabled={editingDisabled}
+                      type="radio"
+                      name="release-scope-mode"
+                      value="JQL_SCOPE"
+                      checked={releaseScopeMode === "JQL_SCOPE"}
+                      onChange={() => setReleaseScopeMode("JQL_SCOPE")}
+                    />
+                    <strong>{t(I18N_KEYS.releaseScopeModeJqlScope)}</strong>
+                  </span>
+                  <small>
+                    {t(I18N_KEYS.projectConfigurationJqlScopeDescription)}
+                  </small>
+                </label>
+              </div>
+            </fieldset>
+            {releaseScopeMode === "VERSION_ONLY" ? (
+              <div className="scope-notice scope-notice--warning" role="status">
+                <strong>
+                  {t(I18N_KEYS.projectConfigurationVersionOnlyWarningTitle)}
+                </strong>
+                <p>
+                  {t(
+                    I18N_KEYS.projectConfigurationVersionOnlyWarningDescription,
+                  )}
+                </p>
+              </div>
+            ) : (
+              <label className="field">
+                <span>{t(I18N_KEYS.projectConfigurationJqlLabel)}</span>
+                <textarea
+                  disabled={editingDisabled}
+                  value={releaseScopeJql}
+                  onChange={(event) => setReleaseScopeJql(event.target.value)}
+                  maxLength={RELEASE_SCOPE_JQL_MAX_LENGTH}
+                  rows={4}
+                  aria-describedby="release-scope-jql-help"
+                  placeholder={`project = ${data.project.key} AND key in (${data.project.key}-1, ${data.project.key}-2)`}
+                />
+                <small id="release-scope-jql-help">
+                  {t(I18N_KEYS.projectConfigurationJqlHelpPrefix)}{" "}
+                  {data.project.key}{" "}
+                  {t(I18N_KEYS.projectConfigurationJqlHelpSuffix)}{" "}
+                  {releaseScopeJql.length}/{RELEASE_SCOPE_JQL_MAX_LENGTH}{" "}
+                  {t(I18N_KEYS.projectConfigurationCharactersLabel)}
                 </small>
               </label>
-              <label className="choice choice--stack">
-                <span>
-                  <input
-                    disabled={editingDisabled}
-                    type="radio"
-                    name="release-scope-mode"
-                    value="JQL_SCOPE"
-                    checked={releaseScopeMode === "JQL_SCOPE"}
-                    onChange={() => setReleaseScopeMode("JQL_SCOPE")}
-                  />
-                  <strong>{t(I18N_KEYS.releaseScopeModeJqlScope)}</strong>
-                </span>
-                <small>
-                  {t(I18N_KEYS.projectConfigurationJqlScopeDescription)}
-                </small>
-              </label>
+            )}
+            <fieldset>
+              <legend>
+                {t(I18N_KEYS.projectConfigurationAcceptedStatusesLegend)}
+              </legend>
+              <div className="choice-grid">
+                {data.statuses.map((status) => (
+                  <label className="choice" key={status.id}>
+                    <input
+                      disabled={editingDisabled}
+                      type="checkbox"
+                      checked={acceptedStatusIds.includes(status.id)}
+                      onChange={() =>
+                        setAcceptedStatusIds(
+                          toggle(acceptedStatusIds, status.id),
+                        )
+                      }
+                    />
+                    <span>{status.name}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>
+                {t(I18N_KEYS.projectConfigurationRelevantIssueTypesLegend)}
+              </legend>
+              <div className="choice-grid">
+                {data.issueTypes.map((type) => (
+                  <label className="choice" key={type.id}>
+                    <input
+                      disabled={editingDisabled}
+                      type="checkbox"
+                      checked={includedIssueTypes.includes(type.id)}
+                      onChange={() =>
+                        setIncludedIssueTypes(
+                          toggle(includedIssueTypes, type.id),
+                        )
+                      }
+                    />
+                    <span>{type.name}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </Panel>
+          <Panel>
+            <div className="section-heading">
+              <span className="step">02</span>
+              <div>
+                <h2>
+                  {t(I18N_KEYS.projectConfigurationEvidenceBlockersHeading)}
+                </h2>
+                <p>
+                  {t(I18N_KEYS.projectConfigurationEvidenceBlockersDescription)}
+                </p>
+              </div>
             </div>
-          </fieldset>
-          {releaseScopeMode === "VERSION_ONLY" ? (
-            <div className="scope-notice scope-notice--warning" role="status">
-              <strong>
-                {t(I18N_KEYS.projectConfigurationVersionOnlyWarningTitle)}
-              </strong>
-              <p>
-                {t(I18N_KEYS.projectConfigurationVersionOnlyWarningDescription)}
-              </p>
-            </div>
-          ) : (
             <label className="field">
-              <span>{t(I18N_KEYS.projectConfigurationJqlLabel)}</span>
-              <textarea
+              <span>
+                {t(I18N_KEYS.projectConfigurationAcceptanceCriteriaFieldLabel)}
+              </span>
+              <select
                 disabled={editingDisabled}
-                value={releaseScopeJql}
-                onChange={(event) => setReleaseScopeJql(event.target.value)}
-                maxLength={RELEASE_SCOPE_JQL_MAX_LENGTH}
-                rows={4}
-                aria-describedby="release-scope-jql-help"
-                placeholder={`project = ${data.project.key} AND key in (${data.project.key}-1, ${data.project.key}-2)`}
-              />
-              <small id="release-scope-jql-help">
-                {t(I18N_KEYS.projectConfigurationJqlHelpPrefix)}{" "}
-                {data.project.key}{" "}
-                {t(I18N_KEYS.projectConfigurationJqlHelpSuffix)}{" "}
-                {releaseScopeJql.length}/{RELEASE_SCOPE_JQL_MAX_LENGTH}{" "}
-                {t(I18N_KEYS.projectConfigurationCharactersLabel)}
-              </small>
-            </label>
-          )}
-          <fieldset>
-            <legend>
-              {t(I18N_KEYS.projectConfigurationAcceptedStatusesLegend)}
-            </legend>
-            <div className="choice-grid">
-              {data.statuses.map((status) => (
-                <label className="choice" key={status.id}>
-                  <input
-                    disabled={editingDisabled}
-                    type="checkbox"
-                    checked={acceptedStatusIds.includes(status.id)}
-                    onChange={() =>
-                      setAcceptedStatusIds(toggle(acceptedStatusIds, status.id))
-                    }
-                  />
-                  <span>{status.name}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend>
-              {t(I18N_KEYS.projectConfigurationRelevantIssueTypesLegend)}
-            </legend>
-            <div className="choice-grid">
-              {data.issueTypes.map((type) => (
-                <label className="choice" key={type.id}>
-                  <input
-                    disabled={editingDisabled}
-                    type="checkbox"
-                    checked={includedIssueTypes.includes(type.id)}
-                    onChange={() =>
-                      setIncludedIssueTypes(toggle(includedIssueTypes, type.id))
-                    }
-                  />
-                  <span>{type.name}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </Panel>
-        <Panel>
-          <div className="section-heading">
-            <span className="step">02</span>
-            <div>
-              <h2>
-                {t(I18N_KEYS.projectConfigurationEvidenceBlockersHeading)}
-              </h2>
-              <p>
-                {t(I18N_KEYS.projectConfigurationEvidenceBlockersDescription)}
-              </p>
-            </div>
-          </div>
-          <label className="field">
-            <span>
-              {t(I18N_KEYS.projectConfigurationAcceptanceCriteriaFieldLabel)}
-            </span>
-            <select
-              disabled={editingDisabled}
-              value={acceptanceCriteriaFieldId}
-              onChange={(event) =>
-                setAcceptanceCriteriaFieldId(event.target.value)
-              }
-            >
-              <option value="">
-                {t(
-                  I18N_KEYS.projectConfigurationAcceptanceCriteriaFieldPlaceholder,
-                )}
-              </option>
-              {fieldOptions.map((field) => (
-                <option value={field.id} key={field.id}>
-                  {field.name}
+                value={acceptanceCriteriaFieldId}
+                onChange={(event) =>
+                  setAcceptanceCriteriaFieldId(event.target.value)
+                }
+              >
+                <option value="">
+                  {t(
+                    I18N_KEYS.projectConfigurationAcceptanceCriteriaFieldPlaceholder,
+                  )}
                 </option>
-              ))}
-            </select>
-          </label>
-          {acceptanceCriteriaFieldRecoveryRequired ? (
-            <div className="scope-notice scope-notice--warning" role="alert">
-              <strong>
-                {t(
-                  I18N_KEYS.projectConfigurationAcceptanceCriteriaRecoveryTitle,
-                )}
-              </strong>
-              <p>
-                {t(
-                  I18N_KEYS.projectConfigurationAcceptanceCriteriaRecoveryDescription,
-                )}
-              </p>
-            </div>
-          ) : null}
-          <label className="field">
-            <span>
-              {t(I18N_KEYS.projectConfigurationBlockingLabelsLabel)}{" "}
-              <small>{t(I18N_KEYS.projectConfigurationCommaSeparated)}</small>
-            </span>
-            <input
-              disabled={editingDisabled}
-              value={blockerLabels}
-              onChange={(event) => setBlockerLabels(event.target.value)}
-              placeholder="release-blocker, security-blocker"
-            />
-          </label>
-          <label className="switch-row">
-            <input
-              disabled={editingDisabled}
-              type="checkbox"
-              checked={blockOnOpenSubtasks}
-              onChange={(event) => setBlockOnOpenSubtasks(event.target.checked)}
-            />
-            <span>
-              <strong>
-                {t(I18N_KEYS.projectConfigurationBlockOpenSubtasksLabel)}
-              </strong>
-              <small>
-                {t(I18N_KEYS.configurationOpenSubtasksBlockedExplanation)}
-              </small>
-            </span>
-          </label>
-          <label className="switch-row">
-            <input
-              disabled={editingDisabled}
-              type="checkbox"
-              checked={requireApprovalMarker}
-              onChange={(event) =>
-                setRequireApprovalMarker(event.target.checked)
-              }
-            />
-            <span>
-              <strong>
-                {t(I18N_KEYS.projectConfigurationRequireApprovalMarkerLabel)}
-              </strong>
-              <small>
-                {t(
-                  I18N_KEYS.projectConfigurationRequireApprovalMarkerDescription,
-                )}
-              </small>
-            </span>
-          </label>
-          {requireApprovalMarker ? (
-            <label className="field field--nested">
-              <span>{t(I18N_KEYS.projectConfigurationApprovalLabel)}</span>
+                {fieldOptions.map((field) => (
+                  <option value={field.id} key={field.id}>
+                    {field.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {acceptanceCriteriaFieldRecoveryRequired ? (
+              <div className="scope-notice scope-notice--warning" role="alert">
+                <strong>
+                  {t(
+                    I18N_KEYS.projectConfigurationAcceptanceCriteriaRecoveryTitle,
+                  )}
+                </strong>
+                <p>
+                  {t(
+                    I18N_KEYS.projectConfigurationAcceptanceCriteriaRecoveryDescription,
+                  )}
+                </p>
+              </div>
+            ) : null}
+            <label className="field">
+              <span>
+                {t(I18N_KEYS.projectConfigurationBlockingLabelsLabel)}{" "}
+                <small>{t(I18N_KEYS.projectConfigurationCommaSeparated)}</small>
+              </span>
               <input
                 disabled={editingDisabled}
-                value={approvalMarker}
-                onChange={(event) => setApprovalMarker(event.target.value)}
-                placeholder="customer-approved"
+                value={blockerLabels}
+                onChange={(event) => setBlockerLabels(event.target.value)}
+                placeholder="release-blocker, security-blocker"
               />
             </label>
+            <label className="switch-row">
+              <input
+                disabled={editingDisabled}
+                type="checkbox"
+                checked={blockOnOpenSubtasks}
+                onChange={(event) =>
+                  setBlockOnOpenSubtasks(event.target.checked)
+                }
+              />
+              <span>
+                <strong>
+                  {t(I18N_KEYS.projectConfigurationBlockOpenSubtasksLabel)}
+                </strong>
+                <small>
+                  {t(I18N_KEYS.configurationOpenSubtasksBlockedExplanation)}
+                </small>
+              </span>
+            </label>
+            <label className="switch-row">
+              <input
+                disabled={editingDisabled}
+                type="checkbox"
+                checked={requireApprovalMarker}
+                onChange={(event) =>
+                  setRequireApprovalMarker(event.target.checked)
+                }
+              />
+              <span>
+                <strong>
+                  {t(I18N_KEYS.projectConfigurationRequireApprovalMarkerLabel)}
+                </strong>
+                <small>
+                  {t(
+                    I18N_KEYS.projectConfigurationRequireApprovalMarkerDescription,
+                  )}
+                </small>
+              </span>
+            </label>
+            {requireApprovalMarker ? (
+              <label className="field field--nested">
+                <span>{t(I18N_KEYS.projectConfigurationApprovalLabel)}</span>
+                <input
+                  disabled={editingDisabled}
+                  value={approvalMarker}
+                  onChange={(event) => setApprovalMarker(event.target.value)}
+                  placeholder="customer-approved"
+                />
+              </label>
+            ) : null}
+          </Panel>
+          {validation ? (
+            <p className="form-error" role="alert">
+              {validation}
+            </p>
           ) : null}
-        </Panel>
-        {validation ? (
-          <p className="form-error" role="alert">
-            {validation}
-          </p>
+          <div className="form-actions">
+            <span>{t(I18N_KEYS.projectConfigurationStorageDescription)}</span>
+            {data.canConfigure ? (
+              <button className="button" type="submit" disabled={saving}>
+                {saving
+                  ? t(I18N_KEYS.projectConfigurationSaving)
+                  : t(I18N_KEYS.projectConfigurationSave)}
+              </button>
+            ) : null}
+          </div>
+        </form>
+        {deletionAllowed ? (
+          <ProjectConfigDeleteSection
+            projectKey={data.project.key}
+            state={deletionConfirmation}
+            busy={saving}
+            onAction={dispatchDeletion}
+            onConfirm={() => void confirmDeletion()}
+          />
         ) : null}
-        <div className="form-actions">
-          <span>{t(I18N_KEYS.projectConfigurationStorageDescription)}</span>
-          {data.canConfigure ? (
-            <button className="button" type="submit" disabled={saving}>
-              {saving
-                ? t(I18N_KEYS.projectConfigurationSaving)
-                : t(I18N_KEYS.projectConfigurationSave)}
-            </button>
-          ) : null}
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

@@ -32,7 +32,7 @@
       "rateLimited": "Jira begrenzt die Anfragen vorübergehend. Bitte versuchen Sie es später erneut.",
       "resultLimitExceeded": "Die Datenmenge ist für eine synchrone Analyse zu groß. Bitte verkleinern Sie den Release-Umfang.",
       "jiraUnavailable": "Jira konnte vorübergehend nicht erreicht werden.",
-      "storageUnavailable": "Die Projektkonfiguration konnte vorübergehend nicht gespeichert oder geladen werden.",
+      "storageUnavailable": "Die Projektkonfiguration konnte vorübergehend nicht gespeichert, geladen oder gelöscht werden.",
       "storageCorrupt": "Die gespeicherte Projektkonfiguration ist ungültig und muss neu gespeichert werden.",
       "unknown": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
     }
@@ -130,6 +130,19 @@
       "storageDescription": "Konfiguration wird projektbezogen in Forge KVS gespeichert.",
       "saving": "Wird gespeichert …",
       "save": "Konfiguration speichern"
+    },
+    "delete": {
+      "heading": "ReleaseProof-Konfiguration löschen",
+      "description": "Löschen Sie die gespeicherte ReleaseProof-Konfiguration für dieses Jira-Projekt.",
+      "jiraUntouched": "Jira-Vorgänge, Releases und andere Jira-Projektdaten werden nicht gelöscht.",
+      "analysisWarning": "Dies kann nicht rückgängig gemacht werden. Aktuelle Analyseergebnisse werden verworfen. Erstellen Sie eine neue Konfiguration, bevor Sie erneut eine ReleaseProof-Analyse ausführen.",
+      "action": "Konfiguration löschen",
+      "confirmationTitle": "Löschen der Konfiguration bestätigen",
+      "keyInstruction": "Geben Sie zur Bestätigung diesen Projektschlüssel exakt ein (Groß-/Kleinschreibung beachten):",
+      "keyLabel": "Projektschlüssel zur Bestätigung",
+      "permanent": "Konfiguration endgültig löschen",
+      "cancel": "Abbrechen",
+      "deleting": "Wird gelöscht …"
     },
     "validation": {
       "unsupportedField": "Bitte wählen Sie ein unterstütztes Textfeld für Akzeptanzkriterien aus.",
