@@ -61,9 +61,7 @@ describe("project-admin legal and security notice channel", () => {
     expect(markup).toContain(
       "free-text ReleaseProof configuration is intended only for non-personal values",
     );
-    expect(markup).toContain(
-      'href="https://releaseproof.de/legal/privacy"',
-    );
+    expect(markup).toContain('href="https://releaseproof.de/legal/privacy"');
     expect(markup).toContain("Open privacy notice");
     expect(markup).not.toContain("adminNotice.");
   });
