@@ -19,6 +19,7 @@ import {
   type AppScreen,
 } from "./app-state";
 import { ErrorState } from "./components/error-state";
+import { AdminLegalNotice } from "./components/admin-legal-notice";
 import { InlineError } from "./components/inline-error";
 import { LoadingState } from "./components/loading-state";
 import { useScreenFocus } from "./hooks/use-screen-focus";
@@ -252,6 +253,7 @@ export function App() {
         tabIndex={-1}
         aria-busy={busy}
       >
+        <AdminLegalNotice visible={data.canConfigure} />
         {actionError ? (
           <InlineError
             error={actionError}

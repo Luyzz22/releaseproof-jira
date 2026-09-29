@@ -13,6 +13,14 @@
     "overview": "Übersicht",
     "configuration": "Konfiguration"
   },
+  "adminNotice": {
+    "eyebrow": "Rechtlicher und sicherheitsbezogener Hinweis",
+    "privacy": {
+      "title": "Datenschutzhinweis aktualisiert",
+      "description": "Die öffentlichen ReleaseProof-Datenschutzhinweise wurden am 29. September 2026 aktualisiert. Sie stellen nun ausdrücklich klar, dass frei editierbare ReleaseProof-Konfigurationswerte ausschließlich für nicht personenbezogene Werte vorgesehen sind. Es ist keine Aktion erforderlich.",
+      "link": "Datenschutzhinweise öffnen"
+    }
+  },
   "states": {
     "loadingFull": "ReleaseProof wird geladen …",
     "loadingCompact": "Ansicht wird vorbereitet …"

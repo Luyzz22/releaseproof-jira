@@ -13,6 +13,14 @@
     "overview": "Overview",
     "configuration": "Configuration"
   },
+  "adminNotice": {
+    "eyebrow": "Legal & security notice",
+    "privacy": {
+      "title": "Privacy information updated",
+      "description": "ReleaseProof’s public privacy notice was updated on 29 September 2026. It now explicitly states that free-text ReleaseProof configuration is intended only for non-personal values. No action is required.",
+      "link": "Open privacy notice"
+    }
+  },
   "states": {
     "loadingFull": "ReleaseProof is loading …",
     "loadingCompact": "Preparing view …"
