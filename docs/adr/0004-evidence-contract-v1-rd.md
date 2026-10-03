@@ -1,7 +1,9 @@
 # ADR 0004 — ReleaseProof Evidence Contract v1 R&D
 
-Status: Draft / R&D only  
-Jira: SCRUM-88  
+Status: Draft / R&D only
+
+Jira: SCRUM-88
+
 Baseline: `main@c7f87016f8436cb974f66f58157b8f114fb3598f`
 
 ## Decision context
@@ -95,7 +97,7 @@ It MUST NOT contain:
 - arbitrary customer text;
 - `EvidenceOutcome.params`.
 
-This profile is only a *candidate* for later external/AI use. SCRUM-88 does not
+This profile is only a _candidate_ for later external/AI use. SCRUM-88 does not
 authorize sending it anywhere.
 
 ### TRACEABLE_INTERNAL
@@ -457,3 +459,57 @@ SCRUM-88 is ready for independent review when:
 - no merge/deploy/Marketplace mutation occurred.
 
 Any later activation requires a separate Security/Privacy and product decision.
+
+## Implemented R&D policies
+
+The additive implementation lives in `src/shared/evidence-contract-v1.ts` and
+`src/application/evidence-contract/build-evidence-contract-v1.ts`. No existing
+Production module imports either module. The existing UI DTO, mapper, Analyze
+Release use case and domain engine remain unchanged.
+
+Both profiles carry `schemaVersion`, `contract`, `profile`, `dataBoundary`,
+`authority`, `release` and `rules`. SUMMARY_MINIMIZED uses `MINIMIZED`;
+TRACEABLE_INTERNAL uses `INTERNAL_ONLY` and adds `issues`. Every rule and its
+valid outcomes appear in authoritative constant order, including zero counts.
+Explicit exhaustive mappings and exact-set tests guard domain drift.
+
+The builder consumes the trusted application-owned `ReleaseReadinessResultDto`.
+It copies only the allowed fields, orders newly allocated arrays, and validates
+the complete trace before returning either profile. Invalid source findings
+cannot disappear through summary minimization. It never reads `generatedAt`,
+display fields, `sourceField` or outcome params. It preserves supplied release
+and issue statuses, scores and counts, including empty-release facts.
+
+The parser accepts ordinary records with `Object.prototype` or a null prototype.
+All required record properties must be own, enumerable data properties. Symbols,
+accessors, hidden properties, unknown keys and custom prototypes are rejected.
+Arrays must be dense ordinary arrays with no extra own properties; array
+subclasses, custom prototypes, accessors and sparse arrays are rejected. Parsing
+reads descriptors without invoking input getters, iterators or `toJSON` methods.
+Output is reconstructed into ordinary owned objects and deeply frozen; caller
+objects are neither retained nor frozen. Failures expose only the fixed
+`INVALID_EVIDENCE_CONTRACT_V1` error code/message.
+
+Issue keys follow the existing configured project-key shape plus a digit suffix.
+Issues use locale-independent lexical ordering. Within each issue, a finding's
+identity is `(ruleId, outcomeId)`: a repeated identity is rejected even if its
+category or status differs. Findings follow rule order, then outcome order.
+The parser rejects noncanonical array ordering; the builder canonicalizes source
+arrays. Serialization reparses and reconstructs stable object keys before JSON
+encoding, without timestamps, randomness or a fingerprint.
+
+Counts are non-negative safe integers and scores are integers in `0..100`.
+Validation checks the release counter sum, per-rule status/outcome count sums,
+trace issue count, uniqueness, and every trace aggregate against its findings.
+It does not infer status from an outcome, score from counts, or release status
+from issue statuses. Supplied blocker and missing-evidence counts are copied and
+range-checked, never recomputed. Summary aggregates cannot be checked against
+individual findings because that profile intentionally omits the trace.
+
+These are data validation and minimization boundaries, not source authentication
+or a JavaScript sandbox. A future adapter must establish provenance and enforce
+its own input-size limits before parsing decoded data; reflection on an active
+JavaScript Proxy can execute proxy traps. The contract has no transport, storage
+or consumer integration. TRACEABLE_INTERNAL still contains issue keys and remains
+internal-only. R&D validation does not authorize external processing, activation,
+a release or a deployment.
