@@ -4,6 +4,7 @@ import {
   EVIDENCE_OUTCOME_IDS,
   EVIDENCE_RULE_IDS,
   type EvidenceOutcome,
+  type EvidenceRuleId,
 } from "../../src/domain/models/evidence-outcome";
 import {
   READINESS_STATUSES,
@@ -12,7 +13,10 @@ import {
 import { readinessRules } from "../../src/domain/rules";
 import {
   EVIDENCE_CONTRACT_CATEGORIES,
+  EVIDENCE_CONTRACT_MAX_ISSUES,
   EVIDENCE_CONTRACT_OUTCOME_RULES,
+  EVIDENCE_CONTRACT_OUTCOME_STATUSES,
+  EVIDENCE_CONTRACT_RULE_CATEGORIES,
   EVIDENCE_CONTRACT_SCOPE_MODES,
   EVIDENCE_CONTRACT_STATUS_COUNTS,
   EvidenceContractV1Error,
@@ -99,45 +103,73 @@ const outcomes = [
   },
 ] satisfies EvidenceOutcome[];
 
-// Deliberately non-derived facts: scores and counts must survive verbatim.
+// The main fixture is produced by the actual engine: seven findings per issue.
 function dto(): ReleaseReadinessResultDto {
-  return {
-    release: {
+  const candidates = issueKeys.map((key, index) =>
+    issue({
+      key,
+      summary: markers.summary,
+      issueType: { id: "10001", name: markers.issueType },
+      status:
+        index === 2
+          ? null
+          : { id: index === 0 ? "31" : "3", name: markers.status },
+      hasAcceptanceCriteria: index !== 1,
+      labels:
+        index === 0
+          ? [markers.approval]
+          : index === 1
+            ? []
+            : [markers.approval, markers.blocker],
+      fixVersions:
+        index === 0
+          ? [{ id: "30001", name: markers.version }]
+          : index === 1
+            ? [{ id: "39999", name: markers.versionParam }]
+            : [],
+      linkedIssues:
+        index !== 2
+          ? []
+          : [
+              {
+                id: "1",
+                key: markers.linkedKey,
+                relationship: "is blocked by",
+                direction: "inward",
+                isBlocking: true,
+                status: null,
+                resolution: null,
+              },
+            ],
+      subtasks:
+        index !== 2
+          ? []
+          : [
+              {
+                id: "2",
+                key: markers.subtaskKey,
+                status: null,
+                resolution: null,
+              },
+            ],
+      updatedAt: markers.generatedAt,
+    }),
+  );
+  return readinessDto(
+    {
+      ...release(candidates),
       projectKey: markers.project,
       versionName: markers.version,
       releaseScopeMode: "JQL_SCOPE",
       releaseScopeJql: markers.jql,
-      issues: issueKeys.map((key) => ({
-        key,
-        summary: markers.summary,
-        issueTypeName: markers.issueType,
-        statusName: markers.status,
-        updatedAt: markers.generatedAt,
-      })),
     },
-    status: "READY",
-    score: 13,
-    totalIssues: 3,
-    readyIssues: 0,
-    incompleteIssues: 1,
-    blockedIssues: 2,
-    results: issueKeys.map((issueKey, index) => ({
-      issueKey,
-      status: READINESS_STATUSES[index + 1]!,
-      score: 97 - index * 23,
-      blockerCount: 91 + index,
-      missingEvidenceCount: 82 + index,
-      evidence: outcomes.map((outcome, findingIndex) => ({
-        ruleId: EVIDENCE_CONTRACT_OUTCOME_RULES[outcome.outcomeId],
-        issueKey: markers.findingKey,
-        category: "DOCUMENTATION",
-        status: READINESS_STATUSES[findingIndex % READINESS_STATUSES.length]!,
-        outcome: structuredClone(outcome),
-        sourceField: markers.field,
-      })),
-    })),
-    generatedAt: markers.generatedAt,
-  };
+    config({
+      approvalMarker: markers.approval,
+      blockerLabels: [markers.blocker],
+      acceptanceCriteriaFieldId: markers.field,
+    }),
+    markers.generatedAt,
+  );
 }
 
 function contract() {
@@ -199,6 +231,22 @@ const forbiddenKeys = [
 ];
 
 describe("Evidence Contract v1 coverage and authority", () => {
+  it("uses one engine-generated finding per rule in the main fixture and canonical trace", () => {
+    const source = dto();
+    for (const result of source.results) {
+      expect(result.evidence).toHaveLength(7);
+      expect(new Set(result.evidence.map((item) => item.ruleId))).toEqual(
+        new Set(EVIDENCE_RULE_IDS),
+      );
+    }
+    for (const trace of buildEvidenceContractV1(source, "TRACEABLE_INTERNAL")
+      .issues) {
+      expect(trace.findings.map((item) => item.ruleId)).toEqual(
+        EVIDENCE_RULE_IDS,
+      );
+    }
+  });
+
   it("has exact domain sets, not just the current 7/19/4/2 counts", () => {
     const value = contract();
     const rules = value.rules.map((rule) => rule.ruleId);
@@ -212,6 +260,18 @@ describe("Evidence Contract v1 coverage and authority", () => {
     );
     expect(new Set(Object.keys(EVIDENCE_CONTRACT_OUTCOME_RULES))).toEqual(
       new Set(EVIDENCE_OUTCOME_IDS),
+    );
+    expect(new Set(Object.keys(EVIDENCE_CONTRACT_OUTCOME_STATUSES))).toEqual(
+      new Set(EVIDENCE_OUTCOME_IDS),
+    );
+    expect(new Set(Object.keys(EVIDENCE_CONTRACT_RULE_CATEGORIES))).toEqual(
+      new Set(EVIDENCE_RULE_IDS),
+    );
+    expect(new Set(Object.values(EVIDENCE_CONTRACT_OUTCOME_STATUSES))).toEqual(
+      new Set(READINESS_STATUSES),
+    );
+    expect(new Set(Object.values(EVIDENCE_CONTRACT_RULE_CATEGORIES))).toEqual(
+      new Set(Object.keys(EVIDENCE_CONTRACT_CATEGORIES)),
     );
     expect(new Set(Object.keys(EVIDENCE_CONTRACT_STATUS_COUNTS))).toEqual(
       new Set(READINESS_STATUSES),
@@ -284,6 +344,12 @@ describe("Evidence Contract v1 coverage and authority", () => {
           expect(
             EVIDENCE_CONTRACT_OUTCOME_RULES[finding.outcome.outcomeId],
           ).toBe(finding.ruleId);
+          expect(
+            EVIDENCE_CONTRACT_RULE_CATEGORIES[finding.ruleId as EvidenceRuleId],
+          ).toBe(finding.category);
+          expect(
+            EVIDENCE_CONTRACT_OUTCOME_STATUSES[finding.outcome.outcomeId],
+          ).toBe(finding.status);
           seen.add(finding.outcome.outcomeId);
         }
       }
@@ -295,6 +361,22 @@ describe("Evidence Contract v1 coverage and authority", () => {
     "copies all supplied facts without recomputation in %s",
     (profile) => {
       const source = dto();
+      // Deliberate supplied-fact copy probes; the seven evidence findings stay valid.
+      Object.assign(source, {
+        status: "READY",
+        score: 13,
+        readyIssues: 0,
+        incompleteIssues: 1,
+        blockedIssues: 2,
+      });
+      for (const [index, result] of source.results.entries()) {
+        Object.assign(result, {
+          status: READINESS_STATUSES[index + 1],
+          score: 97 - index * 23,
+          blockerCount: 91 + index,
+          missingEvidenceCount: 82 + index,
+        });
+      }
       const value = buildEvidenceContractV1(source, profile);
       expect(value.release).toEqual({
         releaseScopeMode: "JQL_SCOPE",
@@ -328,36 +410,40 @@ describe("Evidence Contract v1 coverage and authority", () => {
             findings: undefined,
           });
           expect(trace.findings).toEqual(
-            result.evidence.map((item) => ({
-              ruleId: item.ruleId,
-              category: item.category,
-              status: item.status,
-              outcomeId: item.outcome.outcomeId,
-            })),
+            EVIDENCE_RULE_IDS.map((ruleId) => {
+              const item = result.evidence.find(
+                (finding) => finding.ruleId === ruleId,
+              )!;
+              return {
+                ruleId: item.ruleId,
+                category: item.category,
+                status: item.status,
+                outcomeId: item.outcome.outcomeId,
+              };
+            }),
           );
         }
       }
       expect(value.rules[0]).toEqual({
         ruleId: "acceptance-criteria-present",
-        ready: 3,
-        incomplete: 3,
+        ready: 2,
+        incomplete: 1,
         blocked: 0,
         notApplicable: 0,
         outcomes: [
-          { outcomeId: "acceptance-criteria-present/present", count: 3 },
-          { outcomeId: "acceptance-criteria-present/missing", count: 3 },
+          { outcomeId: "acceptance-criteria-present/present", count: 2 },
+          { outcomeId: "acceptance-criteria-present/missing", count: 1 },
         ],
       });
     },
   );
 
   it.each(READINESS_STATUSES)(
-    "accepts supplied %s at release, issue and finding levels",
+    "preserves supplied %s at release and issue levels without recomputation",
     (status) => {
       const source = dto();
       source.status = status;
       source.results[0]!.status = status;
-      source.results[0]!.evidence[0]!.status = status;
       const value = buildEvidenceContractV1(source, "TRACEABLE_INTERNAL");
       expect(value.release.status).toBe(status);
       expect(
@@ -380,20 +466,56 @@ describe("Evidence Contract v1 coverage and authority", () => {
     },
   );
 
-  it.each(Object.keys(EVIDENCE_CONTRACT_CATEGORIES))(
-    "accepts category %s and preserves it",
-    (category) => {
-      const value = structuredClone(contract());
-      set(value, ["issues", 0, "findings", 0, "category"], category);
-      expect(
-        at(parseEvidenceContractV1(value), [
-          "issues",
-          0,
-          "findings",
-          0,
-          "category",
-        ]),
-      ).toBe(category);
+  it.each(outcomes)(
+    "validates all v1 semantics and minimizes params for $outcomeId",
+    (outcome) => {
+      const source = dto();
+      const ruleId = EVIDENCE_CONTRACT_OUTCOME_RULES[outcome.outcomeId];
+      const finding = source.results[0]!.evidence.find(
+        (item) => item.ruleId === ruleId,
+      )!;
+      finding.outcome = structuredClone(outcome);
+      finding.category = EVIDENCE_CONTRACT_RULE_CATEGORIES[ruleId];
+      finding.status = EVIDENCE_CONTRACT_OUTCOME_STATUSES[outcome.outcomeId];
+      for (const profile of profiles) {
+        const value = buildEvidenceContractV1(source, profile);
+        expect(parseEvidenceContractV1(value)).toEqual(value);
+        const json = serializeEvidenceContractV1(value);
+        for (const marker of Object.values(markers))
+          expect(json).not.toContain(marker);
+        for (const key of forbiddenKeys) expect(json).not.toContain(`"${key}"`);
+      }
+      // Every other category/status is invalid, even though it belongs to the enum.
+      for (const category of Object.keys(EVIDENCE_CONTRACT_CATEGORIES)) {
+        if (category === finding.category) continue;
+        const value = structuredClone(
+          buildEvidenceContractV1(source, "TRACEABLE_INTERNAL"),
+        );
+        const trace = value.issues.find(
+          (item) => item.issueKey === source.results[0]!.issueKey,
+        )!;
+        set(
+          trace.findings.find((item) => item.ruleId === ruleId)!,
+          ["category"],
+          category,
+        );
+        rejects(value);
+      }
+      for (const status of READINESS_STATUSES) {
+        if (status === finding.status) continue;
+        const value = structuredClone(
+          buildEvidenceContractV1(source, "TRACEABLE_INTERNAL"),
+        );
+        const trace = value.issues.find(
+          (item) => item.issueKey === source.results[0]!.issueKey,
+        )!;
+        set(
+          trace.findings.find((item) => item.ruleId === ruleId)!,
+          ["status"],
+          status,
+        );
+        rejects(value);
+      }
     },
   );
 
@@ -558,7 +680,7 @@ describe("minimization, canonicalization and ownership", () => {
       ).humanReviewRequired = false;
     }).toThrow();
     set(callerOwned, ["release", "score"], 11);
-    expect(parsed.release.score).toBe(13);
+    expect(parsed.release.score).toBe(outputs[0]!.release.score);
   });
 
   it("never reads excluded source display fields, timestamps, or outcome params", () => {
@@ -678,23 +800,47 @@ describe("strict fail-closed parser and serializer", () => {
     },
   );
 
-  it("accepts safe integer boundaries and rejects overflow in sums", () => {
-    const value = structuredClone(
-      buildEvidenceContractV1(dto(), "SUMMARY_MINIMIZED"),
-    );
-    set(value, ["release", "totalIssues"], Number.MAX_SAFE_INTEGER);
-    set(value, ["release", "readyIssues"], Number.MAX_SAFE_INTEGER);
-    set(value, ["release", "incompleteIssues"], 0);
-    set(value, ["release", "blockedIssues"], 0);
-    expect(parseEvidenceContractV1(value).release.totalIssues).toBe(
-      Number.MAX_SAFE_INTEGER,
-    );
-    set(value, ["release", "blockedIssues"], 1);
-    rejects(value);
+  it("retains safe-integer count validation and rejects overflow in sums", () => {
+    const value = structuredClone(contract());
+    set(value, ["issues", 0, "blockerCount"], Number.MAX_SAFE_INTEGER);
+    set(value, ["issues", 0, "missingEvidenceCount"], Number.MAX_SAFE_INTEGER);
+    expect(
+      at(parseEvidenceContractV1(value), ["issues", 0, "blockerCount"]),
+    ).toBe(Number.MAX_SAFE_INTEGER);
+    expect(
+      at(parseEvidenceContractV1(value), ["issues", 0, "missingEvidenceCount"]),
+    ).toBe(Number.MAX_SAFE_INTEGER);
+    const releaseOverflow = structuredClone(contract());
+    set(releaseOverflow, ["release", "readyIssues"], Number.MAX_SAFE_INTEGER);
+    rejects(releaseOverflow);
     const overflow = structuredClone(contract());
     set(overflow, ["rules", 0, "ready"], Number.MAX_SAFE_INTEGER);
     rejects(overflow);
   });
+
+  it.each(profiles)(
+    "requires every rule total to equal totalIssues in %s",
+    (profile) => {
+      for (const count of [2, 4]) {
+        const value = structuredClone(buildEvidenceContractV1(dto(), profile));
+        // Status and outcome totals agree with each other, but not with the release.
+        set(value, ["rules", 0, "ready"], count - 1);
+        set(value, ["rules", 0, "outcomes", 0, "count"], count - 1);
+        rejects(value);
+      }
+    },
+  );
+
+  it.each(profiles)(
+    "rejects status/outcome aggregate contradictions in %s",
+    (profile) => {
+      const value = structuredClone(buildEvidenceContractV1(dto(), profile));
+      // Keep the total at three while contradicting the mapped outcome statuses.
+      set(value, ["rules", 0, "ready"], 1);
+      set(value, ["rules", 0, "blocked"], 1);
+      rejects(value);
+    },
+  );
 
   it.each([
     "",
@@ -741,17 +887,88 @@ describe("strict fail-closed parser and serializer", () => {
     rejects(value);
   });
 
+  it.each(["missing rule", "duplicate rule", "present plus missing"])(
+    "rejects %s in parser and both builders",
+    (attack) => {
+      const source = dto();
+      const evidence = source.results[0]!.evidence;
+      const ruleIds: readonly string[] = EVIDENCE_RULE_IDS;
+      evidence.sort(
+        (left, right) =>
+          ruleIds.indexOf(left.ruleId) - ruleIds.indexOf(right.ruleId),
+      );
+      const duplicate = structuredClone(evidence[0]!);
+      if (attack === "missing rule") evidence.pop();
+      else if (attack === "duplicate rule") evidence[1] = duplicate;
+      else {
+        duplicate.outcome = {
+          outcomeId: "acceptance-criteria-present/missing",
+          params: {},
+        };
+        duplicate.status = "INCOMPLETE";
+        evidence.splice(1, 0, duplicate);
+      }
+      const value = structuredClone(contract());
+      const trace = value.issues.find(
+        (entry) => entry.issueKey === source.results[0]!.issueKey,
+      )!;
+      set(
+        trace,
+        ["findings"],
+        evidence.map((item) => ({
+          ruleId: item.ruleId,
+          category: item.category,
+          status: item.status,
+          outcomeId: item.outcome.outcomeId,
+        })),
+      );
+      rejects(value);
+      for (const profile of profiles)
+        expect(() => buildEvidenceContractV1(source, profile)).toThrow(
+          EvidenceContractV1Error,
+        );
+    },
+  );
+
+  it("rejects mutually exclusive findings even when every global aggregate still matches", () => {
+    const value = structuredClone(contract());
+    const first = [...value.issues[0]!.findings];
+    const last = [...value.issues[2]!.findings];
+    // Swap findings between issues without adding/removing any global fact.
+    // First issue now has acceptance present+missing; last has accepted-status
+    // missing+not-accepted. Both still have seven valid, canonically sorted items.
+    [first[1], last[0]] = [last[0]!, first[1]!];
+    for (const [index, findings] of [
+      [0, first],
+      [2, last],
+    ] as const) {
+      findings.sort(
+        (left, right) =>
+          EVIDENCE_RULE_IDS.indexOf(left.ruleId) -
+            EVIDENCE_RULE_IDS.indexOf(right.ruleId) ||
+          EVIDENCE_OUTCOME_IDS.indexOf(left.outcomeId) -
+            EVIDENCE_OUTCOME_IDS.indexOf(right.outcomeId),
+      );
+      set(value, ["issues", index, "findings"], findings);
+      expect(findings).toHaveLength(EVIDENCE_RULE_IDS.length);
+    }
+    rejects(value);
+  });
+
   it("checks trace length and trace/aggregate correspondence, not just totals", () => {
     const length = structuredClone(contract());
     set(length, ["issues"], length.issues.slice(1));
     rejects(length);
     const statuses = structuredClone(contract());
-    set(statuses, ["rules", 0, "ready"], 2);
+    set(statuses, ["rules", 0, "ready"], 1);
     set(statuses, ["rules", 0, "blocked"], 1);
     rejects(statuses);
     const distribution = structuredClone(contract());
-    set(distribution, ["rules", 0, "outcomes", 0, "count"], 2);
-    set(distribution, ["rules", 0, "outcomes", 1, "count"], 4);
+    set(distribution, ["rules", 0, "ready"], 1);
+    set(distribution, ["rules", 0, "incomplete"], 2);
+    set(distribution, ["rules", 0, "outcomes", 0, "count"], 1);
+    set(distribution, ["rules", 0, "outcomes", 1, "count"], 2);
+    // This aggregate is valid in SUMMARY, but disagrees with the actual trace.
     rejects(distribution);
   });
 
@@ -825,6 +1042,87 @@ describe("strict fail-closed parser and serializer", () => {
       ),
     ).toThrow(EvidenceContractV1Error);
   });
+});
+
+describe("existing 10,000-issue operational boundary", () => {
+  function sizedContract(
+    count: number,
+    profile: EvidenceContractV1["profile"],
+  ) {
+    const value = structuredClone(
+      buildEvidenceContractV1(readinessDto(), profile),
+    );
+    set(value, ["release", "totalIssues"], count);
+    set(value, ["release", "readyIssues"], count);
+    for (const rule of value.rules) {
+      for (const field of Object.values(EVIDENCE_CONTRACT_STATUS_COUNTS))
+        set(rule, [field], rule[field] * count);
+      for (const outcome of rule.outcomes)
+        set(outcome, ["count"], outcome.count * count);
+    }
+    if (value.profile === "TRACEABLE_INTERNAL") {
+      const template = value.issues[0]!;
+      set(
+        value,
+        ["issues"],
+        Array.from({ length: count }, (_, index) => ({
+          ...template,
+          issueKey: `SYNTHETIC-${String(index + 1).padStart(5, "0")}`,
+        })),
+      );
+    }
+    return value;
+  }
+
+  it.each(profiles)(
+    "accepts 9999 and 10000, rejects 10001 in %s",
+    (profile) => {
+      expect(EVIDENCE_CONTRACT_MAX_ISSUES).toBe(10_000);
+      for (const count of [9999, 10_000]) {
+        const value = sizedContract(count, profile);
+        const parsed = parseEvidenceContractV1(value);
+        expect(parsed.release.totalIssues).toBe(count);
+        if (parsed.profile === "TRACEABLE_INTERNAL")
+          expect(parsed.issues).toHaveLength(count);
+        expect(serializeEvidenceContractV1(value)).toContain(
+          `"totalIssues":${count}`,
+        );
+      }
+      rejects(sizedContract(10_001, profile));
+      rejects(sizedContract(Number.MAX_SAFE_INTEGER, "SUMMARY_MINIMIZED"));
+    },
+  );
+
+  it("rejects an oversized trace before visiting its entries, even with a valid release size", () => {
+    const value = sizedContract(10_000, "TRACEABLE_INTERNAL");
+    const oversized = new Array<unknown>(10_001);
+    const getter = vi.fn(() => {
+      throw new Error("SYNTHETIC_SECRET");
+    });
+    Object.defineProperty(oversized, "0", { get: getter });
+    const ownKeys = vi.fn(() => Reflect.ownKeys(oversized));
+    set(value, ["issues"], new Proxy(oversized, { ownKeys }));
+    rejects(value);
+    expect(ownKeys).not.toHaveBeenCalled();
+    expect(getter).not.toHaveBeenCalled();
+  });
+
+  it.each(profiles)(
+    "rejects oversized builder input before mapping results in %s",
+    (profile) => {
+      const source = dto();
+      const getter = vi.fn(() => {
+        throw new Error("SYNTHETIC_SECRET");
+      });
+      source.results.length = 10_001;
+      source.totalIssues = 10_001;
+      Object.defineProperty(source.results, "0", { get: getter });
+      expect(() => buildEvidenceContractV1(source, profile)).toThrow(
+        EvidenceContractV1Error,
+      );
+      expect(getter).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("adversarial data object boundaries", () => {

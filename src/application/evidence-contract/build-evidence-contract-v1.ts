@@ -1,6 +1,7 @@
 import {
   aggregateEvidenceFindingsV1,
   compareEvidenceFindingsV1,
+  EVIDENCE_CONTRACT_MAX_ISSUES,
   EvidenceContractV1Error,
   parseEvidenceContractV1,
   type EvidenceContractV1,
@@ -28,6 +29,12 @@ export function buildEvidenceContractV1(
   profile: EvidenceContractV1["profile"],
 ): EvidenceContractV1 {
   if (profile !== "SUMMARY_MINIMIZED" && profile !== "TRACEABLE_INTERNAL") {
+    throw new EvidenceContractV1Error();
+  }
+  if (
+    source.results.length > EVIDENCE_CONTRACT_MAX_ISSUES ||
+    source.results.length !== source.totalIssues
+  ) {
     throw new EvidenceContractV1Error();
   }
   const issues = source.results

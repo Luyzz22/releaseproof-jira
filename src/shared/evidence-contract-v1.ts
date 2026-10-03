@@ -11,6 +11,9 @@ import {
   type ReleaseScopeMode,
 } from "../domain/models/readiness";
 
+// Existing Jira gateway ceiling: 100 pages of 100 issues. No infrastructure import.
+export const EVIDENCE_CONTRACT_MAX_ISSUES = 10_000;
+
 // Explicit v1 coverage: additions to the domain require intentional mapping.
 export const EVIDENCE_CONTRACT_OUTCOME_RULES = Object.freeze({
   "acceptance-criteria-present/present": "acceptance-criteria-present",
@@ -33,6 +36,38 @@ export const EVIDENCE_CONTRACT_OUTCOME_RULES = Object.freeze({
   "no-open-subtasks/clear": "no-open-subtasks",
   "no-open-subtasks/blocked": "no-open-subtasks",
 } satisfies Record<EvidenceOutcomeId, EvidenceRuleId>);
+
+export const EVIDENCE_CONTRACT_RULE_CATEGORIES = Object.freeze({
+  "acceptance-criteria-present": "DOCUMENTATION",
+  "accepted-status": "WORKFLOW",
+  "approval-marker-present": "APPROVAL",
+  "correct-fix-version": "RELEASE",
+  "no-blocker-label": "BLOCKER",
+  "no-blocking-links": "DEPENDENCY",
+  "no-open-subtasks": "DEPENDENCY",
+} satisfies Record<EvidenceRuleId, EvidenceCategory>);
+
+export const EVIDENCE_CONTRACT_OUTCOME_STATUSES = Object.freeze({
+  "acceptance-criteria-present/present": "READY",
+  "acceptance-criteria-present/missing": "INCOMPLETE",
+  "accepted-status/accepted": "READY",
+  "accepted-status/not-accepted": "INCOMPLETE",
+  "accepted-status/missing": "INCOMPLETE",
+  "approval-marker-present/disabled": "NOT_APPLICABLE",
+  "approval-marker-present/present": "READY",
+  "approval-marker-present/missing": "INCOMPLETE",
+  "correct-fix-version/version-only": "NOT_APPLICABLE",
+  "correct-fix-version/assigned": "READY",
+  "correct-fix-version/wrong-version": "INCOMPLETE",
+  "correct-fix-version/missing-version": "INCOMPLETE",
+  "no-blocker-label/clear": "READY",
+  "no-blocker-label/blocked": "BLOCKED",
+  "no-blocking-links/clear": "READY",
+  "no-blocking-links/blocked": "BLOCKED",
+  "no-open-subtasks/disabled": "NOT_APPLICABLE",
+  "no-open-subtasks/clear": "READY",
+  "no-open-subtasks/blocked": "BLOCKED",
+} satisfies Record<EvidenceOutcomeId, ReadinessStatus>);
 
 type StatusCount = "ready" | "incomplete" | "blocked" | "notApplicable";
 export const EVIDENCE_CONTRACT_STATUS_COUNTS = Object.freeze({
@@ -161,10 +196,11 @@ function record(
 }
 
 // Dense ordinary arrays only; never call an input-owned iterator/map/toJSON.
-function array(value: unknown): unknown[] {
+function array(value: unknown, maxLength: number): unknown[] {
   if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype)
     invalid();
-  const length = integer(dataProperty(value, "length"));
+  // Reject oversized lists before enumerating keys or visiting any item.
+  const length = integer(dataProperty(value, "length"), maxLength);
   if (Reflect.ownKeys(value).length !== length + 1) invalid();
   const result: unknown[] = [];
   for (let index = 0; index < length; index++) {
@@ -210,7 +246,7 @@ function parseRelease(input: unknown): EvidenceContractReleaseV1 {
     ),
     status: member(value.status, READINESS_STATUSES),
     score: integer(value.score, 100),
-    totalIssues: integer(value.totalIssues),
+    totalIssues: integer(value.totalIssues, EVIDENCE_CONTRACT_MAX_ISSUES),
     readyIssues: integer(value.readyIssues),
     incompleteIssues: integer(value.incompleteIssues),
     blockedIssues: integer(value.blockedIssues),
@@ -232,8 +268,11 @@ function outcomesFor(ruleId: EvidenceRuleId): readonly EvidenceOutcomeId[] {
   );
 }
 
-function parseRules(input: unknown): EvidenceContractRuleV1[] {
-  const values = array(input);
+function parseRules(
+  input: unknown,
+  totalIssues: number,
+): EvidenceContractRuleV1[] {
+  const values = array(input, EVIDENCE_RULE_IDS.length);
   if (values.length !== EVIDENCE_RULE_IDS.length) invalid();
   return EVIDENCE_RULE_IDS.map((ruleId, index) => {
     const value = record(values[index], [
@@ -245,8 +284,8 @@ function parseRules(input: unknown): EvidenceContractRuleV1[] {
       "outcomes",
     ]);
     if (value.ruleId !== ruleId) invalid();
-    const outcomes = array(value.outcomes);
     const ids = outcomesFor(ruleId);
+    const outcomes = array(value.outcomes, ids.length);
     if (outcomes.length !== ids.length) invalid();
     const rule = {
       ruleId,
@@ -262,9 +301,22 @@ function parseRules(input: unknown): EvidenceContractRuleV1[] {
     };
     if (
       sum([rule.ready, rule.incomplete, rule.blocked, rule.notApplicable]) !==
-      sum(rule.outcomes.map((item) => item.count))
+        totalIssues ||
+      sum(rule.outcomes.map((item) => item.count)) !== totalIssues
     )
       invalid();
+    // Validate supplied aggregate semantics, including SUMMARY without a trace.
+    for (const status of READINESS_STATUSES) {
+      const expected = sum(
+        rule.outcomes
+          .filter(
+            (item) =>
+              EVIDENCE_CONTRACT_OUTCOME_STATUSES[item.outcomeId] === status,
+          )
+          .map((item) => item.count),
+      );
+      if (rule[EVIDENCE_CONTRACT_STATUS_COUNTS[status]] !== expected) invalid();
+    }
     return rule;
   });
 }
@@ -274,28 +326,31 @@ function parseFinding(input: unknown): EvidenceContractFindingV1 {
   const ruleId = member(value.ruleId, EVIDENCE_RULE_IDS);
   const outcomeId = member(value.outcomeId, EVIDENCE_OUTCOME_IDS);
   if (EVIDENCE_CONTRACT_OUTCOME_RULES[outcomeId] !== ruleId) invalid();
+  const category = member(
+    value.category,
+    Object.keys(EVIDENCE_CONTRACT_CATEGORIES) as EvidenceCategory[],
+  );
+  const status = member(value.status, READINESS_STATUSES);
+  if (
+    category !== EVIDENCE_CONTRACT_RULE_CATEGORIES[ruleId] ||
+    status !== EVIDENCE_CONTRACT_OUTCOME_STATUSES[outcomeId]
+  )
+    invalid();
   return {
     ruleId,
-    category: member(
-      value.category,
-      Object.keys(EVIDENCE_CONTRACT_CATEGORIES) as EvidenceCategory[],
-    ),
-    status: member(value.status, READINESS_STATUSES),
+    category,
+    status,
     outcomeId,
   };
 }
 
-/** @internal Shared ordering for the builder and parser. Identity is rule + outcome. */
+/** @internal One finding per rule; findings follow the authoritative rule order. */
 export function compareEvidenceFindingsV1(
-  left: { readonly ruleId: string; readonly outcomeId: string },
-  right: { readonly ruleId: string; readonly outcomeId: string },
+  left: { readonly ruleId: string },
+  right: { readonly ruleId: string },
 ): number {
   const rules: readonly string[] = EVIDENCE_RULE_IDS;
-  const outcomes: readonly string[] = EVIDENCE_OUTCOME_IDS;
-  return (
-    rules.indexOf(left.ruleId) - rules.indexOf(right.ruleId) ||
-    outcomes.indexOf(left.outcomeId) - outcomes.indexOf(right.outcomeId)
-  );
+  return rules.indexOf(left.ruleId) - rules.indexOf(right.ruleId);
 }
 
 function parseIssue(input: unknown): EvidenceContractIssueV1 {
@@ -314,17 +369,13 @@ function parseIssue(input: unknown): EvidenceContractIssueV1 {
     !/^[A-Z][A-Z0-9_]{0,19}-\d+$/.test(value.issueKey)
   )
     invalid();
-  const findings = array(value.findings).map(parseFinding);
-  for (let index = 1; index < findings.length; index++) {
-    const previous = findings[index - 1];
-    const current = findings[index];
-    if (
-      !previous ||
-      !current ||
-      compareEvidenceFindingsV1(previous, current) >= 0
-    )
-      invalid();
-  }
+  const items = array(value.findings, EVIDENCE_RULE_IDS.length);
+  if (items.length !== EVIDENCE_RULE_IDS.length) invalid();
+  const findings = items.map((item, index) => {
+    const finding = parseFinding(item);
+    if (finding.ruleId !== EVIDENCE_RULE_IDS[index]) invalid();
+    return finding;
+  });
   return {
     issueKey: value.issueKey,
     status: member(value.status, READINESS_STATUSES),
@@ -398,7 +449,7 @@ function parseContract(input: unknown): EvidenceContractV1 {
   )
     invalid();
   const release = parseRelease(value.release);
-  const rules = parseRules(value.rules);
+  const rules = parseRules(value.rules, release.totalIssues);
   const common = {
     schemaVersion: 1 as const,
     contract: "releaseproof-evidence" as const,
@@ -420,8 +471,9 @@ function parseContract(input: unknown): EvidenceContractV1 {
     });
   }
   if (value.dataBoundary !== "INTERNAL_ONLY") invalid();
-  const issues = array(value.issues).map(parseIssue);
-  if (issues.length !== release.totalIssues) invalid();
+  const items = array(value.issues, EVIDENCE_CONTRACT_MAX_ISSUES);
+  if (items.length !== release.totalIssues) invalid();
+  const issues = items.map(parseIssue);
   for (let index = 1; index < issues.length; index++) {
     const previous = issues[index - 1];
     const current = issues[index];
