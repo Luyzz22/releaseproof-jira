@@ -10,7 +10,7 @@ export function AdminLegalNotice({ visible }: { visible: boolean }) {
 
   return (
     <aside
-      className="scope-notice scope-notice--warning"
+      className="scope-notice scope-notice--warning no-print"
       aria-labelledby="admin-legal-notice-title"
       role="status"
     >

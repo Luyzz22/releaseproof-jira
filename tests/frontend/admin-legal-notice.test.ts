@@ -55,6 +55,9 @@ describe("project-admin legal and security notice channel", () => {
   it("renders the active privacy notice in English for project admins", () => {
     const markup = render("en-US", true);
 
+    expect(markup).toContain(
+      'class="scope-notice scope-notice--warning no-print"',
+    );
     expect(markup).toContain("Legal &amp; security notice");
     expect(markup).toContain("Privacy information updated");
     expect(markup).toContain("29 September 2026");
