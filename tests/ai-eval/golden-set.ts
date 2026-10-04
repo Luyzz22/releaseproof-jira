@@ -1,8 +1,12 @@
+import {
+  findingEnvelope,
+  releaseEnvelope,
+} from "../../src/application/explanation/evidence-envelope";
+import { findingSummary, syntheticSummary } from "./evidence-contract-fixtures";
 import type {
   EvidenceOutcomeId,
   EvidenceRuleId,
 } from "../../src/domain/models/evidence-outcome";
-import { EVIDENCE_RULE_IDS } from "../../src/domain/models/evidence-outcome";
 import type { ReadinessStatus } from "../../src/domain/models/readiness";
 import type { ExplanationLocale } from "../../src/application/explanation/contracts";
 import {
@@ -252,15 +256,16 @@ export const FINDING_CASES: readonly GoldenCase[] = freezeOwned(
             ),
           );
         }
+        const evidence = findingSummary(outcomeId);
         return {
           ...common,
           caseId: `finding:${outcomeId}:${locale}`,
-          source: {
-            schemaVersion: 1,
-            kind: "finding",
+          evidence,
+          source: findingEnvelope(
+            evidence,
+            { ruleId: row.ruleId, outcomeId },
             locale,
-            finding: { ruleId: row.ruleId, outcomeId, status: row.status },
-          },
+          ).envelope,
           requiredAnchors,
           localeAnchors: [fact],
           allowedRemediationAnchors: row.remediation[locale],
@@ -315,43 +320,39 @@ export const SUMMARY_FACTS = freezeOwned({
 
 export const SUMMARY_CASES: readonly GoldenCase[] = freezeOwned(
   (Object.keys(SUMMARY_FACTS) as ReadinessStatus[]).flatMap((status) =>
-    EVAL_LOCALES.map((locale): GoldenCase => ({
-      ...common,
-      caseId: `release-summary:${status}:${locale}`,
-      source: {
-        schemaVersion: 1,
-        kind: "release-summary",
-        locale,
-        status,
-        ...SUMMARY_FACTS[status],
-        findingsByRule: EVIDENCE_RULE_IDS.map((ruleId) => ({
-          ruleId,
-          incomplete:
-            status === "INCOMPLETE" && ruleId === "acceptance-criteria-present"
-              ? 1
-              : 0,
-          blocked:
-            status === "BLOCKED" && ruleId === "no-blocking-links" ? 1 : 0,
-        })),
-      },
-      requiredAnchors: [
-        anchor(
-          "summary-facts",
-          locale === "en-US" ? [["issues"]] : [["vorgänge"]],
-        ),
-      ],
-      localeAnchors: [
-        anchor(
-          "summary-language",
-          locale === "en-US"
-            ? [["issues"], ["deterministic result"]]
-            : [["vorgänge"], ["deterministisches ergebnis"]],
-        ),
-      ],
-      allowedRemediationAnchors:
-        locale === "en-US" ? ["human review"] : ["menschliche prüfung"],
-      contradictions: [],
-    })),
+    EVAL_LOCALES.map((locale): GoldenCase => {
+      const evidence = syntheticSummary(
+        { releaseScopeMode: "JQL_SCOPE", status, ...SUMMARY_FACTS[status] },
+        status === "INCOMPLETE"
+          ? { outcomeId: "acceptance-criteria-present/missing", count: 1 }
+          : status === "BLOCKED"
+            ? { outcomeId: "no-blocking-links/blocked", count: 1 }
+            : undefined,
+      );
+      return {
+        ...common,
+        caseId: `release-summary:${status}:${locale}`,
+        evidence,
+        source: releaseEnvelope(evidence, locale).envelope,
+        requiredAnchors: [
+          anchor(
+            "summary-facts",
+            locale === "en-US" ? [["issues"]] : [["vorgänge"]],
+          ),
+        ],
+        localeAnchors: [
+          anchor(
+            "summary-language",
+            locale === "en-US"
+              ? [["issues"], ["deterministic result"]]
+              : [["vorgänge"], ["deterministisches ergebnis"]],
+          ),
+        ],
+        allowedRemediationAnchors:
+          locale === "en-US" ? ["human review"] : ["menschliche prüfung"],
+        contradictions: [],
+      };
+    }),
   ),
 );
 

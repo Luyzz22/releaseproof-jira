@@ -66,7 +66,7 @@ describe("SCRUM-86 offline isolation", () => {
     }
   });
 
-  it("allows only internal modules, domain model constants and type-only explanation contracts", () => {
+  it("allows only internal modules, domain codes, Evidence Contract v1 and the pure summary adapter", () => {
     for (const { file, ast } of harnessSources) {
       inspect(ast, (node) => {
         if (
@@ -85,9 +85,13 @@ describe("SCRUM-86 offline isolation", () => {
             "src/domain/models/readiness",
           ].includes(target);
           const contract = target === "src/application/explanation/contracts";
-          expect(internal || model || contract, `${file} -> ${target}`).toBe(
-            true,
-          );
+          const adapter =
+            target === "src/application/explanation/evidence-envelope";
+          const evidence = target === "src/shared/evidence-contract-v1";
+          expect(
+            internal || model || contract || adapter || evidence,
+            `${file} -> ${target}`,
+          ).toBe(true);
           if (contract)
             expect(
               ts.isImportDeclaration(node) && node.importClause?.isTypeOnly,

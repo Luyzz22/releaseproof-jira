@@ -3,6 +3,7 @@ import { REVIEW_BOUNDARY, SAFE_FIXTURES } from "../fixtures/ai-eval";
 import { evaluateExplanation } from "./evaluator";
 import { aggregateEvaluation } from "./report";
 import { GOLDEN_CASES } from "./golden-set";
+import type { EvalResult } from "./contracts";
 
 const passing = SAFE_FIXTURES.map(({ golden, candidate }) =>
   evaluateExplanation(golden, candidate, REVIEW_BOUNDARY),
@@ -68,6 +69,7 @@ describe("internal R&D pre-integration gate", () => {
 
   it("rejects stale/misidentified or inconsistent results", () => {
     for (const replacement of [
+      { ...passing[0]!, goldenSetVersion: 1 } as unknown as EvalResult,
       { ...passing[0]!, locale: "de-DE" as const },
       { ...passing[0]!, source: passing[1]!.source },
       { ...passing[0]!, passed: false },

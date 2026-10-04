@@ -3,18 +3,6 @@ import type {
   EvidenceRuleId,
 } from "../../domain/models/evidence-outcome";
 import type { ReadinessStatus } from "../../domain/models/readiness";
-import type {
-  EvidenceItemDto,
-  ReleaseReadinessResultDto,
-} from "../../shared/release-readiness-dto";
-
-export type DeepReadonly<T> = {
-  readonly [Key in keyof T]: DeepReadonly<T[Key]>;
-};
-
-// Internal, completed server-side result only; this is not a resolver input.
-export type CompletedAnalysis = DeepReadonly<ReleaseReadinessResultDto>;
-export type EvaluatedFinding = DeepReadonly<EvidenceItemDto>;
 export type ExplanationLocale = "en-US" | "de-DE";
 
 export interface FindingEvidenceEnvelope {

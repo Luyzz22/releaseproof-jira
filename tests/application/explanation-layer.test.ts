@@ -1,3 +1,4 @@
+import { buildEvidenceContractV1 } from "../../src/application/evidence-contract/build-evidence-contract-v1";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { explainFinding } from "../../src/application/explain-finding/explain-finding";
 import { summarizeRelease } from "../../src/application/summarize-release/summarize-release";
@@ -45,24 +46,30 @@ function run(
   return operation === "finding"
     ? explainFinding(
         {
-          result,
-          issueKey: "DEMO-42",
+          evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+          outcomeId: "acceptance-criteria-present/missing",
           ruleId: "acceptance-criteria-present",
           locale,
         },
         capability,
       )
-    : summarizeRelease({ result, locale }, capability);
+    : summarizeRelease(
+        {
+          evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+          locale,
+        },
+        capability,
+      );
 }
 
-describe("SCRUM-83 minimized provider boundary", () => {
+describe("SCRUM-89 minimized provider boundary", () => {
   it("passes only fixed finding codes and locale, not the reference or source fields", async () => {
     const result = completedResult();
     const provider = new FakeExplanationProvider();
     const response = await explainFinding(
       {
-        result,
-        issueKey: "DEMO-42",
+        evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+        outcomeId: "acceptance-criteria-present/missing",
         ruleId: "acceptance-criteria-present",
         locale: "de-DE",
       },
@@ -79,8 +86,14 @@ describe("SCRUM-83 minimized provider boundary", () => {
         status: "INCOMPLETE",
       },
     });
-    expect(response.deterministicResult).toBe(result);
-    expect(response.deterministicFinding).toBe(result.results[0]!.evidence[0]);
+    expect(response.deterministicEvidence).toEqual(
+      buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+    );
+    expect(response.deterministicFinding).toEqual({
+      ruleId: "acceptance-criteria-present",
+      outcomeId: "acceptance-criteria-present/missing",
+      status: "INCOMPLETE",
+    });
     expect(response.explanation).toEqual({
       source: "provider",
       format: "plain-text",
@@ -92,7 +105,10 @@ describe("SCRUM-83 minimized provider boundary", () => {
   it("passes aggregate counts only, with stable per-rule ordering", async () => {
     const result = completedResult();
     const provider = new FakeExplanationProvider();
-    await summarizeRelease({ result }, { enabled: true, provider });
+    await summarizeRelease(
+      { evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED") },
+      { enabled: true, provider },
+    );
     expect(provider.calls[0]!.envelope).toEqual({
       schemaVersion: 1,
       kind: "release-summary",
@@ -144,11 +160,20 @@ describe("SCRUM-83 minimized provider boundary", () => {
     const provider = new FakeExplanationProvider();
     for (const ruleId of EVIDENCE_RULE_IDS) {
       await explainFinding(
-        { result, issueKey: "DEMO-42", ruleId },
+        {
+          evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+          ruleId,
+          outcomeId: result.results[0]!.evidence.find(
+            (item) => item.ruleId === ruleId,
+          )!.outcome.outcomeId,
+        },
         { enabled: true, provider },
       );
     }
-    await summarizeRelease({ result }, { enabled: true, provider });
+    await summarizeRelease(
+      { evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED") },
+      { enabled: true, provider },
+    );
     const transmitted = JSON.stringify(
       provider.calls.map((call) => call.envelope),
     );
@@ -185,7 +210,9 @@ describe("SCRUM-83 minimized provider boundary", () => {
         enabled: true,
         provider,
       });
-      expect(response.deterministicResult).toBe(result);
+      expect(response.deterministicEvidence).toEqual(
+        buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+      );
       expect(result).toEqual(before);
       expect(Object.isFrozen(result)).toBe(false);
       expect(response.explanation).toMatchObject({
@@ -218,7 +245,7 @@ describe("SCRUM-83 minimized provider boundary", () => {
   );
 });
 
-describe.each(operations)("SCRUM-83 %s failure containment", (operation) => {
+describe.each(operations)("SCRUM-89 %s failure containment", (operation) => {
   it("is off by default and does not call an injected provider when off", async () => {
     const provider = new FakeExplanationProvider();
     const result = completedResult();
@@ -245,7 +272,10 @@ describe.each(operations)("SCRUM-83 %s failure containment", (operation) => {
     const provider = new FakeExplanationProvider(() => {
       throw new Error("SENSITIVE_PROVIDER_ERROR");
     });
-    const response = await run(operation, result, { enabled: true, provider });
+    const response = await run(operation, result, {
+      enabled: true,
+      provider,
+    });
     expect(response.explanation).toMatchObject({
       source: "deterministic-fallback",
       reason: "UNAVAILABLE",
@@ -417,56 +447,23 @@ describe.each(operations)("SCRUM-83 %s failure containment", (operation) => {
   });
 });
 
-describe("SCRUM-83 closed input and localization contract", () => {
-  it.each(["UNKNOWN-1", "", "DEMO-43"])(
-    "cannot invent a finding for reference %s",
-    async (issueKey) => {
+describe("SCRUM-89 closed input and localization contract", () => {
+  it.each(["UNKNOWN-1", "", "acceptance-criteria-present/missing"])(
+    "cannot invent an unobserved outcome %s",
+    async (outcomeId) => {
       const provider = new FakeExplanationProvider();
-      const result = readinessDto();
       await expect(
         explainFinding(
-          { result, issueKey, ruleId: "acceptance-criteria-present" },
+          {
+            evidence: buildEvidenceContractV1(
+              readinessDto(),
+              "SUMMARY_MINIMIZED",
+            ),
+            ruleId: "acceptance-criteria-present",
+            outcomeId,
+          },
           { enabled: true, provider },
         ),
-      ).rejects.toMatchObject({ code: "INVALID_INPUT" });
-      expect(provider.calls).toHaveLength(0);
-    },
-  );
-
-  it("rejects ambiguous finding references", async () => {
-    const result = completedResult();
-    result.results[0]!.evidence.push(
-      structuredClone(result.results[0]!.evidence[0]!),
-    );
-    await expect(run("finding", result)).rejects.toMatchObject({
-      code: "INVALID_INPUT",
-    });
-  });
-
-  it("does not forward arbitrary text disguised as a stable rule code", async () => {
-    const result = completedResult();
-    result.results[0]!.evidence[0]!.ruleId = "SENSITIVE_RULE_CODE";
-    const provider = new FakeExplanationProvider();
-    await expect(
-      explainFinding(
-        { result, issueKey: "DEMO-42", ruleId: "SENSITIVE_RULE_CODE" },
-        { enabled: true, provider },
-      ),
-    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
-    await expect(
-      run("summary", result, { enabled: true, provider }),
-    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
-    expect(provider.calls).toHaveLength(0);
-  });
-
-  it.each([NaN, Infinity, -1, 101])(
-    "rejects invalid aggregate score %s before provider invocation",
-    async (score) => {
-      const result = completedResult();
-      result.score = score;
-      const provider = new FakeExplanationProvider();
-      await expect(
-        run("summary", result, { enabled: true, provider }),
       ).rejects.toMatchObject({ code: "INVALID_INPUT" });
       expect(provider.calls).toHaveLength(0);
     },
@@ -490,7 +487,10 @@ describe("SCRUM-83 closed input and localization contract", () => {
     "summarizes an empty release in %s without inventing readiness",
     async (locale) => {
       const result = readinessDto(release([]));
-      const response = await summarizeRelease({ result, locale });
+      const response = await summarizeRelease({
+        evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+        locale,
+      });
       expect(response.explanation).toMatchObject({
         source: "deterministic-fallback",
         reason: "DISABLED",
@@ -573,9 +573,9 @@ describe.each(["en-US", "de-DE"] as const)(
       async (outcomeId) => {
         const { result, finding } = resultWithOutcome(outcomeId);
         const response = await explainFinding({
-          result,
+          evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
           ruleId: finding.ruleId,
-          issueKey: finding.issueKey,
+          outcomeId,
           locale,
         });
         expect(response.explanation.source).toBe("deterministic-fallback");
@@ -583,7 +583,11 @@ describe.each(["en-US", "de-DE"] as const)(
         expect(response.explanation.text).not.toContain("customer-approved");
         expect(response.explanation.text).not.toContain("release-blocker");
         expect(response.explanation.text).not.toContain("Kundenrelease");
-        expect(response.deterministicFinding).toBe(finding);
+        expect(response.deterministicFinding).toEqual({
+          ruleId: finding.ruleId,
+          outcomeId,
+          status: finding.status,
+        });
       },
     );
   },

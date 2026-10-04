@@ -327,7 +327,7 @@ that code. Therefore counts across codes may exceed failed cases. Input order
 does not change report output; there are no timestamps, random IDs or pass rates.
 
 Every failure is a hard failure. `integrationReviewEligible` is true only when
-every v1 Golden Case appears exactly once, all cases pass, versions and source
+every current Golden Case appears exactly once, all cases pass, versions and source
 facts match, and there are no unknown, missing, duplicate or inconsistent
 results. The report includes the affected authored case IDs for coverage gaps.
 An empty or partially passing batch never qualifies. This is an **internal R&D
@@ -342,7 +342,8 @@ npm run test -- tests/ai-eval tests/architecture/ai-eval-isolation.test.ts tests
 
 The pure modules have no network, provider invocation, AI judge, clock, random
 source, logging or persistence. Architecture tests restrict their imports to
-local pure modules, domain models and type-only explanation contracts, and ban
+local pure modules, domain models, type-only explanation contracts, the strict
+Evidence Contract v1 parser and the pure SCRUM-89 envelope adapter, and ban
 known effectful primitives. They also prevent production imports into the test
 tree. Dynamic spies check the evaluator/report paths, and the existing parent
 regression tests retain the SCRUM-83 behavior, including its intentionally
@@ -374,3 +375,23 @@ runs. Version 1 is the initial R&D baseline. Add independent synthetic fixtures
 for each discovered false positive or false negative. Future provider evaluation
 and integration require independent review, broader adversarial coverage and
 privacy/activation decisions; they remain outside this slice.
+
+## SCRUM-89 migration — Golden Set version 2
+
+Version 1 remains the historical SCRUM-86 baseline. In this stack, version 2
+adds an explicit synthetic `SUMMARY_MINIMIZED` Evidence Contract v1 to each of
+the 46 cases (19 outcomes × 2 locales plus four release statuses × 2 locales).
+Every case is validated by the unchanged SCRUM-88 parser and projected through
+the same adapter used by the explanation use cases. Golden inputs no longer
+hand-construct provider envelopes. The evaluator, failure taxonomy, output
+checks and advisory-only report gate are otherwise unchanged. Stale version-1
+results cannot satisfy the version-2 aggregate gate.
+
+Synthetic transport fixtures contain seven rule aggregates and all canonical
+outcomes, with exactly `totalIssues` observations per rule. The selected finding
+outcome must have a positive count. These are authored contract fixtures, not
+a second readiness engine; supplied release scores remain opaque copied facts.
+Separate tests compare all 19 finding semantics with real deterministic engine
+outputs. No trace, DTO, customer identifier or free text enters the harness input.
+
+ADR 0005 defines the migration and its remaining provenance/activation limits.

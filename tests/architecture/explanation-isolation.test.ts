@@ -53,7 +53,7 @@ describe("SCRUM-83 production isolation", () => {
     }
   });
 
-  it("allows only model contracts, safe errors, Zod and internal explanation imports", () => {
+  it("allows only Evidence Contract v1, model codes, safe errors, Zod and internal imports", () => {
     for (const { file, ast } of sources.filter(({ file }) => layer(file))) {
       function visit(node: ts.Node): void {
         if (
@@ -70,7 +70,7 @@ describe("SCRUM-83 production isolation", () => {
                 "src/domain/models/evidence-outcome",
                 "src/domain/models/readiness",
                 "src/shared/errors",
-                "src/shared/release-readiness-dto",
+                "src/shared/evidence-contract-v1",
               ].includes(target),
             `${file} -> ${name}`,
           ).toBe(true);

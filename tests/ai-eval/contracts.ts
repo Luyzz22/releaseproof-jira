@@ -1,9 +1,10 @@
+import type { SummaryEvidenceContractV1 } from "../../src/shared/evidence-contract-v1";
 import type {
   DeterministicEvidenceEnvelope,
   ExplanationLocale,
 } from "../../src/application/explanation/contracts";
 
-export const GOLDEN_SET_VERSION = 1;
+export const GOLDEN_SET_VERSION = 2;
 // Mirrors SCRUM-83 without importing its timer/provider orchestration.
 export const MAX_CANDIDATE_LENGTH = 2_000;
 export const EVAL_LOCALES = ["en-US", "de-DE"] as const;
@@ -53,6 +54,7 @@ export interface Anchor {
 
 export interface GoldenCase {
   readonly caseId: string;
+  readonly evidence: SummaryEvidenceContractV1;
   readonly source: DeterministicEvidenceEnvelope;
   readonly requiredAnchors: readonly Anchor[];
   readonly localeAnchors: readonly Anchor[];

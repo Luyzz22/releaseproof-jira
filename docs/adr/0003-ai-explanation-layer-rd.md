@@ -85,9 +85,10 @@ new services, or relaxing any production engineering rule.
 
 ### Data flow and contracts
 
-`explainFinding` and `summarizeRelease` are separate application use cases. They
-accept an already completed server-side `ReleaseReadinessResultDto` through a
-deep-readonly view; they neither call nor modify the deterministic engine.
+`explainFinding` and `summarizeRelease` are separate application use cases. Since SCRUM-89 they
+accept only runtime-validated `SUMMARY_MINIMIZED` Evidence Contract v1 data;
+they neither call nor modify the deterministic engine. The original DTO input
+is removed in this stack; ADR 0005 controls the migration.
 There is no new resolver, client API, UI control, report integration or storage
 setting. Existing application code does not import this layer.
 
@@ -109,9 +110,10 @@ Projections are explicitly rebuilt, enum/numeric values are runtime-validated,
 and every envelope object/array is frozen. No caller-owned nested reference is
 passed to a provider.
 
-Finding selection must resolve to one existing issue/evidence pair in the
-completed result. Missing or ambiguous references and invalid projected values
-fail with a content-free `INVALID_INPUT` error before any provider invocation.
+Finding selection must match a rule/outcome aggregate with a positive count in
+the validated summary. It explains an observed outcome class, never a specific
+Jira issue. Zero-count, unknown or mismatched selections and invalid contracts
+fail with a content-free `INVALID_INPUT` error before fallback/provider work.
 The type is an internal orchestration contract, not proof of provenance for
 arbitrary client JSON. Any future resolver must obtain and authorize its result
 server-side; accepting a client-supplied result or envelope is not authorized.
@@ -147,8 +149,9 @@ CPU work. A future adapter must honor cancellation and enforce its own budgets.
 Fallback uses ReleaseProof-owned, customer-parameter-free templates for all 19
 outcomes in both supported locales, or a localized numeric release summary.
 It explicitly reports `source: deterministic-fallback`, never AI generation.
-Returned deterministic result/finding references are unchanged, separately
-typed from the frozen explanation. Caller data is not frozen or rewritten.
+Returned deterministic evidence is an owned frozen snapshot of the validated
+summary. Selected finding codes carry no issue association. Both are separately
+typed from the explanation. Caller data is not frozen or rewritten.
 
 The layer logs nothing and persists nothing, including on validation failure.
 No exception, provider response, envelope or generated text is added to the
@@ -157,7 +160,7 @@ existing analysis diagnostics.
 ### Verification and activation limits
 
 Focused tests cover exact payload allowlists, nested forbidden sentinels,
-frozen provider inputs, original result/reference preservation, malformed
+frozen provider inputs, original fact preservation and owned snapshots, malformed
 responses, synchronous/asynchronous failure, timeout/late completion, disabled
 mode, stable Markdown output, logging/network absence, and both fallback
 locales. Architecture tests prevent imports from the existing product into the

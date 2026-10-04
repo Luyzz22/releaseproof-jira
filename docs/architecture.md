@@ -104,12 +104,16 @@ Dies ist eine Löschung der ReleaseProof-Konfiguration während der Vertrags-/Nu
 - Maximale normalisierte Textlänge: 50.000 Zeichen je Jira-Rich-Text-Feld.
 - Bei Überschreitung wird keine unvollständige Readiness-Aussage erzeugt; die Analyse bricht mit einer verständlichen Scope-Meldung ab.
 
-## Isoliertes R&D: optionale Erklärungen (SCRUM-83, nicht Production)
+## Isoliertes R&D: optionale Erklärungen (SCRUM-83/89, nicht Production)
 
 [ADR 0003](adr/0003-ai-explanation-layer-rd.md) beschreibt die eng begrenzte
 R&D-Ausnahme auf dem Spike-Branch. Die Use Cases `explainFinding` und
 `summarizeRelease` arbeiten ausschließlich nach einer abgeschlossenen
-deterministischen Analyse. Eine explizite, eingefrorene Allowlist übergibt nur
+deterministischen Analyse. Seit [ADR 0005](adr/0005-ai-evidence-contract-adapter-rd.md)
+akzeptieren sie ausschließlich streng validierte `SUMMARY_MINIMIZED`-Verträge.
+Eine Finding-Auswahl bezeichnet einen vorhandenen Rule-/Outcome-Aggregatwert,
+keinen einzelnen Jira-Vorgang. `TRACEABLE_INTERNAL` und bisherige DTO-Eingaben
+werden abgewiesen. Eine explizite, eingefrorene Allowlist übergibt nur
 feste Ergebniscodes beziehungsweise aggregierte Zahlen an den
 `ExplanationProvider`-Port. Jira-Inhalte und Outcome-Parameter bleiben außerhalb
 dieser Grenze. Validierte Plaintext-Erklärungen sind von unveränderten

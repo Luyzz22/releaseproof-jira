@@ -1,3 +1,4 @@
+import { buildEvidenceContractV1 } from "../../src/application/evidence-contract/build-evidence-contract-v1";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   EVIDENCE_OUTCOME_IDS,
@@ -514,10 +515,12 @@ describe("data, side effects and parent boundary", () => {
       text: "The release is approved. Score: 100/100.",
     }));
     const summary = await summarizeRelease(
-      { result },
+      { evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED") },
       { enabled: true, provider },
     );
-    expect(summary.deterministicResult).toBe(result);
+    expect(summary.deterministicEvidence).toEqual(
+      buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+    );
     expect(summary.explanation).toMatchObject(REVIEW_BOUNDARY);
     expect(
       evaluateExplanation(
@@ -527,15 +530,21 @@ describe("data, side effects and parent boundary", () => {
       ).passed,
     ).toBe(false);
     const finding = await explainFinding(
-      { result, issueKey: "DEMO-42", ruleId: "acceptance-criteria-present" },
+      {
+        evidence: buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
+        outcomeId: "acceptance-criteria-present/present",
+        ruleId: "acceptance-criteria-present",
+      },
       { enabled: true, provider },
     );
-    expect(finding.deterministicResult).toBe(result);
-    expect(finding.deterministicFinding).toBe(
-      result.results[0]!.evidence.find(
-        (item) => item.ruleId === "acceptance-criteria-present",
-      ),
+    expect(finding.deterministicEvidence).toEqual(
+      buildEvidenceContractV1(result, "SUMMARY_MINIMIZED"),
     );
+    expect(finding.deterministicFinding).toEqual({
+      ruleId: "acceptance-criteria-present",
+      outcomeId: "acceptance-criteria-present/present",
+      status: "READY",
+    });
     expect(result).toEqual(before);
     expect(Object.isFrozen(result)).toBe(false);
   });

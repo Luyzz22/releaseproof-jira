@@ -1,4 +1,5 @@
-import type { CompletedAnalysis, Explanation } from "../explanation/contracts";
+import type { SummaryEvidenceContractV1 } from "../../shared/evidence-contract-v1";
+import type { Explanation } from "../explanation/contracts";
 import { releaseEnvelope } from "../explanation/evidence-envelope";
 import {
   DISABLED_EXPLANATIONS,
@@ -7,12 +8,15 @@ import {
 import { requestExplanation } from "../explanation/request-explanation";
 
 export async function summarizeRelease(
-  input: Readonly<{ result: CompletedAnalysis; locale?: unknown }>,
+  input: Readonly<{ evidence: unknown; locale?: unknown }>,
   capability: ExplanationCapability = DISABLED_EXPLANATIONS,
 ): Promise<
-  Readonly<{ deterministicResult: CompletedAnalysis; explanation: Explanation }>
+  Readonly<{
+    deterministicEvidence: SummaryEvidenceContractV1;
+    explanation: Explanation;
+  }>
 > {
-  const envelope = releaseEnvelope(input.result, input.locale);
+  const { evidence, envelope } = releaseEnvelope(input.evidence, input.locale);
   const explanation = await requestExplanation(envelope, capability);
-  return Object.freeze({ deterministicResult: input.result, explanation });
+  return Object.freeze({ deterministicEvidence: evidence, explanation });
 }
