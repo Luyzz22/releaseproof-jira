@@ -93,9 +93,24 @@ function dependencies(source: ts.SourceFile): string[] {
 }
 
 describe("Evidence Contract v1 R&D isolation", () => {
-  it("has no incoming import/re-export/type/dynamic edge from existing src modules", () => {
+  it("has no incoming edges except the three explicit SCRUM-89 summary consumers", () => {
     for (const file of sourceFiles("src")) {
       if (contractFiles.includes(file)) continue;
+      if (
+        [
+          "src/application/explanation/evidence-envelope.ts",
+          "src/application/explain-finding/explain-finding.ts",
+          "src/application/summarize-release/summarize-release.ts",
+        ].includes(file)
+      ) {
+        expect(
+          dependencies(syntax(file)).filter((path) =>
+            contractFiles.includes(path),
+          ),
+          file,
+        ).toEqual([contractFile]);
+        continue;
+      }
       // Any transitive path into either module must cross an incoming edge.
       // This covers domain, resolvers, frontend, reports, Jira and storage.
       expect(
