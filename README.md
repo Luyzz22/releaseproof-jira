@@ -100,6 +100,13 @@ Bei der Installation die Jira-Entwicklerinstanz auswählen. Nach Änderungen an 
 
 ## Tests und Qualitätsgates
 
+GitHub Actions führt diese Qualitätsgates für Pull Requests und `main` aus.
+Der Job **Quality gates** speichert Commit-/Tree-Nachweise und einen JUnit-Bericht.
+Die CI verwendet Node.js aus `.node-version` und npm 10.9.8. Prüfumfang,
+Fehlerverhalten und die separate Forge-/Release-Prüfung sind in
+[docs/continuous-integration.md](docs/continuous-integration.md) dokumentiert.
+Die Einrichtung eines erforderlichen Statuschecks erfolgt separat.
+
 ```bash
 npm run typecheck
 npm run lint

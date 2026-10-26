@@ -1,4 +1,5 @@
 dist
 coverage
+artifacts/ci
 node_modules
 package-lock.json
