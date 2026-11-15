@@ -8,3 +8,7 @@ artifacts/ci/
 !.env.example
 *.log
 .DS_Store
+
+# Impeccable: engine binary is fetched + checksum-verified on demand; hooks stay personal
+.claude/skills/impeccable/scripts/bin/
+.claude/settings.local.json
