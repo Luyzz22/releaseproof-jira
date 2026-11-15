@@ -9,6 +9,9 @@ artifacts/ci/
 *.log
 .DS_Store
 
-# Impeccable: engine binary is fetched + checksum-verified on demand; hooks stay personal
+# Impeccable: engine binary is fetched + checksum-verified on demand;
+# per-developer config and hook cache stay local (shared config: .impeccable/config.json)
 .claude/skills/impeccable/scripts/bin/
+.impeccable/config.local.json
+.impeccable/hook.cache.json
 .claude/settings.local.json
